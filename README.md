@@ -20,4 +20,4 @@ $\sigma (\log r) = \frac{1}{1 + \exp(-\log r)}$
 
 which we can recover r from by doing
 
-$r = \exp(-\log(1/\sigma - 1)$
+$r = \exp(-\log(1/\sigma - 1))$
