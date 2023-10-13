@@ -12,3 +12,12 @@ The code seems to be doing the right thing but the classifier is not learning wh
 Need a simple test case to versify against. Maybe two in tension mock observations 21-cm signal + noise with no foregrounds.
 
 Stolen some of Thomas code for reading in the SARAS3 and EDGES data.
+
+
+Network just uses a binary cross entropy + sigmoid on last layer which means it outputs
+
+$\sigma (\log r) = \frac{1}{1 + \exp(-\log r)}$
+
+which we can recover r from by doing
+
+$r = \exp(-\log(1/\sigma - 1)$
