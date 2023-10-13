@@ -13,7 +13,6 @@ Need a simple test case to versify against. Maybe two in tension mock observatio
 
 Stolen some of Thomas code for reading in the SARAS3 and EDGES data.
 
-
 Network just uses a binary cross entropy + sigmoid on last layer which means it outputs
 
 $\sigma (\log r) = \frac{1}{1 + \exp(-\log r)}$
@@ -21,3 +20,8 @@ $\sigma (\log r) = \frac{1}{1 + \exp(-\log r)}$
 which we can recover r from by doing
 
 $r = \exp(-\log(1/\sigma - 1))$
+
+## To Dos
+
+- [ ] Need to generate some 21cm signal + noise data sets that are in and out of tension.
+- [ ] Need to write load and save functions!
