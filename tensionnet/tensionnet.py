@@ -4,6 +4,7 @@ from sklearn.model_selection import train_test_split
 from random import shuffle
 import keras
 from keras import layers
+import pickle
 
 
 class nre():
@@ -117,44 +118,8 @@ class nre():
         
         self.model = self.Model(inputs=[inputsA, inputsB], outputs=outputs)
 
-        #self.input_dim = [self.input_dimA, self.input_dimB]
-        #self.layer_sizes = [self.layer_sizesA, self.layer_sizesB]
-
-    def default_nn_model(self, input_size: int) -> keras.Model:
-        """Return a default neural network model.
-
-        This is the model from the appendix of arXiv:2305.11241.
-
-        Parameters
-        ----------
-        input_size: int
-            The number of input features
-
-        Returns
-        -------
-        keras.Model
-            The default neural network model
-        """
-        inputs = layers.Input(shape=(input_size,))
-        x = layers.Dense(130)(inputs)
-        x = layers.LeakyReLU()(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.Dense(16)(x)
-        x = layers.LeakyReLU()(x)
-        x_batch_norm_1 = layers.BatchNormalization()(x)  # Save for skip
-        x = layers.Dense(16)(x_batch_norm_1)
-        x = layers.LeakyReLU()(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.Dense(16)(x)
-        x = layers.LeakyReLU()(x)
-        x = layers.Add()([x, x_batch_norm_1])  # Skip connection
-        x = layers.BatchNormalization()(x)
-        x = layers.Dense(16)(x)
-        x = layers.LeakyReLU()(x)
-        outputs = layers.Dense(1, activation='sigmoid')(x)
-
-        self.model = keras.Model(inputs=inputs, outputs=outputs,
-                            name="jeffrey_wandelt_23_network")
+        self.input_dim = [self.input_dimA, self.input_dimB]
+        self.layer_sizes = [self.layer_sizesA, self.layer_sizesB, self.layer_sizesC]
     
     def build_simulations(self, simulation_func_A, simulation_func_B,
                            prior_function_A, prior_function_B,
@@ -307,3 +272,66 @@ class nre():
             r_values.append(np.exp(-np.log(1/r - 1)))
 
         self.r_values = np.array(r_values).T[0]
+
+    def save(self, filename):
+
+        """
+        Save the network and associated data to a pickle file.
+
+        filename: str
+            The name of the file to save the network to.
+        """
+
+        w = self.model.get_weights()
+
+        with open(filename, 'wb') as f:
+            pickle.dump([w,
+                         self.input_dim,
+                         self.output_dim,
+                         self.layer_sizes,
+                         self.activation,
+                         self.loss_history,
+                         self.test_loss_history
+                         ], f)
+    
+    @classmethod
+    def load(cls, filename,
+             simulation_func_A, simulation_func_B,
+             prior_function_A, prior_function_B,
+             shared_prior):
+
+        """
+        Load the network and associated data from a pickle file. Gets a
+        bit complicated with the compress model but it definitely works.
+        """
+
+        with open(filename, 'rb') as f:
+            data = pickle.load(f)
+
+            weights, input_dim, output_dim, layer_sizes, \
+                activation, \
+                loss_history, test_loss_history = data
+            
+            inst = cls()
+            # build the model whether compress or not
+            if not isinstance(input_dim, int):
+                inst.build_compress_model(input_dim[0], input_dim[1], 
+                                       output_dim, 
+                                       layer_sizes[0], layer_sizes[1],
+                                       layer_sizes[2],
+                                       activation)
+            else:
+                inst.build_model(input_dim, output_dim, 
+                                 layer_sizes, activation)
+            
+            # initiallise all the important variables
+            inst.model.set_weights(weights)
+            inst.loss_history = loss_history
+            inst.test_loss_history = test_loss_history
+            inst.simulation_func_A = simulation_func_A
+            inst.simulation_func_B = simulation_func_B
+            inst.prior_function_A = prior_function_A
+            inst.prior_function_B = prior_function_B
+            inst.shared_prior = shared_prior
+        
+        return inst

@@ -77,8 +77,10 @@ true_params = np.array([0.2, 78.0, 10.0, 1.0])
 # use this to generate the data for the experiments. Should generate 
 # a in tension and not in tension experimental data sets and see where they fall
 # in the distribution predicted by the network.
-exp1_data = signal_func_gen(exp1_freq)([None], true_params) + np.random.normal(0, 0.03, 100)
-exp2_data = signal_func_gen(exp2_freq)([None], true_params) + np.random.normal(0, 0.025, 100)
+"""exp1_data = signal_func_gen(exp1_freq)([None], true_params) \
+    + np.random.normal(0, 0.03, 100)
+exp2_data = signal_func_gen(exp2_freq)([None], true_params) \
+    + np.random.normal(0, 0.025, 100)"""
 
 exp2 = signal_func_gen(exp2_freq)
 exp1 = signal_func_gen(exp1_freq)
@@ -95,12 +97,17 @@ nrei.build_model(len(exp2_freq) + len(exp1_freq), 1, [100]*5, 'relu')
 #                       'relu')
 nrei.build_simulations(exp2, exp1, exp_prior, exp_prior, signal_prior, n=500000)
 model, data_test, labels_test = nrei.training(epochs=1000, batch_size=1000)
+nrei.save('test_model.pkl')
+nrei = nre.load('test_model.pkl',
+                exp2, exp1, exp_prior,
+                exp_prior, signal_prior)
 
 plt.plot(nrei.loss_history)
 plt.plot(nrei.test_loss_history)
 plt.show()
 
 nrei.__call__()
-print(nrei.r_values)
-plt.hist(nrei.r_values, bins=50)
+r = nrei.r_values
+mask = np.isfinite(r)
+plt.hist(r[mask], bins=50)
 plt.show()
