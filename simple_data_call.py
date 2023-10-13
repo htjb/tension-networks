@@ -73,6 +73,10 @@ exp1_freq = np.linspace(60, 90, 100)
 exp2_freq = np.linspace(80, 120, 100)
 true_params = np.array([0.2, 78.0, 10.0, 1.0])
 
+# I don't need this here... but once this is working I can
+# use this to generate the data for the experiments. Should generate 
+# a in tension and not in tension experimental data sets and see where they fall
+# in the distribution predicted by the network.
 exp1_data = signal_func_gen(exp1_freq)([None], true_params) + np.random.normal(0, 0.03, 100)
 exp2_data = signal_func_gen(exp2_freq)([None], true_params) + np.random.normal(0, 0.025, 100)
 
