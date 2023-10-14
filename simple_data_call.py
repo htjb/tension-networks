@@ -1,63 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-"""def simulator(simulation_func_A, simulation_func_B,
-                prior_function_A, prior_function_B,
-                shared_prior, n=10000, call_type='train'):
-
-    # generate lots of simulations 
-    simsA, params = [], []
-    simsB = []
-    for i in range(n):
-        simsA.append(simulation_func_A(thetaA[i], thetaShared[i]))
-        simsB.append(simulation_func_B(thetaB[i], thetaShared[i]))
-        params.append([*thetaA[i], *thetaB[i], *thetaShared[i]])
-    simsA = np.array(simsA)
-    simsB = np.array(simsB)
-    params = np.array(params)
-
-    #simsA = (simsA - simsA.mean(axis=0)) / simsA.std(axis=0)
-    #simsB = (simsB - simsB.mean(axis=0)) / simsB.std(axis=0)
-
-    simsA = (simsA - simsA.min(axis=0)) / (simsA.max(axis=0) - simsA.min(axis=0))
-    simsB = (simsB - simsB.min(axis=0)) / (simsB.max(axis=0) - simsB.min(axis=0))
-
-    idx = np.arange(0, n, 1)
-    shuffle(idx)
-    mis_labeled_simsB = simsB[idx]
-
-    data = []
-    for i in range(n):
-        data.append([*simsA[i], *simsB[i], 1])
-        if call_type == 'train':
-            data.append([*simsA[i], *mis_labeled_simsB[i], 0])
-    data = np.array(data)
-
-    idx = np.arange(0, 2*n, 1)
-    if call_type == 'train':
-        shuffle(idx)
-        input_data = data[idx, :-1]
-        labels = data[idx, -1]
-    elif call_type == 'eval':
-        input_data = data[:, :-1]
-        labels = data[:, -1]
-
-    return input_data, labels"""
-
 def signal_func_gen(freqs):
     def signal(_, parameters):
-        amp, nu_0, w, tau = parameters
-        b = ((4 * (freqs - nu_0) ** 2 / w ** 2) *
-             np.log(-np.log((1 + np.exp(-tau)) / 2) / tau))
-        return -amp * ((1 - np.exp(- tau * np.exp(b))) / (1 - np.exp(-tau)))
+        amp, nu_0, w = parameters
+        return -amp * np.exp(-(freqs-nu_0)**2 / (2*w**2))
     return signal
 
 def signal_prior(n):
-    parameters = np.ones((n, 4))
+    parameters = np.ones((n, 3))
     parameters[:, 0] = np.random.uniform(0.0, 4.0, n) #amp
     parameters[:, 1] = np.random.uniform(60.0, 90.0, n) #nu_0
     parameters[:, 2] = np.random.uniform(5.0, 40.0, n) #w
-    parameters[:, 3] = np.random.uniform(0.0, 40.0, n) #tau
     return parameters
 
 def exp_prior(n):
@@ -71,7 +25,8 @@ def exp_prior(n):
 
 exp1_freq = np.linspace(60, 90, 100)
 exp2_freq = np.linspace(80, 120, 100)
-true_params = np.array([0.2, 78.0, 10.0, 1.0])
+
+true_params = np.array([0.2, 78.0, 10.0])
 
 # I don't need this here... but once this is working I can
 # use this to generate the data for the experiments. Should generate 
@@ -87,20 +42,22 @@ exp1 = signal_func_gen(exp1_freq)
 
 from tensionnet.tensionnet import nre
 
-nrei = nre(lr=1e-4)
-nrei.build_model(len(exp2_freq) + len(exp1_freq), 1, [100]*5, 'relu')
-#nrei.default_nn_model(len(exp23_freq) + len(exp1_freq))
-#nrei.build_compress_model(len(exp23_freq), len(exp1_freq), 1, 
-#                       [len(exp23_freq), len(exp23_freq), len(exp23_freq)//2, 50, 10], 
-#                       [len(exp1_freq), len(exp1_freq), len(exp1_freq)//2, 50, 10], 
-#                       [10, 10, 10, 10, 10],
-#                       'relu')
-nrei.build_simulations(exp2, exp1, exp_prior, exp_prior, signal_prior, n=500000)
-model, data_test, labels_test = nrei.training(epochs=1000, batch_size=1000)
-nrei.save('test_model.pkl')
-nrei = nre.load('test_model.pkl',
+try:
+    nrei = nre.load('test_model.pkl',
                 exp2, exp1, exp_prior,
                 exp_prior, signal_prior)
+except:
+    nrei = nre(lr=1e-4)
+    nrei.build_model(len(exp2_freq) + len(exp1_freq), 1, [100]*5, 'sigmoid')
+    #nrei.default_nn_model(len(exp23_freq) + len(exp1_freq))
+    #nrei.build_compress_model(len(exp23_freq), len(exp1_freq), 1, 
+    #                       [len(exp23_freq), len(exp23_freq), len(exp23_freq)//2, 50, 10], 
+    #                       [len(exp1_freq), len(exp1_freq), len(exp1_freq)//2, 50, 10], 
+    #                       [10, 10, 10, 10, 10],
+    #                       'relu')
+    nrei.build_simulations(exp2, exp1, exp_prior, exp_prior, signal_prior, n=500000)
+    model, data_test, labels_test = nrei.training(epochs=1000, batch_size=1000)
+    nrei.save('test_model.pkl')
 
 plt.plot(nrei.loss_history)
 plt.plot(nrei.test_loss_history)
@@ -111,3 +68,41 @@ r = nrei.r_values
 mask = np.isfinite(r)
 plt.hist(r[mask], bins=50)
 plt.show()
+
+idx = [int(np.random.uniform(0, len(r), 1)) for i in range(1000)]
+
+labels_test = nrei.labels_test[idx]
+
+nrei.__call__(iters=nrei.data_test[idx])
+r = 1/(1+np.exp(-np.log(nrei.r_values)))
+
+correct1, correct0, wrong1, wrong0, confused1, confused0 = 0, 0, 0, 0, 0, 0
+for i in range(len(r)):
+    if r[i] > 0.75 and labels_test[i] == 1:
+        correct1 += 1
+    elif r[i] < 0.25 and labels_test[i] == 0:
+        correct0 += 1
+    elif r[i] > 0.75 and labels_test[i] == 0:
+        wrong0 += 1
+    elif r[i] < 0.25 and labels_test[i] == 1:
+        wrong1 += 1
+    elif r[i] > 0.25 and r[i] < 0.75 and labels_test[i] == 1:
+        confused1 += 1
+    elif r[i] > 0.25 and r[i] < 0.75 and labels_test[i] == 0:
+        confused0 += 1
+
+cm = [[correct0, wrong0, confused0],
+        [wrong1, correct1, confused1]]
+
+plt.imshow(cm, cmap='Blues')
+for i in range(2):
+    for j in range(3):
+        plt.text(j, i, cm[i][j], ha='center', va='center', color='k',
+                 bbox=dict(facecolor='white', lw=0))
+#plt.colorbar()
+plt.xticks([0, 1, 2], ['Correct', 'Wrong', 'Confused'])
+plt.yticks([0, 1], ['In tension', 'Not In Tension'])
+plt.tight_layout()
+plt.savefig('test_confusion_matrix.pdf')
+plt.show()
+
