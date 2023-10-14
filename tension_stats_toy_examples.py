@@ -45,7 +45,7 @@ def jointlikelihood(theta):
     return exp1likelihood(exp1theta)[0] + exp2likelihood(exp2theta)[0], []
 
 base = 'test_case_chains/'
-RESUME = False
+RESUME = True
 
 exp1_freq = np.linspace(60, 90, 100)
 exp2_freq = np.linspace(80, 120, 100)
@@ -73,7 +73,7 @@ exp1_samples = read_chains(base + 'test_exp1/test')
 exp2_samples = read_chains(base + 'test_exp2/test')
 joint_samples = read_chains(base + 'test_joint/test')
 
-R_out_tension = joint_samples.logZ() - exp1_samples.logZ() - exp2_samples.logZ()
+R_out_tension = joint_samples.logZ(1000) - exp1_samples.logZ(1000) - exp2_samples.logZ(1000)
 
 # In tension example...
 
@@ -96,6 +96,6 @@ exp1_samples = read_chains(base + 'test_exp1_in_tension/test')
 exp2_samples = read_chains(base + 'test_exp2_in_tension/test')
 joint_samples = read_chains(base + 'test_joint_in_tension/test')
 
-R = joint_samples.logZ() - exp1_samples.logZ() - exp2_samples.logZ()
-print('No Tension: ', R_out_tension)
-print('Tension: ', R)
+R = joint_samples.logZ(1000) - exp1_samples.logZ(1000) - exp2_samples.logZ(1000)
+print('No Tension: ', R_out_tension.mean(), R.std())
+print('Tension: ', R.mean(), R.std())
