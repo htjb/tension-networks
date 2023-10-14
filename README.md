@@ -22,9 +22,18 @@ $r = \frac{\sigma}{1 - \sigma}$
 Toy Example
 -----------
 
-Two experiments observing a gaussian absorption feature in different bands.
+Two experiments observing a gaussian absorption feature in different bands with
+the same level of noise.
 
 When I train the classifier I get the following confusion matrix for
 1000 test samples.
 
-[confusion matrix](https://github.com/htjb/tension-networks/blob/main/test_confusion_matrix.pdf)
+![confusion matrix](https://github.com/htjb/tension-networks/blob/main/test_confusion_matrix.png)
+
+And if I try and predict R for a set of 2000 matched realisations (no tension, 
+same parameters) of the two experiments I get the following distribution
+
+![R distribution](https://github.com/htjb/tension-networks/blob/main/test_r_hist.png)
+
+where the dashed line is $R_{obs}$ for two experiments that observed the same
+signal and the dotten line is for two experiments in tension.
