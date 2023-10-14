@@ -283,7 +283,7 @@ class nre():
                                 params[:, self.input_dimA:]]).numpy()[0]
             else:
                 r = self.model(params).numpy()[0]
-            r_values.append(r/(1+r))
+            r_values.append(r/(1-r))
             raw_r.append(r)
 
         self.r_values = np.array(r_values).T[0]
