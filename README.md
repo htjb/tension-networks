@@ -40,3 +40,7 @@ same parameters) of the two experiments I get the following distribution
 
 where the dashed line is $R_{obs}$ for two experiments that observed the same
 signal and the dotten line is for two experiments in tension.
+
+The data corresponding to the two $R_{obs}$ values is shown below.
+
+![R distribution](https://github.com/htjb/tension-networks/blob/main/test_case_data.png)
