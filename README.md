@@ -27,7 +27,8 @@ the same level of noise.
 
 When I train the classifier I get the following confusion matrix for
 1000 test samples. Seems the network isn't very good at recognising when the
-data sets are not in tension which is where we need it to be performing well.
+data sets are not in tension which is where we need it to be performing well
+otherwise we cannot trust the predicted distribution for R.
 Here confused is any value of $R$ between 0.25 and 0.75. Otherwise prediction
 is correct or wrong.
 
