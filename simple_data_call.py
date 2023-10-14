@@ -67,7 +67,14 @@ plt.show()
 nrei.__call__(iters=5000)
 r = nrei.r_values
 mask = np.isfinite(r)
-plt.hist(r[mask], bins=20)
+plt.hist(np.log10(r[mask]), bins=20)
+plt.axvline(3.88, color='k', ls='--', label='Out of tension example')
+plt.axvline(-60.09, color='k', ls=':', label='In tension example')
+plt.xlabel(r'$\log R$')
+plt.ylabel('Frequency')
+plt.tight_layout()
+plt.legend()
+plt.savefig('test_r_hist.pdf')
 plt.show()
 
 idx = [int(np.random.uniform(0, len(r), 1)) for i in range(1000)]
@@ -100,7 +107,6 @@ for i in range(2):
     for j in range(3):
         plt.text(j, i, cm[i][j], ha='center', va='center', color='k',
                  bbox=dict(facecolor='white', lw=0))
-#plt.colorbar()
 plt.xticks([0, 1, 2], ['Correct', 'Wrong', 'Confused'])
 plt.yticks([0, 1], ['In tension', 'Not In Tension'])
 plt.tight_layout()
