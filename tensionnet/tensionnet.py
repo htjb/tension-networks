@@ -184,6 +184,9 @@ class nre():
         data_train, data_test, labels_train, labels_test = \
                 train_test_split(self.data, self.labels, test_size=0.2)
         
+        self.data_test = data_test
+        self.labels_test = labels_test
+        
         train_dataset = np.hstack([data_train, labels_train[:, np.newaxis]]).astype(np.float32)
         train_dataset = tf.data.Dataset.from_tensor_slices(train_dataset)
         train_dataset = train_dataset.batch(batch_size)
@@ -254,11 +257,21 @@ class nre():
                 return loss
     
     def __call__(self, iters=2000):
-        """Draw samples from the nre"""
+        """
+        Draw samples from the nre
+        
+        iters: int or list/array
+            If int generate a new set of matching samples to evaluate the nre
+            at. If list the list should contain data to evaluate at.
+        """
 
-        data, labels = self.build_simulations(self.simulation_func_A, self.simulation_func_B,
+        if isinstance(iters, int):
+            data, labels = self.build_simulations(self.simulation_func_A, 
+                            self.simulation_func_B,
                             self.prior_function_A, self.prior_function_B,
                             self.shared_prior, n=iters, call_type='eval')
+        else:
+            data = iters.copy()
 
         posterior_value = []
         r_values = []
@@ -291,7 +304,9 @@ class nre():
                          self.layer_sizes,
                          self.activation,
                          self.loss_history,
-                         self.test_loss_history
+                         self.test_loss_history,
+                         self.data_test,
+                         self.labels_test
                          ], f)
     
     @classmethod
@@ -310,7 +325,8 @@ class nre():
 
             weights, input_dim, output_dim, layer_sizes, \
                 activation, \
-                loss_history, test_loss_history = data
+                loss_history, test_loss_history, \
+                     data_test, labels_test = data
             
             inst = cls()
             # build the model whether compress or not
@@ -333,5 +349,7 @@ class nre():
             inst.prior_function_A = prior_function_A
             inst.prior_function_B = prior_function_B
             inst.shared_prior = shared_prior
+            inst.data_test = data_test
+            inst.labels_test = labels_test
         
         return inst
