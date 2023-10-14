@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 def signal_func_gen(freqs):
     def signal(_, parameters):
         amp, nu_0, w = parameters
-        return -amp * np.exp(-(freqs-nu_0)**2 / (2*w**2))
+        return -amp * np.exp(-(freqs-nu_0)**2 / (2*w**2)) + \
+            np.random.normal(0, 0.005, len(freqs))
     return signal
 
 def signal_prior(n):
@@ -25,17 +26,6 @@ def exp_prior(n):
 
 exp1_freq = np.linspace(60, 90, 100)
 exp2_freq = np.linspace(80, 120, 100)
-
-true_params = np.array([0.2, 78.0, 10.0])
-
-# I don't need this here... but once this is working I can
-# use this to generate the data for the experiments. Should generate 
-# a in tension and not in tension experimental data sets and see where they fall
-# in the distribution predicted by the network.
-"""exp1_data = signal_func_gen(exp1_freq)([None], true_params) \
-    + np.random.normal(0, 0.03, 100)
-exp2_data = signal_func_gen(exp2_freq)([None], true_params) \
-    + np.random.normal(0, 0.025, 100)"""
 
 exp2 = signal_func_gen(exp2_freq)
 exp1 = signal_func_gen(exp1_freq)
@@ -64,12 +54,12 @@ plt.plot(nrei.loss_history)
 plt.plot(nrei.test_loss_history)
 plt.show()
 
-nrei.__call__(iters=10000)
+nrei.__call__(iters=5000)
 r = nrei.r_values
 mask = np.isfinite(r)
-plt.hist(np.log10(r[mask]), bins=50)
-plt.axvline(8.40, color='k', ls='--', label='No tension example')
-plt.axvline(-32.26, color='k', ls=':', label='In tension example')
+plt.hist(np.log10(r[mask]), bins=25)
+plt.axvline(13.96, color='k', ls='--', label='No tension example')
+plt.axvline(-210.40, color='k', ls=':', label='In tension example')
 plt.xlabel(r'$\log R$')
 plt.ylabel('Frequency')
 plt.tight_layout()

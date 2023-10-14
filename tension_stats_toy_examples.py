@@ -45,7 +45,7 @@ def jointlikelihood(theta):
     return exp1likelihood(exp1theta)[0] + exp2likelihood(exp2theta)[0], []
 
 base = 'test_case_chains/'
-RESUME = True
+RESUME = False
 
 exp1_freq = np.linspace(60, 90, 100)
 exp2_freq = np.linspace(80, 120, 100)
@@ -59,9 +59,9 @@ try:
     exp2_data = np.loadtxt(base + 'exp2_data_no_tension.txt')
 except:
     exp1_data = exp1_sf([None], true_params) \
-        + np.random.normal(0, 0.03, 100)
+        + np.random.normal(0, 0.005, 100)
     exp2_data = exp2_sf([None], true_params) \
-        + np.random.normal(0, 0.025, 100)
+        + np.random.normal(0, 0.005, 100)
     np.savetxt(base + 'exp1_data_no_tension.txt', exp1_data)
     np.savetxt(base + 'exp2_data_no_tension.txt', exp2_data)
 
@@ -82,9 +82,9 @@ try:
     exp2_data = np.loadtxt(base + 'exp2_data_in_tension.txt')
 except:
     exp1_data = exp1_sf([None], [0.2, 78.0, 10.0]) \
-        + np.random.normal(0, 0.03, 100)
+        + np.random.normal(0, 0.005, 100)
     exp2_data = exp2_sf([None], [0.25, 82.0, 12.0]) \
-        + np.random.normal(0, 0.03, 100)
+        + np.random.normal(0, 0.005, 100)
     np.savetxt(base + 'exp1_data_in_tension.txt', exp1_data)
     np.savetxt(base + 'exp2_data_in_tension.txt', exp2_data)
 
