@@ -56,7 +56,7 @@ except:
     #                       [len(exp1_freq), len(exp1_freq), len(exp1_freq)//2, 50, 10], 
     #                       [10, 10, 10, 10, 10],
     #                       'sigmoid')
-    nrei.build_simulations(exp2, exp1, exp_prior, exp_prior, signal_prior, n=500000)
+    nrei.build_simulations(exp2, exp1, exp_prior, exp_prior, signal_prior, n=50000)
     model, data_test, labels_test = nrei.training(epochs=1000, batch_size=1000)
     nrei.save('test_model.pkl')
 
