@@ -48,13 +48,14 @@ try:
                 exp_prior, signal_prior)
 except:
     nrei = nre(lr=1e-4)
-    nrei.build_model(len(exp2_freq) + len(exp1_freq), 1, [100]*5, 'sigmoid')
+    nrei.build_model(len(exp2_freq) + len(exp1_freq), 1, 
+                     [100]*5, 'sigmoid')
     #nrei.default_nn_model(len(exp23_freq) + len(exp1_freq))
-    #nrei.build_compress_model(len(exp23_freq), len(exp1_freq), 1, 
-    #                       [len(exp23_freq), len(exp23_freq), len(exp23_freq)//2, 50, 10], 
+    #nrei.build_compress_model(len(exp2_freq), len(exp1_freq), 1, 
+    #                       [len(exp2_freq), len(exp2_freq), len(exp2_freq)//2, 50, 10], 
     #                       [len(exp1_freq), len(exp1_freq), len(exp1_freq)//2, 50, 10], 
     #                       [10, 10, 10, 10, 10],
-    #                       'relu')
+    #                       'sigmoid')
     nrei.build_simulations(exp2, exp1, exp_prior, exp_prior, signal_prior, n=500000)
     model, data_test, labels_test = nrei.training(epochs=1000, batch_size=1000)
     nrei.save('test_model.pkl')
@@ -63,10 +64,10 @@ plt.plot(nrei.loss_history)
 plt.plot(nrei.test_loss_history)
 plt.show()
 
-nrei.__call__()
+nrei.__call__(iters=5000)
 r = nrei.r_values
 mask = np.isfinite(r)
-plt.hist(r[mask], bins=50)
+plt.hist(r[mask], bins=20)
 plt.show()
 
 idx = [int(np.random.uniform(0, len(r), 1)) for i in range(1000)]
@@ -74,7 +75,7 @@ idx = [int(np.random.uniform(0, len(r), 1)) for i in range(1000)]
 labels_test = nrei.labels_test[idx]
 
 nrei.__call__(iters=nrei.data_test[idx])
-r = 1/(1+np.exp(-np.log(nrei.r_values)))
+r = nrei.raw_r
 
 correct1, correct0, wrong1, wrong0, confused1, confused0 = 0, 0, 0, 0, 0, 0
 for i in range(len(r)):

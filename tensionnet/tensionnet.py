@@ -275,6 +275,7 @@ class nre():
 
         posterior_value = []
         r_values = []
+        raw_r = []
         for i in range(len(data)):
             params = tf.convert_to_tensor(np.array([[*data[i]]]).astype('float32'))
             if self.compress:
@@ -282,9 +283,11 @@ class nre():
                                 params[:, self.input_dimA:]]).numpy()[0]
             else:
                 r = self.model(params).numpy()[0]
-            r_values.append(np.exp(-np.log(1/r - 1)))
+            r_values.append(r/(1+r))
+            raw_r.append(r)
 
         self.r_values = np.array(r_values).T[0]
+        self.raw_r = np.array(raw_r).T[0]
 
     def save(self, filename):
 

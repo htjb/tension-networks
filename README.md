@@ -21,6 +21,21 @@ which we can recover r from by doing
 
 $r = \exp(-\log(1/\sigma - 1))$
 
+Hmm the above is causing some issues with divide by zeros. Lets try this again
+
+
+$\sigma (\log r) = \frac{1}{1 + \exp(-\log r)}$
+
+$\sigma (\log r) = \frac{1}{1 + \exp(\log 1/r)}$
+
+$\sigma (\log r) = \frac{1}{1 + 1/r}$
+
+$ \sigma = \frac{r}{1 + r}$
+
+$\sigma + r \sigma = r$
+
+$r = \frac{\sigma}{1 - \sigma}$
+
 ## To Dos
 
 - [ ] Need to generate some 21cm signal + noise data sets that are in and out of tension.
