@@ -51,6 +51,8 @@ except:
         + np.random.normal(0, 0.03, 100)
     exp2_data = exp2_sf([None], true_params) \
         + np.random.normal(0, 0.025, 100)
+    np.savetxt(base + 'exp1_data_no_tension.txt', exp1_data)
+    np.savetxt(base + 'exp2_data_no_tension.txt', exp2_data)
 
 run_poly(signal_poly_prior, jointlikelihood, base + 'test_joint', nlive=1000, RESUME=RESUME)
 run_poly(signal_poly_prior, exp1likelihood, base + 'test_exp1', nlive=1000, RESUME=RESUME)
@@ -72,6 +74,8 @@ except:
         + np.random.normal(0, 0.03, 100)
     exp2_data = exp2_sf([None], [0.25, 82.0, 12.0]) \
         + np.random.normal(0, 0.03, 100)
+    np.savetxt(base + 'exp1_data_in_tension.txt', exp1_data)
+    np.savetxt(base + 'exp2_data_in_tension.txt', exp2_data)
 
 run_poly(signal_poly_prior, jointlikelihood, base + 'test_joint_in_tension', nlive=1000, RESUME=RESUME)
 run_poly(signal_poly_prior, exp1likelihood, base + 'test_exp1_in_tension', nlive=1000, RESUME=RESUME)
