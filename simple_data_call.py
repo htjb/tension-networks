@@ -68,7 +68,7 @@ nrei.__call__(iters=5000)
 r = nrei.r_values
 mask = np.isfinite(r)
 plt.hist(np.log10(r[mask]), bins=20)
-plt.axvline(7.89, color='k', ls='--', label='Out of tension example')
+plt.axvline(7.89, color='k', ls='--', label='No tension example')
 plt.axvline(-34.26, color='k', ls=':', label='In tension example')
 plt.xlabel(r'$\log R$')
 plt.ylabel('Frequency')
