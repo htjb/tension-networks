@@ -47,7 +47,7 @@ try:
                 exp2, exp1, exp_prior,
                 exp_prior, signal_prior)
 except:
-    nrei = nre(lr=1e-4)
+    nrei = nre(lr=1e-3)
     nrei.build_model(len(exp2_freq) + len(exp1_freq), 1, 
                      [100]*5, 'sigmoid')
     #nrei.default_nn_model(len(exp23_freq) + len(exp1_freq))
@@ -74,7 +74,7 @@ plt.xlabel(r'$\log R$')
 plt.ylabel('Frequency')
 plt.tight_layout()
 plt.legend()
-plt.savefig('test_r_hist.pdf')
+plt.savefig('test_r_hist.png', dpi=300)
 plt.show()
 
 idx = [int(np.random.uniform(0, len(r), 1)) for i in range(1000)]
@@ -110,6 +110,6 @@ for i in range(2):
 plt.xticks([0, 1, 2], ['Correct', 'Wrong', 'Confused'])
 plt.yticks([0, 1], ['In tension', 'Not In Tension'])
 plt.tight_layout()
-plt.savefig('test_confusion_matrix.pdf')
+plt.savefig('test_confusion_matrix.png', dpi=300)
 plt.show()
 
