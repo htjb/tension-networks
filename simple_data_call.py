@@ -47,7 +47,7 @@ try:
                 exp2, exp1, exp_prior,
                 exp_prior, signal_prior)
 except:
-    nrei = nre(lr=1e-3)
+    nrei = nre(lr=1e-4)
     nrei.build_model(len(exp2_freq) + len(exp1_freq), 1, 
                      [100]*5, 'sigmoid')
     #nrei.default_nn_model(len(exp23_freq) + len(exp1_freq))
@@ -56,7 +56,7 @@ except:
     #                       [len(exp1_freq), len(exp1_freq), len(exp1_freq)//2, 50, 10], 
     #                       [10, 10, 10, 10, 10],
     #                       'sigmoid')
-    nrei.build_simulations(exp2, exp1, exp_prior, exp_prior, signal_prior, n=50000)
+    nrei.build_simulations(exp2, exp1, exp_prior, exp_prior, signal_prior, n=500000)
     model, data_test, labels_test = nrei.training(epochs=1000, batch_size=1000)
     nrei.save('test_model.pkl')
 

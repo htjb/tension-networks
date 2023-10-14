@@ -26,7 +26,8 @@ Two experiments observing a gaussian absorption feature in different bands with
 the same level of noise.
 
 When I train the classifier I get the following confusion matrix for
-1000 test samples.
+1000 test samples. Seems the network isn't very good at recognising when the
+data sets are not in tension which is where we need it to be performing well.
 
 ![confusion matrix](https://github.com/htjb/tension-networks/blob/main/test_confusion_matrix.png)
 
