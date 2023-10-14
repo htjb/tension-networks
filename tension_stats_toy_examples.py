@@ -33,6 +33,8 @@ def exp2likelihood(theta):
 def jointlikelihood(theta):
     return exp1likelihood(theta)[0] + exp2likelihood(theta)[0], []
 
+base = 'test_case_chains/'
+RESUME = False
 
 exp1_freq = np.linspace(60, 90, 100)
 exp2_freq = np.linspace(80, 120, 100)
@@ -41,36 +43,44 @@ exp2_sf = signal_func_gen(exp2_freq)
 
 true_params = np.array([0.2, 78.0, 10.0])
 
-exp1_data = exp1_sf([None], true_params) \
-    + np.random.normal(0, 0.03, 100)
-exp2_data = exp2_sf([None], true_params) \
-    + np.random.normal(0, 0.025, 100)
+try:
+    exp1_data = np.loadtxt(base + 'exp1_data_no_tension.txt')
+    exp2_data = np.loadtxt(base + 'exp2_data_no_tension.txt')
+except:
+    exp1_data = exp1_sf([None], true_params) \
+        + np.random.normal(0, 0.03, 100)
+    exp2_data = exp2_sf([None], true_params) \
+        + np.random.normal(0, 0.025, 100)
 
-run_poly(signal_poly_prior, jointlikelihood, 'test_joint', nlive=1000, RESUME=True)
-run_poly(signal_poly_prior, exp1likelihood, 'test_exp1', nlive=1000, RESUME=True)
-run_poly(signal_poly_prior, exp2likelihood, 'test_exp2', nlive=1000, RESUME=True)
+run_poly(signal_poly_prior, jointlikelihood, base + 'test_joint', nlive=1000, RESUME=RESUME)
+run_poly(signal_poly_prior, exp1likelihood, base + 'test_exp1', nlive=1000, RESUME=RESUME)
+run_poly(signal_poly_prior, exp2likelihood, base + 'test_exp2', nlive=1000, RESUME=RESUME)
 
-exp1_samples = read_chains('test_exp1/test')
-exp2_samples = read_chains('test_exp2/test')
-joint_samples = read_chains('test_joint/test')
+exp1_samples = read_chains(base + 'test_exp1/test')
+exp2_samples = read_chains(base + 'test_exp2/test')
+joint_samples = read_chains(base + 'test_joint/test')
 
 R_out_tension = joint_samples.logZ() - exp1_samples.logZ() - exp2_samples.logZ()
 
 # In tension example...
 
-exp1_data = exp1_sf([None], [0.2, 78.0, 10.0]) \
-    + np.random.normal(0, 0.03, 100)
-exp2_data = exp2_sf([None], [0.25, 84.0, 13.0]) \
-    + np.random.normal(0, 0.025, 100)
+try:
+    exp1_data = np.loadtxt(base + 'exp1_data_in_tension.txt')
+    exp2_data = np.loadtxt(base + 'exp2_data_in_tension.txt')
+except:
+    exp1_data = exp1_sf([None], [0.2, 78.0, 10.0]) \
+        + np.random.normal(0, 0.03, 100)
+    exp2_data = exp2_sf([None], [0.25, 82.0, 12.0]) \
+        + np.random.normal(0, 0.03, 100)
 
-run_poly(signal_poly_prior, jointlikelihood, 'test_joint_in_tension', nlive=1000)
-run_poly(signal_poly_prior, exp1likelihood, 'test_exp1_in_tension', nlive=1000)
-run_poly(signal_poly_prior, exp2likelihood, 'test_exp2_in_tension', nlive=1000)
+run_poly(signal_poly_prior, jointlikelihood, base + 'test_joint_in_tension', nlive=1000, RESUME=RESUME)
+run_poly(signal_poly_prior, exp1likelihood, base + 'test_exp1_in_tension', nlive=1000, RESUME=RESUME)
+run_poly(signal_poly_prior, exp2likelihood, base + 'test_exp2_in_tension', nlive=1000, RESUME=RESUME)
 
-exp1_samples = read_chains('test_exp1_in_tension/test')
-exp2_samples = read_chains('test_exp2_in_tension/test')
-joint_samples = read_chains('test_joint_in_tension/test')
+exp1_samples = read_chains(base + 'test_exp1_in_tension/test')
+exp2_samples = read_chains(base + 'test_exp2_in_tension/test')
+joint_samples = read_chains(base + 'test_joint_in_tension/test')
 
 R = joint_samples.logZ() - exp1_samples.logZ() - exp2_samples.logZ()
-print(R_out_tension)
-print(R)
+print('No Tension: ', R_out_tension)
+print('Tension: ', R)
