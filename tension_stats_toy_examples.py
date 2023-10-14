@@ -34,7 +34,7 @@ def jointlikelihood(theta):
     return exp1likelihood(theta)[0] + exp2likelihood(theta)[0], []
 
 base = 'test_case_chains/'
-RESUME = False
+RESUME = True
 
 exp1_freq = np.linspace(60, 90, 100)
 exp2_freq = np.linspace(80, 120, 100)
