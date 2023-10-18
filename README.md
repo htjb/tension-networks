@@ -37,7 +37,9 @@ same parameters) of the two experiments I get the following distribution
 ![R distribution](https://github.com/htjb/tension-networks/blob/main/test_r_hist.png)
 
 where the dashed line is $R_{obs}$ for two experiments that observed the same
-signal and the dotten line is for two experiments in tension. Of the 2000 models histogrammed 0.15% were mis-classified as being in tension.
+signal and the dotten line is for two experiments in tension. Of the 2000 models histogrammed 0.15% were mis-classified as being in tension. As a kde this looks like
+
+![R distribution](https://github.com/htjb/tension-networks/blob/main/test_r_kde.png)
 
 The data corresponding to the two $R_{obs}$ values is shown below.
 
