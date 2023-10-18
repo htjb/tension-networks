@@ -47,18 +47,25 @@ except:
     #                       [len(exp1_freq), len(exp1_freq), len(exp1_freq)//2, 50, 10], 
     #                       [10, 10, 10, 10, 10],
     #                       'sigmoid')
-    nrei.build_simulations(exp2, exp1, exp_prior, exp_prior, signal_prior, n=500000)
-    model, data_test, labels_test = nrei.training(epochs=1000, batch_size=1000)
+    nrei.build_simulations(exp2, exp1, exp_prior, exp_prior, signal_prior, n=100000)
+    model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
     nrei.save('test_model.pkl')
 
 plt.plot(nrei.loss_history)
 plt.plot(nrei.test_loss_history)
+plt.yscale('log')
 plt.show()
 
 nrei.__call__(iters=2000)
 r = nrei.r_values
 mask = np.isfinite(r)
-plt.hist(np.log10(r[mask]), bins=25)
+sigr = tf.keras.layers.Activation('sigmoid')(r[mask])
+c = 0
+for i in range(len(sigr)):
+    if sigr[i] < 0.75:
+        c += 1
+
+plt.hist(r[mask], bins=25, label=f'{c/len(sigr)*100:.2f} % Miss classified')
 plt.axvline(13.96, color='k', ls='--', label='No tension example')
 plt.axvline(-210.40, color='k', ls=':', label='In tension example')
 plt.xlabel(r'$\log R$')
@@ -68,12 +75,14 @@ plt.legend()
 plt.savefig('test_r_hist.png', dpi=300)
 plt.show()
 
-idx = [int(np.random.uniform(0, len(r), 1)) for i in range(1000)]
+idx = [int(np.random.uniform(0, len(nrei.labels_test), 1)) for i in range(1000)]
 
 labels_test = nrei.labels_test[idx]
 
 nrei.__call__(iters=nrei.data_test[idx])
 p = tf.keras.layers.Activation('sigmoid')(nrei.r_values)
+"""plt.hist(p, bins=25)
+plt.show()"""
 
 correct1, correct0, wrong1, wrong0, confused1, confused0 = 0, 0, 0, 0, 0, 0
 for i in range(len(p)):
@@ -91,7 +100,7 @@ for i in range(len(p)):
         confused0 += 1
 
 cm = [[correct0, wrong0, confused0],
-        [wrong1, correct1, confused1]]
+        [correct1, wrong1, confused1]]
 
 plt.imshow(cm, cmap='Blues')
 for i in range(2):
