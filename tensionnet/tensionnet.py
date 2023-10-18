@@ -147,11 +147,11 @@ class nre():
         simsB = np.array(simsB)
         self.params = np.array(params)
 
-        #simsA = (simsA - simsA.mean(axis=0)) / simsA.std(axis=0)
-        #simsB = (simsB - simsB.mean(axis=0)) / simsB.std(axis=0)
+        simsA = (simsA - simsA.mean(axis=0)) / simsA.std(axis=0)
+        simsB = (simsB - simsB.mean(axis=0)) / simsB.std(axis=0)
 
-        simsA = (simsA - simsA.min(axis=0)) / (simsA.max(axis=0) - simsA.min(axis=0))
-        simsB = (simsB - simsB.min(axis=0)) / (simsB.max(axis=0) - simsB.min(axis=0))
+        #simsA = (simsA - simsA.min(axis=0)) / (simsA.max(axis=0) - simsA.min(axis=0))
+        #simsB = (simsB - simsB.min(axis=0)) / (simsB.max(axis=0) - simsB.min(axis=0))
 
         idx = np.arange(0, n, 1)
         shuffle(idx)
