@@ -75,6 +75,17 @@ plt.legend()
 plt.savefig('test_r_hist.png', dpi=300)
 plt.show()
 
+from anesthetic import MCMCSamples
+samples = MCMCSamples(data=r[mask], columns=['R'])
+axes = samples.plot_1d('R', fc='C0')
+plt.axvline(13.96, color='k', ls='--', label='No tension example')
+plt.xlabel(r'$\log R$')
+plt.ylabel('Frequency')
+plt.tight_layout()
+plt.legend()
+plt.savefig('test_r_kde.png', dpi=300)
+plt.show()
+
 idx = [int(np.random.uniform(0, len(nrei.labels_test), 1)) for i in range(1000)]
 
 labels_test = nrei.labels_test[idx]
