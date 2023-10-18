@@ -65,7 +65,7 @@ for i in range(len(sigr)):
     if sigr[i] < 0.75:
         c += 1
 
-plt.hist(r[mask], bins=25, label=f'{c/len(sigr)*100:.2f} % Miss classified')
+plt.hist(r[mask], bins=25, label=f'{c/len(sigr)*100:.2f} % Mis-classified')
 plt.axvline(13.96, color='k', ls='--', label='No tension example')
 plt.axvline(-210.40, color='k', ls=':', label='In tension example')
 plt.xlabel(r'$\log R$')
