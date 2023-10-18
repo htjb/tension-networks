@@ -41,8 +41,8 @@ class nre():
                 kernel_initializer=tf.keras.initializers.GlorotNormal())(a0)
             outputs = self.batch_norm()(outputs)
             a0 = outputs
-        outputs = self.Dense(self.output_dim, activation=self.output_activation,
-                kernel_initializer=tf.keras.initializers.GlorotNormal())(a0)
+        outputs = self.Dense(self.output_dim, activation='linear',
+            kernel_initializer=tf.keras.initializers.GlorotNormal())(a0)
         self.model = self.Model(inputs, outputs)
     
     def build_compress_model(
@@ -242,6 +242,7 @@ class nre():
                                                     param[:, self.input_dimA:]], training=True))[0]
             else:
                 prediction = tf.transpose(self.model(param, training=True))[0]
+            prediction = tf.keras.layers.Activation('sigmoid')(prediction)
             truth = tf.convert_to_tensor(truth)
             loss = tf.keras.losses.BinaryCrossentropy(from_logits=False)(truth, prediction)
             return loss
@@ -261,6 +262,7 @@ class nre():
                                                           params[:, self.input_dimA:]], training=True))[0]
                 else:
                     prediction = tf.transpose(self.model(params, training=True))[0]
+                prediction = tf.keras.layers.Activation('sigmoid')(prediction)
                 truth = tf.convert_to_tensor(truth)
                 loss = tf.keras.losses.BinaryCrossentropy(from_logits=False)(truth, prediction)
                 gradients = tape.gradient(loss, self.model.trainable_variables)
@@ -287,19 +289,16 @@ class nre():
             data = iters.copy()
 
         r_values = []
-        raw_output = []
         for i in range(len(data)):
             params = tf.convert_to_tensor(np.array([[*data[i]]]).astype('float32'))
             if self.compress:
-                sigmoidlogr = self.model([params[:, :self.input_dimA],
+                logr = self.model([params[:, :self.input_dimA],
                                 params[:, self.input_dimA:]]).numpy()[0]
             else:
-                sigmoidlogr = self.model(params).numpy()[0]
-            r_values.append(sigmoidlogr/(1-sigmoidlogr))
-            raw_output.append(sigmoidlogr)
+                logr = self.model(params).numpy()[0]
+            r_values.append(logr)
 
         self.r_values = np.array(r_values).T[0]
-        self.raw_output = np.array(raw_output).T[0]
 
     def save(self, filename):
 

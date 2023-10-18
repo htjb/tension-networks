@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 def signal_func_gen(freqs):
     def signal(_, parameters):
@@ -39,8 +40,8 @@ try:
 except:
     nrei = nre(lr=1e-4)
     nrei.build_model(len(exp2_freq) + len(exp1_freq), 1, 
-                     [100]*5, 'sigmoid')
-    #nrei.default_nn_model(len(exp23_freq) + len(exp1_freq))
+                        [100]*10, 'sigmoid')
+
     #nrei.build_compress_model(len(exp2_freq), len(exp1_freq), 1, 
     #                       [len(exp2_freq), len(exp2_freq), len(exp2_freq)//2, 50, 10], 
     #                       [len(exp1_freq), len(exp1_freq), len(exp1_freq)//2, 50, 10], 
@@ -54,7 +55,7 @@ plt.plot(nrei.loss_history)
 plt.plot(nrei.test_loss_history)
 plt.show()
 
-nrei.__call__(iters=5000)
+nrei.__call__(iters=2000)
 r = nrei.r_values
 mask = np.isfinite(r)
 plt.hist(np.log10(r[mask]), bins=25)
@@ -72,21 +73,21 @@ idx = [int(np.random.uniform(0, len(r), 1)) for i in range(1000)]
 labels_test = nrei.labels_test[idx]
 
 nrei.__call__(iters=nrei.data_test[idx])
-r = nrei.raw_r
+p = tf.keras.layers.Activation('sigmoid')(nrei.r_values)
 
 correct1, correct0, wrong1, wrong0, confused1, confused0 = 0, 0, 0, 0, 0, 0
-for i in range(len(r)):
-    if r[i] > 0.75 and labels_test[i] == 1:
+for i in range(len(p)):
+    if p[i] > 0.75 and labels_test[i] == 1:
         correct1 += 1
-    elif r[i] < 0.25 and labels_test[i] == 0:
+    elif p[i] < 0.25 and labels_test[i] == 0:
         correct0 += 1
-    elif r[i] > 0.75 and labels_test[i] == 0:
+    elif p[i] > 0.75 and labels_test[i] == 0:
         wrong0 += 1
-    elif r[i] < 0.25 and labels_test[i] == 1:
+    elif p[i] < 0.25 and labels_test[i] == 1:
         wrong1 += 1
-    elif r[i] > 0.25 and r[i] < 0.75 and labels_test[i] == 1:
+    elif p[i] > 0.25 and r[i] < 0.75 and labels_test[i] == 1:
         confused1 += 1
-    elif r[i] > 0.25 and r[i] < 0.75 and labels_test[i] == 0:
+    elif p[i] > 0.25 and r[i] < 0.75 and labels_test[i] == 0:
         confused0 += 1
 
 cm = [[correct0, wrong0, confused0],
