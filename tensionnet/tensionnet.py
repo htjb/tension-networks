@@ -5,6 +5,7 @@ from random import shuffle
 import keras
 from keras import layers
 import pickle
+import tqdm
 
 
 class nre():
@@ -158,7 +159,11 @@ class nre():
 
         data = []
         for i in range(n):
-            data.append([*simsA[i], *simsB[i], 1])
+            """
+            Sigma(log(r)) = 1 results in R >> 1 i.e. data sets are consistent
+            sigma(log(r)) = 0 --> R << 1 i.e. data sets are inconsistent
+            """
+            data.append([*simsA[i], *simsB[i], 1]) 
             if call_type == 'train':
                 data.append([*simsA[i], *mis_labeled_simsB[i], 0])
         data = np.array(data)
@@ -194,25 +199,15 @@ class nre():
         self.loss_history = []
         self.test_loss_history = []
         c = 0
-        for i in range(epochs):
+        for i in tqdm.tqdm(range(epochs)):
 
             epoch_loss_avg = tf.keras.metrics.Mean()
 
-            for x in train_dataset:
-                loss = self._train_step(x[:, :-1], x[:, -1]).numpy()
-                epoch_loss_avg.update_state(loss)
+            loss = [self._train_step(x[:, :-1], x[:, -1]) for x in  train_dataset]
+            epoch_loss_avg.update_state(loss)
             self.loss_history.append(epoch_loss_avg.result())
 
-            if self.compress:
-                test_pred = tf.transpose(self.model([data_test[:, :self.input_dimA],
-                                                    data_test[:, self.input_dimA:]], training=True))[0]
-            else:
-                test_pred = tf.transpose(self.model(data_test, training=True))[0]
-            loss_test = tf.keras.losses.BinaryCrossentropy(from_logits=False)(labels_test, test_pred)
-
-            print('Epoch: {:d}, Loss: {:.4f}, Test Loss: {:.4f}'.format(i, loss, loss_test))
-
-            self.test_loss_history.append(loss_test)
+            self.test_loss_history.append(self._test_step(data_test, labels_test))
 
             if early_stop:
                 c += 1
@@ -232,6 +227,24 @@ class nre():
                                 '. Minimum at epoch = ' + str(minimum_epoch))
                         return minimum_model, data_test, labels_test
         return self.model, data_test, labels_test
+
+    @tf.function(jit_compile=True)
+    def _test_step(self, param, truth):
+            
+            r"""
+            This function is used to calculate the loss value at each epoch and
+            adjust the weights and biases of the neural networks via the
+            optimizer algorithm.
+            """
+    
+            if self.compress:
+                prediction = tf.transpose(self.model([param[:, :self.input_dimA],
+                                                    param[:, self.input_dimA:]], training=True))[0]
+            else:
+                prediction = tf.transpose(self.model(param, training=True))[0]
+            truth = tf.convert_to_tensor(truth)
+            loss = tf.keras.losses.BinaryCrossentropy(from_logits=False)(truth, prediction)
+            return loss
 
     @tf.function(jit_compile=True)
     def _train_step(self, params, truth):
@@ -273,21 +286,20 @@ class nre():
         else:
             data = iters.copy()
 
-        posterior_value = []
         r_values = []
-        raw_r = []
+        raw_output = []
         for i in range(len(data)):
             params = tf.convert_to_tensor(np.array([[*data[i]]]).astype('float32'))
             if self.compress:
-                r = self.model([params[:, :self.input_dimA],
+                sigmoidlogr = self.model([params[:, :self.input_dimA],
                                 params[:, self.input_dimA:]]).numpy()[0]
             else:
-                r = self.model(params).numpy()[0]
-            r_values.append(r/(1-r))
-            raw_r.append(r)
+                sigmoidlogr = self.model(params).numpy()[0]
+            r_values.append(sigmoidlogr/(1-sigmoidlogr))
+            raw_output.append(sigmoidlogr)
 
         self.r_values = np.array(r_values).T[0]
-        self.raw_r = np.array(raw_r).T[0]
+        self.raw_output = np.array(raw_output).T[0]
 
     def save(self, filename):
 
