@@ -7,7 +7,7 @@ We need a set of simulations for data set A and data set B with the same and mis
 
 Once trained we input a series of matched realisations of data set A and data set B. This gives us the plausible values of $R$ for the two data sets given the model over a prior. We can then use nested sampling to get $Z_A = P(D_A| M)$, $Z_B = P(B_A| M)$ and $Z_{A,B} = P(D_A, D_B |M)$ to get
 
-$R_{obs} = $\frac{Z_{A, B}}{Z_A Z_B} = \frac{P(D_A, D_B |M)}{P(D_A| M)P(D_B| M)}$.
+$R_{obs} = \frac{Z_{A, B}}{Z_A Z_B} = \frac{P(D_A, D_B |M)}{P(D_A| M)P(D_B| M)}$.
 
 If $R_{obs}$ falls well within the distribution then we can conclude that the datasets are likely not in tension (and probably caluclate to what degree?) else if $R_{obs}$ falls outside the distribution then the data sets are in tension.
 
@@ -20,6 +20,10 @@ Toy Example
 
 Two experiments observing a gaussian absorption feature in different bands with
 the same level of noise.
+
+Training on 200,000 pairs of data sets here (half in tension).
+
+This was initially not working. I edited the structure of the last few layers a bit and changed the normalisation on the simulated data sets which seems to have helped.
 
 When I train the classifier I get the following confusion matrix for
 1000 test samples which looks good. Here confused is any value of $R$ between 0.25 and 0.75. Otherwise prediction
