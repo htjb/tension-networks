@@ -86,6 +86,14 @@ plt.legend()
 plt.savefig('test_r_kde.png', dpi=300)
 plt.show()
 
+"""from scipy.stats import ecdf
+
+r  = np.sort(r[mask])
+c = ecdf(r)
+
+plt.plot(r, c.cdf)
+plt.show()"""
+
 idx = [int(np.random.uniform(0, len(nrei.labels_test), 1)) for i in range(1000)]
 
 labels_test = nrei.labels_test[idx]
