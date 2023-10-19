@@ -86,13 +86,16 @@ plt.legend()
 plt.savefig('test_r_kde.png', dpi=300)
 plt.show()
 
-"""from scipy.stats import ecdf
+from scipy.stats import ecdf
 
 r  = np.sort(r[mask])
 c = ecdf(r)
 
-plt.plot(r, c.cdf)
-plt.show()"""
+plt.plot(r, c.cdf.evaluate(r))
+plt.xlabel(r'$\log R$')
+plt.ylabel(r'$P(\log R < \log R_{obs})$')
+plt.tight_layout()
+plt.show()
 
 idx = [int(np.random.uniform(0, len(nrei.labels_test), 1)) for i in range(1000)]
 
