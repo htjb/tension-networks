@@ -45,7 +45,7 @@ def jointlikelihood(theta):
     return exp1likelihood(exp1theta)[0] + exp2likelihood(exp2theta)[0], []
 
 base = 'toy_chains_temp_sweep/'
-RESUME = False
+RESUME = True
 
 exp1_freq = np.linspace(60, 90, 100)
 exp2_freq = np.linspace(80, 120, 100)
@@ -62,6 +62,7 @@ except:
         + np.random.normal(0, 0.005, 100)
     np.savetxt(base + 'exp1_data_no_tension.txt', exp1_data)
 
+Rs = []
 for t in temperatures:
     try:
         exp2_data = np.loadtxt(base + f'exp2_data_{t}.txt')
@@ -78,4 +79,8 @@ for t in temperatures:
     exp2_samples = read_chains(base + f'test_exp2_{t}/test')
     joint_samples = read_chains(base + f'test_joint_{t}/test')
 
-    R_out_tension = joint_samples.logZ(1000) - exp1_samples.logZ(1000) - exp2_samples.logZ(1000)
+    Rs.append(joint_samples.logZ(1000) - 
+              exp1_samples.logZ(1000) - exp2_samples.logZ(1000))
+
+print(temperatures)
+print(np.mean(Rs, axis=1), np.std(Rs, axis=1))
