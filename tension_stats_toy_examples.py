@@ -65,9 +65,9 @@ except:
     np.savetxt(base + 'exp1_data_no_tension.txt', exp1_data)
     np.savetxt(base + 'exp2_data_no_tension.txt', exp2_data)
 
-run_poly(joint_prior, jointlikelihood, base + 'test_joint', nlive=1000, RESUME=RESUME, nDims=5)
-run_poly(signal_poly_prior, exp1likelihood, base + 'test_exp1', nlive=1000, RESUME=RESUME)
-run_poly(signal_poly_prior, exp2likelihood, base + 'test_exp2', nlive=1000, RESUME=RESUME)
+#run_poly(joint_prior, jointlikelihood, base + 'test_joint', nlive=1000, RESUME=RESUME, nDims=5)
+#run_poly(signal_poly_prior, exp1likelihood, base + 'test_exp1', nlive=1000, RESUME=RESUME)
+#run_poly(signal_poly_prior, exp2likelihood, base + 'test_exp2', nlive=1000, RESUME=RESUME)
 
 exp1_samples = read_chains(base + 'test_exp1/test')
 exp2_samples = read_chains(base + 'test_exp2/test')
@@ -88,14 +88,44 @@ except:
     np.savetxt(base + 'exp1_data_in_tension.txt', exp1_data)
     np.savetxt(base + 'exp2_data_in_tension.txt', exp2_data)
 
-run_poly(joint_prior, jointlikelihood, base + 'test_joint_in_tension', nlive=1000, RESUME=RESUME, nDims=5)
-run_poly(signal_poly_prior, exp1likelihood, base + 'test_exp1_in_tension', nlive=1000, RESUME=RESUME)
-run_poly(signal_poly_prior, exp2likelihood, base + 'test_exp2_in_tension', nlive=1000, RESUME=RESUME)
+#run_poly(joint_prior, jointlikelihood, base + 'test_joint_in_tension', nlive=1000, RESUME=RESUME, nDims=5)
+#run_poly(signal_poly_prior, exp1likelihood, base + 'test_exp1_in_tension', nlive=1000, RESUME=RESUME)
+#run_poly(signal_poly_prior, exp2likelihood, base + 'test_exp2_in_tension', nlive=1000, RESUME=RESUME)
 
 exp1_samples = read_chains(base + 'test_exp1_in_tension/test')
 exp2_samples = read_chains(base + 'test_exp2_in_tension/test')
 joint_samples = read_chains(base + 'test_joint_in_tension/test')
 
 R = joint_samples.logZ(1000) - exp1_samples.logZ(1000) - exp2_samples.logZ(1000)
-print('No Tension: ', R_out_tension.mean(), R.std())
+print('No Tension: ', R_out_tension.mean(), R_out_tension.std())
 print('Tension: ', R.mean(), R.std())
+
+# very consistent test case...
+
+try:
+    exp1_data = np.loadtxt(base + 'exp1_data_consistent.txt')
+    exp2_data = np.loadtxt(base + 'exp2_data_consistent.txt')
+except:
+    exp1_data = exp1_sf([None], true_params) \
+        + np.random.normal(0, 0.005, 100)
+    exp2_data = exp2_sf([None], true_params) \
+        + np.random.normal(0, 0.005, 100)
+    
+    exp1_data[exp1_freq >= exp2_freq.min()] = \
+        exp1_sf([None], true_params)[exp1_freq >= exp2_freq.min()]
+    exp2_data[exp2_freq <= exp1_freq.max()] = \
+        exp2_sf([None], true_params)[exp2_freq <= exp1_freq.max()]
+    
+    np.savetxt(base + 'exp1_data_consistent.txt', exp1_data)
+    np.savetxt(base + 'exp2_data_consistent.txt', exp2_data)
+
+run_poly(joint_prior, jointlikelihood, base + 'test_joint_consistent', nlive=1000, RESUME=RESUME, nDims=5)
+run_poly(signal_poly_prior, exp1likelihood, base + 'test_exp1_consistent', nlive=1000, RESUME=RESUME)
+run_poly(signal_poly_prior, exp2likelihood, base + 'test_exp2_consistent', nlive=1000, RESUME=RESUME)
+
+exp1_samples = read_chains(base + 'test_exp1_consistent/test')
+exp2_samples = read_chains(base + 'test_exp2_consistent/test')
+joint_samples = read_chains(base + 'test_joint_consistent/test')
+
+R = joint_samples.logZ(1000) - exp1_samples.logZ(1000) - exp2_samples.logZ(1000)
+print('Very Conistent: ', R.mean(), R.std())
