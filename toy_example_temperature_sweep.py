@@ -5,6 +5,7 @@ from anesthetic import read_chains
 from tensionnet.tensionnet import nre
 from tensionnet.robs import run_poly
 from pypolychord.priors import UniformPrior, LogUniformPrior
+import os
 
 def signal_func_gen(freqs):
     def signal(_, parameters):
@@ -45,7 +46,9 @@ def jointlikelihood(theta):
     return exp1likelihood(exp1theta)[0] + exp2likelihood(exp2theta)[0], []
 
 base = 'toy_chains_temp_sweep/'
-RESUME = True
+if not os.path.exists(base):
+    os.mkdir(base)
+RESUME = False
 
 exp1_freq = np.linspace(60, 90, 100)
 exp2_freq = np.linspace(80, 120, 100)
@@ -59,8 +62,11 @@ try:
     exp1_data = np.loadtxt(base + 'exp1_data_no_tension.txt')
 except:
     exp1_data = exp1_sf([None], true_params) \
-        + np.random.normal(0, 0.005, 100)
+        + np.random.normal(0, 0.025, 100)
     np.savetxt(base + 'exp1_data_no_tension.txt', exp1_data)
+
+run_poly(signal_poly_prior, exp1likelihood, base + f'test_exp1', nlive=1000, RESUME=RESUME)
+exp1_samples = read_chains(base + f'test_exp1/test')
 
 Rs = []
 for t in temperatures:
@@ -68,14 +74,12 @@ for t in temperatures:
         exp2_data = np.loadtxt(base + f'exp2_data_{t}.txt')
     except:
         exp2_data = exp2_sf([None], [t, 78.0, 10.0]) \
-            + np.random.normal(0, 0.005, 100)
+            + np.random.normal(0, 0.025, 100)
         np.savetxt(base + f'exp2_data_{t}.txt', exp2_data)
 
     run_poly(joint_prior, jointlikelihood, base + f'test_joint_{t}', nlive=1000, RESUME=RESUME, nDims=5)
-    run_poly(signal_poly_prior, exp1likelihood, base + f'test_exp1_{t}', nlive=1000, RESUME=RESUME)
     run_poly(signal_poly_prior, exp2likelihood, base + f'test_exp2_{t}', nlive=1000, RESUME=RESUME)
 
-    exp1_samples = read_chains(base + f'test_exp1_{t}/test')
     exp2_samples = read_chains(base + f'test_exp2_{t}/test')
     joint_samples = read_chains(base + f'test_joint_{t}/test')
 
