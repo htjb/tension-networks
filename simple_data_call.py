@@ -6,7 +6,7 @@ def signal_func_gen(freqs):
     def signal(_, parameters):
         amp, nu_0, w = parameters
         return -amp * np.exp(-(freqs-nu_0)**2 / (2*w**2)) + \
-            np.random.normal(0, 0.005, len(freqs))
+            np.random.normal(0, 0.025, len(freqs))
     return signal
 
 def signal_prior(n):
@@ -65,9 +65,18 @@ for i in range(len(sigr)):
     if sigr[i] < 0.75:
         c += 1
 
-plt.hist(r[mask], bins=25, label=f'{c/len(sigr)*100:.2f} % Mis-classified')
-plt.axvline(13.96, color='k', ls='--', label='No tension example')
-plt.axvline(-210.40, color='k', ls=':', label='In tension example')
+temperatures = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]
+Rs =[ -63.01687826,  -12.40474379,    9.77660272,  -17.25641865,  -33.974196,
+  -87.30443093, -114.3616329,  -134.16389689, -157.02886038,] 
+sigma_Rs = [0.21169332, 0.20684563, 0.21888224, 0.21734393, 0.21426394, 0.21660869,
+ 0.2113068,  0.22946067, 0.22718888]
+
+
+plt.hist(r[mask], bins=25, label=f'{c/len(sigr)*100:.2f} % Mis-classified', color='C1')
+plt.yticks([])
+for i,t in enumerate(temperatures):
+    plt.axvline(Rs[i], ls='--', label= f'{round(t/0.2, 2)}', color=plt.get_cmap('jet')(i/len(temperatures)))
+    plt.axvspan(Rs[i] - sigma_Rs[i], Rs[i] + sigma_Rs[i], alpha=0.1, color=plt.get_cmap('jet')(i/len(temperatures)))
 plt.xlabel(r'$\log R$')
 plt.ylabel('Frequency')
 plt.tight_layout()
@@ -77,8 +86,11 @@ plt.show()
 
 from anesthetic import MCMCSamples
 samples = MCMCSamples(data=r[mask], columns=['R'])
-axes = samples.plot_1d('R', fc='C0')
-plt.axvline(13.96, color='k', ls='--', label='No tension example')
+axes = samples.plot_1d('R', fc='C1', ec='k')
+for i,t in enumerate(temperatures):
+    plt.axvline(Rs[i], ls='--', label= f'{round(t/0.2, 2)}', color=plt.get_cmap('jet')(i/len(temperatures)))
+    plt.axvspan(Rs[i] - sigma_Rs[i], Rs[i] + sigma_Rs[i], alpha=0.1, color=plt.get_cmap('jet')(i/len(temperatures)))
+plt.xlim([-5, 25])
 plt.xlabel(r'$\log R$')
 plt.ylabel('Frequency')
 plt.tight_layout()
@@ -92,10 +104,29 @@ r  = np.sort(r[mask])
 c = ecdf(r)
 
 plt.plot(r, c.cdf.evaluate(r))
+for i,t in enumerate(temperatures):
+    print(t, c.cdf.evaluate(Rs[i]))
+    plt.axhline(c.cdf.evaluate(Rs[i]), ls='--',
+                label= f'{round(t/0.2, 2)}', 
+                color=plt.get_cmap('jet')(i/len(temperatures)))
+    plt.axhspan(c.cdf.evaluate(Rs[i] - sigma_Rs[i]), 
+                c.cdf.evaluate(Rs[i] + sigma_Rs[i]), 
+                alpha=0.1, 
+                color=plt.get_cmap('jet')(i/len(temperatures)))
+"""for i,t in enumerate(temperatures):
+    plt.axvline(Rs[i], ls='--', 
+                label= f'{round(t/0.2, 2)}', 
+                color=plt.get_cmap('jet')(i/len(temperatures)))
+    plt.axvspan(Rs[i] - sigma_Rs[i], Rs[i] + sigma_Rs[i],
+                 alpha=0.1, 
+                 color=plt.get_cmap('jet')(i/len(temperatures)))"""
 plt.xlabel(r'$\log R$')
 plt.ylabel(r'$P(\log R < \log R_{obs})$')
+plt.legend()
 plt.tight_layout()
+plt.savefig('test_r_cdf.png', dpi=300)
 plt.show()
+sys.exit(1)
 
 idx = [int(np.random.uniform(0, len(nrei.labels_test), 1)) for i in range(1000)]
 

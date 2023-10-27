@@ -48,7 +48,7 @@ def jointlikelihood(theta):
 base = 'toy_chains_temp_sweep/'
 if not os.path.exists(base):
     os.mkdir(base)
-RESUME = False
+RESUME = True
 
 exp1_freq = np.linspace(60, 90, 100)
 exp2_freq = np.linspace(80, 120, 100)
