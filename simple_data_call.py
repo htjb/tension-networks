@@ -50,11 +50,11 @@ except:
     nrei.build_simulations(exp2, exp1, exp_prior, exp_prior, signal_prior, n=100000)
     model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
     nrei.save('test_model.pkl')
-
+"""
 plt.plot(nrei.loss_history)
 plt.plot(nrei.test_loss_history)
 plt.yscale('log')
-plt.show()
+plt.show()"""
 
 nrei.__call__(iters=2000)
 r = nrei.r_values
@@ -65,26 +65,35 @@ for i in range(len(sigr)):
     if sigr[i] < 0.75:
         c += 1
 
-temperatures = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]
+temperatures = np.array([0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5])/0.2
 Rs =[ -63.01687826,  -12.40474379,    9.77660272,  -17.25641865,  -33.974196,
   -87.30443093, -114.3616329,  -134.16389689, -157.02886038,] 
 sigma_Rs = [0.21169332, 0.20684563, 0.21888224, 0.21734393, 0.21426394, 0.21660869,
  0.2113068,  0.22946067, 0.22718888]
 
+# get every other temperature
+temperatures = temperatures[::2]
+Rs = Rs[::2]
+sigma_Rs = sigma_Rs[::2]
 
-plt.hist(r[mask], bins=25, label=f'{c/len(sigr)*100:.2f} % Mis-classified', color='C1')
-plt.yticks([])
+y_pos = [100]*len(temperatures)
+y_pos[1] = 120
+y_pos[3] = 80
+
+fig, axes = plt.subplots(1, 2, figsize=(6.3, 3))
+axes[0].hist(r[mask], bins=25, label=f'{c/len(sigr)*100:.2f} % Mis-classified', color='C1')
+axes[0].set_yticks([])
 for i,t in enumerate(temperatures):
-    plt.axvline(Rs[i], ls='--', label= f'{round(t/0.2, 2)}', color=plt.get_cmap('jet')(i/len(temperatures)))
-    plt.axvspan(Rs[i] - sigma_Rs[i], Rs[i] + sigma_Rs[i], alpha=0.1, color=plt.get_cmap('jet')(i/len(temperatures)))
-plt.xlabel(r'$\log R$')
-plt.ylabel('Frequency')
-plt.tight_layout()
-plt.legend()
-plt.savefig('test_r_hist.png', dpi=300)
-plt.show()
+    axes[0].axvline(Rs[i], ls='--', c='r')
+    axes[0].axvspan(Rs[i] - sigma_Rs[i], Rs[i] + sigma_Rs[i], alpha=0.1, color='r')
+    axes[0].annotate(r'$A_2 = $' + f'{round(t, 2)}'+ r'$A_1$', (Rs[i], y_pos[i]), ha='center', va='center',
+                  rotation=90, bbox=dict(color='w', ec='k'), fontsize=8)
+axes[0].set_xlabel(r'$\log R$')
+axes[0].set_ylabel('Frequency')
+axes[0].legend()
 
-from anesthetic import MCMCSamples
+
+"""from anesthetic import MCMCSamples
 samples = MCMCSamples(data=r[mask], columns=['R'])
 axes = samples.plot_1d('R', fc='C1', ec='k')
 for i,t in enumerate(temperatures):
@@ -96,37 +105,38 @@ plt.ylabel('Frequency')
 plt.tight_layout()
 plt.legend()
 plt.savefig('test_r_kde.png', dpi=300)
-plt.show()
+plt.show()"""
 
 from scipy.stats import ecdf
 
 r  = np.sort(r[mask])
 c = ecdf(r)
 
-plt.plot(r, c.cdf.evaluate(r))
+axes[1].plot(r, c.cdf.evaluate(r))
 for i,t in enumerate(temperatures):
-    print(t, c.cdf.evaluate(Rs[i]))
-    plt.axhline(c.cdf.evaluate(Rs[i]), ls='--',
-                label= f'{round(t/0.2, 2)}', 
-                color=plt.get_cmap('jet')(i/len(temperatures)))
-    plt.axhspan(c.cdf.evaluate(Rs[i] - sigma_Rs[i]), 
+    if temperatures[i] == 1:
+        axes[1].axhline(c.cdf.evaluate(Rs[i]), ls='--',
+                color='r')
+        axes[1].axhspan(c.cdf.evaluate(Rs[i] - sigma_Rs[i]), 
                 c.cdf.evaluate(Rs[i] + sigma_Rs[i]), 
                 alpha=0.1, 
-                color=plt.get_cmap('jet')(i/len(temperatures)))
-"""for i,t in enumerate(temperatures):
-    plt.axvline(Rs[i], ls='--', 
-                label= f'{round(t/0.2, 2)}', 
-                color=plt.get_cmap('jet')(i/len(temperatures)))
-    plt.axvspan(Rs[i] - sigma_Rs[i], Rs[i] + sigma_Rs[i],
-                 alpha=0.1, 
-                 color=plt.get_cmap('jet')(i/len(temperatures)))"""
-plt.xlabel(r'$\log R$')
-plt.ylabel(r'$P(\log R < \log R_{obs})$')
-plt.legend()
+                color='r')
+        axes[1].annotate(r'$A_2 = 1.0 A_1$', (Rs[i], c.cdf.evaluate(Rs[i])), ha='center', va='center',
+                  bbox=dict(color='w', ec='k'), fontsize=8)
+    
+axes[1].axhline(c.cdf.evaluate(Rs[0]), ls='--',
+        color='r')
+axes[1].axhspan(c.cdf.evaluate(Rs[0] - sigma_Rs[i]), 
+        c.cdf.evaluate(Rs[i] + sigma_Rs[i]), 
+        alpha=0.1, 
+        color='r')
+axes[1].annotate(r'In Tension. $A_2 \neq A_1$', (Rs[1], 0.), ha='center', va='center',
+            bbox=dict(color='w', ec='k'), fontsize=8)
+axes[1].set_xlabel(r'$\log R$')
+axes[1].set_ylabel(r'$P(\log R < \log R_{obs})$')
 plt.tight_layout()
-plt.savefig('test_r_cdf.png', dpi=300)
+plt.savefig('test_r_cdf_hist.png', dpi=300)
 plt.show()
-sys.exit(1)
 
 idx = [int(np.random.uniform(0, len(nrei.labels_test), 1)) for i in range(1000)]
 
@@ -155,6 +165,7 @@ for i in range(len(p)):
 cm = [[correct0, wrong0, confused0],
         [correct1, wrong1, confused1]]
 
+fig, axes = plt.subplots(1, 1, figsize=(5, 4))
 plt.imshow(cm, cmap='Blues')
 for i in range(2):
     for j in range(3):
