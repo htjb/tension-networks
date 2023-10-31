@@ -44,3 +44,14 @@ signal and the dotten line is for two experiments in tension. Of the 2000 models
 The data corresponding to the two $R_{obs}$ values is shown below.
 
 ![R distribution](https://github.com/htjb/tension-networks/blob/main/test_case_data.png)
+
+BAO + Planck Example
+--------------------
+
+Need some toy likelihoods to be able to do this. Built a BAO likelihood using the SDSS DR12 and DR16 measurements/covariances of angular diameter/hubble distance divided by the sound horizon and CAMB.
+
+Had some issues with the prior/nlive. Found that with a wide prior the run was terminating early with the warning `Warning, unable to proceed after    151: failed spawn events`. Might be able to solve it with increased nlive but currently using the narrow prior from Wills qunatifying tensions paper. Get the foloowing results
+
+![bao fit](https://github.com/htjb/tension-networks/blob/main/bao_fit_narrow_prior.png)
+
+Not sure how dA and dH over rs translate to the bumpy correlation function.
