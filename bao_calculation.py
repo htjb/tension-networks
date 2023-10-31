@@ -14,9 +14,7 @@ z = np.array([0.38, 0.51, 0.698])
 
 da = (1+z) * results.angular_diameter_distance(z)
 
-dh = 3e5/results.hubble_parameter(z) # 1/Mpc
-#rs = results.sound_horizon(z) # Mpc
-#rs = 147.78 # Mpc
+dh = 3e5/results.hubble_parameter(z)
 rs = results.get_derived_params()['rdrag'] # Mpc
 
 plt.plot(z, da/rs, label='DA/rs')
@@ -38,4 +36,9 @@ plt.xlabel(r'$z$')
 plt.ylabel(r'$D/r_s$')
 
 plt.plot()
+plt.show()
+
+plt.plot(z, da*dh/rs**2)
+plt.plot(z[:-1], d12dm[:,1]*d12dh[:,1], 'o', label='DR12 F_AP', c='r')
+plt.plot(z[-1], d16dm[:,1]*d16dh[:,1], 'o', label='DR16 F_AP', c='b')
 plt.show()

@@ -10,6 +10,7 @@ def run_poly(prior, likelihood, file, RESUME = False, nDims=4,
              **kwargs):
 
     nlive = kwargs.get('nlive', None)
+    nDerived = kwargs.get('nDerived', 0)
 
     settings = PolyChordSettings(nDims, 0) #settings is an object
     settings.read_resume = RESUME
@@ -17,6 +18,6 @@ def run_poly(prior, likelihood, file, RESUME = False, nDims=4,
     if nlive:
         settings.nlive = nlive
 
-    output = pypolychord.run_polychord(likelihood, nDims, 0, settings, prior)
+    output = pypolychord.run_polychord(likelihood, nDims, nDerived, settings, prior)
     paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(nDims)]
     output.make_paramnames_files(paramnames)
