@@ -38,7 +38,7 @@ inv_cov = np.linalg.inv(power_cov)
 pars = camb.CAMBparams()
 pars.set_for_lmax(2500, lens_potential_accuracy=0)
 
-predictor = evaluate(base_dir='cmbemu_model/')
+predictor = evaluate(base_dir='cmbemu_model/', l=l_real)
 
 def prior(cube):
     theta = np.zeros(len(cube))
