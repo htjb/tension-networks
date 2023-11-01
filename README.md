@@ -60,6 +60,7 @@ Currently setting up Planck likelihood.
 Reporting evidences below...
 
 | | Evidence |
+|----|------|
 |BAO | $-4.238 \pm 0.092$ |
 | Planck | |
 | Planck + BAO |
