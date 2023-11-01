@@ -62,5 +62,5 @@ Reporting evidences below...
 | | Evidence |
 |----|------|
 |BAO | $-4.238 \pm 0.092$ |
-| Planck | |
+| Planck | $- 53.95 \pm 0.19$|
 | Planck + BAO |
