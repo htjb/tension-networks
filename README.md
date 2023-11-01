@@ -54,4 +54,12 @@ Had some issues with the prior/nlive. Found that with a wide prior the run was t
 
 ![bao fit](https://github.com/htjb/tension-networks/blob/main/bao_fit_narrow_prior.png)
 
-Not sure how dA and dH over rs translate to the bumpy correlation function.
+
+Currently setting up Planck likelihood.
+
+Reporting evidences below...
+
+| | Evidence |
+|BAO | $-4.238 \pm 0.092$ |
+| Planck | |
+| Planck + BAO |
