@@ -45,5 +45,10 @@ names = ['p'+str(i) for i in range(6)]
 samples = samples[names].values
 #cbar = plot_contours(bao, z, samples, axes)
 plot_lines(signal, l_real, samples, axes, color='r')
-plt.plot(l_real, p, c='k')
+plt.plot(l_real, p, c='k', label='Planck')
+plt.xlabel(r'$l$')
+plt.ylabel(r'$C_l$')
+plt.legend()
+plt.tight_layout()
+plt.savefig('planck_fit.png', dpi=300)
 plt.show()
