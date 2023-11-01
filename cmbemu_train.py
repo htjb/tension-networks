@@ -6,23 +6,49 @@ import matplotlib.pyplot as plt
 import camb
 from tqdm import tqdm
 
-GEN_DATA = False
+def load_planck():
+
+    """
+    Function to load in the planck power spectrum data.
+
+    Returns
+    -------
+    p: power spectrum
+    ps: the error on the power spectrum
+    l_real: the multipoles
+    """
+
+    tt = np.loadtxt('TT_power_spec.txt', delimiter=',', dtype=str)
+
+    l_real, p, ps, ns = [], [], [], []
+    for i in range(len(tt)):
+        if tt[i][0] == 'Planck binned      ':
+            l_real.append(tt[i][2].astype('float')) # ell
+            p.append(tt[i][4].astype('float')) # power spectrum
+            ps.append(tt[i][6].astype('float')) # positive error
+            ns.append(tt[i][5].astype('float')) # negative error
+    p, ps, l_real = np.array(p), np.array(ps), np.array(l_real)
+    return p, ps, l_real
+
+p, _, l = load_planck()
+
+GEN_DATA = True
 PREPROCESS = True
 TRAIN = True
 data_dir = 'cmbemu_training_data/'
 model_dir = 'cmbemu_model/'
-l = np.linspace(2, 2500, 300)
+nsamples = 5000
 
 # generate test and train data
 if GEN_DATA:
     def prior():
-        theta = np.zeros((10000, 6))
-        theta[:, 0] = np.random.uniform(0.0211, 0.0235, 10000) # omegabh2
-        theta[:, 1] = np.random.uniform(0.108, 0.131, 10000) # omegach2
-        theta[:, 2] = np.random.uniform(1.038, 1.044, 10000) # 100*thetaMC
-        theta[:, 3] = np.random.uniform(0.01, 0.16, 10000) # tau
-        theta[:, 4] = np.random.uniform(0.938, 1, 10000) # ns
-        theta[:, 5] = np.random.uniform(2.95, 3.25, 10000) # log(10^10*As)
+        theta = np.zeros((nsamples, 6))
+        theta[:, 0] = np.random.uniform(0.0211, 0.0235, nsamples) # omegabh2
+        theta[:, 1] = np.random.uniform(0.108, 0.131, nsamples) # omegach2
+        theta[:, 2] = np.random.uniform(1.038, 1.044, nsamples) # 100*thetaMC
+        theta[:, 3] = np.random.uniform(0.01, 0.16, nsamples) # tau
+        theta[:, 4] = np.random.uniform(0.938, 1, nsamples) # ns
+        theta[:, 5] = np.random.uniform(2.95, 3.25, nsamples) # log(10^10*As)
         return theta
     
     theta = prior()
