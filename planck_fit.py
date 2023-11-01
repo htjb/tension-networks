@@ -35,8 +35,8 @@ p, _, l_real = load_planck()
 power_cov = np.loadtxt('planck_mock_cov.txt')
 inv_cov = np.linalg.inv(power_cov)
 
-pars = camb.CAMBparams()
-pars.set_for_lmax(2500, lens_potential_accuracy=0)
+#pars = camb.CAMBparams()
+#pars.set_for_lmax(2500, lens_potential_accuracy=0)
 
 predictor = evaluate(base_dir='cmbemu_model/', l=l_real)
 
@@ -51,7 +51,7 @@ def prior(cube):
     return theta
 
 def likelihood(theta):
-    #try:
+    try:
         """pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
                             tau=theta[3], cosmomc_theta=theta[2]/100)
         pars.InitPower.set_params(As=np.exp(theta[5])/10**10, ns=theta[4])
@@ -61,23 +61,23 @@ def likelihood(theta):
         cl = np.interp(l_real, np.arange(len(cl)), cl)"""
         cl, _ = predictor(theta)
 
-        plt.plot(_, cl, c='r')
+        """plt.plot(_, cl, c='r')
         plt.plot(l_real, p, c='k')
-        plt.show()
+        plt.show()"""
 
         #L = -0.5*(p -cl).T @ inv_cov @ (p - cl)
         Lein = -0.5 * np.einsum('i,ij,j', p - cl, inv_cov, p - cl)
 
         return Lein, []
-    #except:
-    #    return 1e-300, []
+    except:
+        return 1e-300, []
     
-import time
+"""import time
 for i in range(5):
     s = time.time()
     print(likelihood(prior(np.random.uniform(0, 1, 6))))
     print(time.time()-s)
-sys.exit(1)
+sys.exit(1)"""
 
 file = 'Planck_chains/'
 RESUME = False
