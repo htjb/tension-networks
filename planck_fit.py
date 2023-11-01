@@ -3,6 +3,7 @@ from tensionnet.robs import run_poly
 from pypolychord.priors import UniformPrior, LogUniformPrior
 import camb
 import matplotlib.pyplot as plt
+from cmbemu.eval import evaluate
 
 
 def load_planck():
@@ -35,6 +36,9 @@ power_cov = np.loadtxt('planck_mock_cov.txt')
 inv_cov = np.linalg.inv(power_cov)
 
 pars = camb.CAMBparams()
+pars.set_for_lmax(2500, lens_potential_accuracy=0)
+
+predictor = evaluate(base_dir='cmbemu_model/')
 
 def prior(cube):
     theta = np.zeros(len(cube))
@@ -47,26 +51,33 @@ def prior(cube):
     return theta
 
 def likelihood(theta):
-    try:
-        pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
+    #try:
+        """pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
                             tau=theta[3], cosmomc_theta=theta[2]/100)
         pars.InitPower.set_params(As=np.exp(theta[5])/10**10, ns=theta[4])
-        pars.set_for_lmax(2500, lens_potential_accuracy=0)
         results = camb.get_background(pars) # computes evolution of background cosmology
 
-        cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:,0]
-        cl = np.interp(l_real, np.arange(len(cl)), cl)
+        cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:, 0]
+        cl = np.interp(l_real, np.arange(len(cl)), cl)"""
+        cl, _ = predictor(theta)
+
+        plt.plot(_, cl, c='r')
+        plt.plot(l_real, p, c='k')
+        plt.show()
 
         #L = -0.5*(p -cl).T @ inv_cov @ (p - cl)
         Lein = -0.5 * np.einsum('i,ij,j', p - cl, inv_cov, p - cl)
 
         return Lein, []
-    except:
-        return 1e-300, []
+    #except:
+    #    return 1e-300, []
     
-#for i in range(10):
-#    print(likelihood(prior(np.random.uniform(0, 1, 6))))
-#sys.exit(1)
+import time
+for i in range(5):
+    s = time.time()
+    print(likelihood(prior(np.random.uniform(0, 1, 6))))
+    print(time.time()-s)
+sys.exit(1)
 
 file = 'Planck_chains/'
 RESUME = False
@@ -75,4 +86,4 @@ if RESUME is False:
     if os.path.exists(file):
         shutil.rmtree(file)
 
-run_poly(prior, likelihood, file, RESUME=RESUME, nDims=6, nlive=20)
+run_poly(prior, likelihood, file, RESUME=RESUME, nDims=6)

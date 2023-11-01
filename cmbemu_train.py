@@ -7,11 +7,11 @@ import camb
 from tqdm import tqdm
 
 GEN_DATA = False
-PREPROCESS = False
+PREPROCESS = True
 TRAIN = True
 data_dir = 'cmbemu_training_data/'
 model_dir = 'cmbemu_model/'
-l = np.linspace(2, 2000, 300)
+l = np.linspace(2, 2500, 300)
 
 # generate test and train data
 if GEN_DATA:
@@ -62,7 +62,7 @@ if PREPROCESS:
     process('full', l, base_dir=model_dir, data_location=data_dir)
 if TRAIN:
     nn(batch_size=300, epochs=1000, base_dir=model_dir, layer_sizes=[14, 14, 14, 14],
-        input_shape=7, patience=100, lr=1e-3)
+        input_shape=7, patience=10, lr=1e-3)
 
 test_d = np.loadtxt(data_dir + 'test_data.txt')
 test_l = np.loadtxt(data_dir + 'test_labels.txt')
