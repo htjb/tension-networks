@@ -125,6 +125,8 @@ class nre():
     def build_simulations(self, simulation_func_A, simulation_func_B,
                            prior_function_A, prior_function_B,
                             shared_prior, n=10000, call_type='train'):
+        
+        print('Building simulations...')
 
         self.simulation_func_A = simulation_func_A
         self.simulation_func_B = simulation_func_B
@@ -139,7 +141,7 @@ class nre():
         # generate lots of simulations 
         simsA, params = [], []
         simsB = []
-        for i in range(n):
+        for i in tqdm.tqdm(range(n)):
             simsA.append(self.simulation_func_A(thetaA[i], thetaShared[i]))
             simsB.append(self.simulation_func_B(thetaB[i], thetaShared[i]))
             params.append([*thetaA[i], *thetaB[i], *thetaShared[i]])
@@ -182,6 +184,8 @@ class nre():
         elif call_type == 'train':
             self.data = input_data
             self.labels = labels
+        
+        print('Simulations built.')
         
 
     def training(self, epochs, early_stop=True, batch_size=32):

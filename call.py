@@ -98,7 +98,7 @@ except:
     #                       [len(exp1_freq), len(exp1_freq), len(exp1_freq)//2, 50, 10], 
     #                       [10, 10, 10, 10, 10],
     #                       'sigmoid')
-    nrei.build_simulations(planck_func, bao_func, exp_prior, exp_prior, signal_prior, n=100000)
+    nrei.build_simulations(planck_func, bao_func, exp_prior, exp_prior, signal_prior, n=50000)
     model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
     nrei.save('bao_planck_model.pkl')
 """
