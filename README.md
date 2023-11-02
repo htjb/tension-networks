@@ -63,4 +63,6 @@ Reporting evidences below...
 |----|------|
 |BAO | $-4.238 \pm 0.092$ |
 | Planck | $- 53.95 \pm 0.19$|
-| Planck + BAO |
+| Planck + BAO | $-57.25 \pm 0.20$|
+
+Giving an $R_{obs} = -0.05 \pm 0.28$
