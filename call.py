@@ -49,11 +49,12 @@ def bao_func():
                             tau=parameters[3], cosmomc_theta=parameters[2]/100)
         pars.InitPower.set_params(As=np.exp(parameters[5])/10**10, ns=parameters[4])
         pars.set_for_lmax(2500, lens_potential_accuracy=0)
-        results = camb.get_background(pars) # computes evolution of background cosmology
+        cosmo = camb.results.CAMBdata()
+        results = cosmo.calc_background_no_thermo(pars) # computes evolution of background cosmology
 
-        da = (1+z) * results.angular_diameter_distance(z)
-        dh = 3e5/results.hubble_parameter(z) # 1/Mpc
-        rs = results.get_derived_params()['rdrag'] # Mpc
+        da = (1+z) * cosmo.angular_diameter_distance(z)
+        dh = 3e5/cosmo.hubble_parameter(z) # 1/Mpc
+        rs = cosmo.get_derived_params()['rdrag'] # Mpc
 
         datad12 = [da[0]/rs, dh[0]/rs, da[1]/rs, dh[1]/rs]
         datad16 = [da[2]/rs, dh[2]/rs]
@@ -84,23 +85,23 @@ bao_func = bao_func()
 
 from tensionnet.tensionnet import nre
 
-try:
+"""try:
     nrei = nre.load('bao_planck_model.pkl',
                 planck_func, bao_func, exp_prior,
                 exp_prior, signal_prior)
-except:
-    nrei = nre(lr=1e-4)
-    nrei.build_model(len(l_real) + len(z)*2, 1, 
-                        [100]*10, 'sigmoid')
+except:"""
+nrei = nre(lr=1e-4)
+nrei.build_model(len(l_real) + len(z)*2, 1, 
+                    [100]*10, 'sigmoid')
 
-    #nrei.build_compress_model(len(exp2_freq), len(exp1_freq), 1, 
-    #                       [len(exp2_freq), len(exp2_freq), len(exp2_freq)//2, 50, 10], 
-    #                       [len(exp1_freq), len(exp1_freq), len(exp1_freq)//2, 50, 10], 
-    #                       [10, 10, 10, 10, 10],
-    #                       'sigmoid')
-    nrei.build_simulations(planck_func, bao_func, exp_prior, exp_prior, signal_prior, n=50000)
-    model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
-    nrei.save('bao_planck_model.pkl')
+#nrei.build_compress_model(len(exp2_freq), len(exp1_freq), 1, 
+#                       [len(exp2_freq), len(exp2_freq), len(exp2_freq)//2, 50, 10], 
+#                       [len(exp1_freq), len(exp1_freq), len(exp1_freq)//2, 50, 10], 
+#                       [10, 10, 10, 10, 10],
+#                       'sigmoid')
+nrei.build_simulations(planck_func, bao_func, exp_prior, exp_prior, signal_prior, n=20000)
+model, data_test, labels_test = nrei.training(epochs=1000, batch_size=1000)
+nrei.save('bao_planck_model.pkl')
 """
 plt.plot(nrei.loss_history)
 plt.plot(nrei.test_loss_history)
