@@ -3,6 +3,18 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from cmbemu.eval import evaluate
 import camb
+import matplotlib as mpl
+from matplotlib import rc
+
+mpl.rcParams['axes.prop_cycle'] = mpl.cycler('color',
+    ['ff7f00', '984ea3', '999999', '377eb8', '4daf4a','f781bf', 'a65628', 'e41a1c', 'dede00'])
+mpl.rcParams['text.usetex'] = True
+rc('font', family='serif')
+rc('font', serif='cm')
+rc('savefig', pad_inches=0.05)
+
+plt.rc('text.latex', preamble=r'\usepackage{amsmath} \usepackage{amssymb}')
+
 
 def load_planck():
 
@@ -116,11 +128,15 @@ print(r)
 mask = np.isfinite(r)
 sigr = tf.keras.layers.Activation('sigmoid')(r[mask])
 c = 0
+good_idx = []
 for i in range(len(sigr)):
     if sigr[i] < 0.75:
         c += 1
+    else:
+        good_idx.append(i)
 
-print(c, sigr)
+r = r[good_idx]
+mask = np.isfinite(r)
 
 Rs = [-0.055]
 sigma_Rs = [0.283]
@@ -202,7 +218,7 @@ fig, axes = plt.subplots(1, 1, figsize=(5, 4))
 plt.imshow(cm, cmap='Blues')
 for i in range(2):
     for j in range(3):
-        plt.text(j, i, '{:.3f} %'.format(cm[i][j]), ha='center', va='center', color='k',
+        plt.text(j, i, '{:.3f} \%'.format(cm[i][j]), ha='center', va='center', color='k',
                  bbox=dict(facecolor='white', lw=0))
 plt.xticks([0, 1, 2], ['Correct', 'Wrong', 'Confused'])
 plt.yticks([0, 1], ['In tension', 'Not In Tension'])

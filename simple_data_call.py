@@ -13,6 +13,7 @@ rc('savefig', pad_inches=0.05)
 
 plt.rc('text.latex', preamble=r'\usepackage{amsmath} \usepackage{amssymb}')
 
+
 def signal_func_gen(freqs):
     def signal(_, parameters):
         amp, nu_0, w = parameters
@@ -72,9 +73,15 @@ r = nrei.r_values
 mask = np.isfinite(r)
 sigr = tf.keras.layers.Activation('sigmoid')(r[mask])
 c = 0
+good_idx = []
 for i in range(len(sigr)):
     if sigr[i] < 0.75:
         c += 1
+    else:
+        good_idx.append(i)
+
+r = r[good_idx]
+mask = np.isfinite(r)
 
 temperatures = np.array([0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5])/0.2
 Rs =[ -63.01687826,  -12.40474379,    9.77660272,  -17.25641865,  -33.974196,
@@ -185,7 +192,7 @@ fig, axes = plt.subplots(1, 1, figsize=(5, 4))
 plt.imshow(cm, cmap='Blues')
 for i in range(2):
     for j in range(3):
-        plt.text(j, i, '{:.3f} %'.format(cm[i][j]), ha='center', va='center', color='k',
+        plt.text(j, i, '{:.3f} \%'.format(cm[i][j]), ha='center', va='center', color='k',
                  bbox=dict(facecolor='white', lw=0))
 plt.xticks([0, 1, 2], ['Correct', 'Wrong', 'Confused'])
 plt.yticks([0, 1], ['In tension', 'Not In Tension'])
