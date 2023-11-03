@@ -55,9 +55,19 @@ Had some issues with the prior/nlive. Found that with a wide prior the run was t
 ![bao fit](https://github.com/htjb/tension-networks/blob/main/bao_fit_narrow_prior.png)
 
 
-Currently setting up Planck likelihood.
+Currently setting up Planck likelihood. To approximate the planck covariance I used healpy to predict the $a_{lm}$ given the measured $C_{l}$ and then for each prediction recalcualted $C_{l}$. I did this 2000 times I think and calcualted the covariance matrix from this data set. It looks like this.
 
-Reporting evidences below...
+![planck covariance](https://github.com/htjb/tension-networks/blob/main/planck_mock_cov.png)
+
+and the example simualtions were
+
+![planck -> alms -> cl](https://github.com/htjb/tension-networks/blob/main/planck_mock_for_cov.png)
+
+The fitting results look like
+
+![planck fit](https://github.com/htjb/tension-networks/blob/main/planck_fit.png)
+
+Reporting evidences below
 
 | | Evidence |
 |----|------|
@@ -65,4 +75,4 @@ Reporting evidences below...
 | Planck | $- 53.95 \pm 0.19$|
 | Planck + BAO | $-57.25 \pm 0.20$|
 
-Giving an $R_{obs} = -0.05 \pm 0.28$
+Giving an $R_{obs} = -0.05 \pm 0.28$.
