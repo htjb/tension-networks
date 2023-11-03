@@ -1,6 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import matplotlib as mpl
+from matplotlib import rc
+
+mpl.rcParams['axes.prop_cycle'] = mpl.cycler('color',
+    ['ff7f00', '984ea3', '999999', '377eb8', '4daf4a','f781bf', 'a65628', 'e41a1c', 'dede00'])
+mpl.rcParams['text.usetex'] = True
+rc('font', family='serif')
+rc('font', serif='cm')
+rc('savefig', pad_inches=0.05)
+
+plt.rc('text.latex', preamble=r'\usepackage{amsmath} \usepackage{amssymb}')
 
 def signal_func_gen(freqs):
     def signal(_, parameters):
@@ -157,19 +168,24 @@ for i in range(len(p)):
         wrong0 += 1
     elif p[i] < 0.25 and labels_test[i] == 1:
         wrong1 += 1
-    elif p[i] > 0.25 and r[i] < 0.75 and labels_test[i] == 1:
+    elif p[i] > 0.25 and p[i] < 0.75 and labels_test[i] == 1:
         confused1 += 1
-    elif p[i] > 0.25 and r[i] < 0.75 and labels_test[i] == 0:
+    elif p[i] > 0.25 and p[i] < 0.75 and labels_test[i] == 0:
         confused0 += 1
 
-cm = [[correct0, wrong0, confused0],
-        [correct1, wrong1, confused1]]
+total_0 = len(labels_test[labels_test == 0])
+total_1 = len(labels_test[labels_test == 1])
+
+cm = [[correct0/total_0*100, wrong0/total_0*100, confused0/total_0*100],
+        [correct1/total_1*100, wrong1/total_1*100, confused1/total_1*100]]
+
+print(cm)
 
 fig, axes = plt.subplots(1, 1, figsize=(5, 4))
 plt.imshow(cm, cmap='Blues')
 for i in range(2):
     for j in range(3):
-        plt.text(j, i, cm[i][j], ha='center', va='center', color='k',
+        plt.text(j, i, '{:.3f} %'.format(cm[i][j]), ha='center', va='center', color='k',
                  bbox=dict(facecolor='white', lw=0))
 plt.xticks([0, 1, 2], ['Correct', 'Wrong', 'Confused'])
 plt.yticks([0, 1], ['In tension', 'Not In Tension'])

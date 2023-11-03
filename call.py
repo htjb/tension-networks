@@ -84,33 +84,33 @@ bao_func = bao_func()
 
 from tensionnet.tensionnet import nre
 
-"""try:
+try:
     nrei = nre.load('bao_planck_model.pkl',
                 planck_func, bao_func, exp_prior,
                 exp_prior, signal_prior)
-except:"""
-nrei = nre(lr=1e-4)
-nrei.build_model(len(l_real) + len(z)*2, 1, 
-                    [100]*10, 'sigmoid')
-#nrei.build_model_compress_one(len(l_real), len(z)*2, 1,
-#                              [80, 80, 40, len(z)*2], [100]*10,
-#                              'sigmoid')
+except:
+    nrei = nre(lr=1e-4)
+    nrei.build_model(len(l_real) + len(z)*2, 1, 
+                        [100]*10, 'sigmoid')
+    #nrei.build_model_compress_one(len(l_real), len(z)*2, 1,
+    #                              [80, 80, 40, len(z)*2], [100]*10,
+    #                              'sigmoid')
 
-#nrei.build_compress_model(len(exp2_freq), len(exp1_freq), 1, 
-#                       [len(exp2_freq), len(exp2_freq), len(exp2_freq)//2, 50, 10], 
-#                       [len(exp1_freq), len(exp1_freq), len(exp1_freq)//2, 50, 10], 
-#                       [10, 10, 10, 10, 10],
-#                       'sigmoid')
-nrei.build_simulations(planck_func, bao_func, exp_prior, exp_prior, signal_prior, n=500)
-model, data_test, labels_test = nrei.training(epochs=500, batch_size=1000)
-nrei.save('bao_planck_model.pkl')
+    #nrei.build_compress_model(len(exp2_freq), len(exp1_freq), 1, 
+    #                       [len(exp2_freq), len(exp2_freq), len(exp2_freq)//2, 50, 10], 
+    #                       [len(exp1_freq), len(exp1_freq), len(exp1_freq)//2, 50, 10], 
+    #                       [10, 10, 10, 10, 10],
+    #                       'sigmoid')
+    nrei.build_simulations(planck_func, bao_func, exp_prior, exp_prior, signal_prior, n=50000)
+    model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
+    nrei.save('bao_planck_model.pkl')
 """
 plt.plot(nrei.loss_history)
 plt.plot(nrei.test_loss_history)
 plt.yscale('log')
 plt.show()"""
 
-nrei.__call__(iters=200)
+nrei.__call__(iters=2000)
 r = nrei.r_values
 print(r)
 mask = np.isfinite(r)
@@ -187,19 +187,22 @@ for i in range(len(p)):
         wrong0 += 1
     elif p[i] < 0.25 and labels_test[i] == 1:
         wrong1 += 1
-    elif p[i] > 0.25 and r[i] < 0.75 and labels_test[i] == 1:
+    elif p[i] > 0.25 and p[i] < 0.75 and labels_test[i] == 1:
         confused1 += 1
-    elif p[i] > 0.25 and r[i] < 0.75 and labels_test[i] == 0:
+    elif p[i] > 0.25 and p[i] < 0.75 and labels_test[i] == 0:
         confused0 += 1
 
-cm = [[correct0, wrong0, confused0],
-        [correct1, wrong1, confused1]]
+total_0 = len(labels_test[labels_test == 0])
+total_1 = len(labels_test[labels_test == 1])
+
+cm = [[correct0/total_0*100, wrong0/total_0*100, confused0/total_0*100],
+        [correct1/total_1*100, wrong1/total_1*100, confused1/total_1*100]]
 
 fig, axes = plt.subplots(1, 1, figsize=(5, 4))
 plt.imshow(cm, cmap='Blues')
 for i in range(2):
     for j in range(3):
-        plt.text(j, i, cm[i][j], ha='center', va='center', color='k',
+        plt.text(j, i, '{:.3f} %'.format(cm[i][j]), ha='center', va='center', color='k',
                  bbox=dict(facecolor='white', lw=0))
 plt.xticks([0, 1, 2], ['Correct', 'Wrong', 'Confused'])
 plt.yticks([0, 1], ['In tension', 'Not In Tension'])
