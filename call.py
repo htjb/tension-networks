@@ -62,12 +62,12 @@ def bao_func():
 
 def signal_prior(n):
     parameters = np.ones((n, 6))
-    parameters[:, 0] = np.random.uniform(0.0211, 0.0235) # omegabh2
-    parameters[:, 1] = np.random.uniform(0.108, 0.131) # omegach2
-    parameters[:, 2] = np.random.uniform(1.038, 1.044) # 100*thetaMC
-    parameters[:, 3] = np.random.uniform(0.01, 0.16) # tau
-    parameters[:, 4] = np.random.uniform(0.938, 1) # ns
-    parameters[:, 5] = np.random.uniform(2.95, 3.25) # log(10^10*As)
+    parameters[:, 0] = np.random.uniform(0.0211, 0.0235, n) # omegabh2
+    parameters[:, 1] = np.random.uniform(0.108, 0.131, n) # omegach2
+    parameters[:, 2] = np.random.uniform(1.038, 1.044, n) # 100*thetaMC
+    parameters[:, 3] = np.random.uniform(0.01, 0.16, n) # tau
+    parameters[:, 4] = np.random.uniform(0.938, 1, n) # ns
+    parameters[:, 5] = np.random.uniform(2.95, 3.25, n) # log(10^10*As)
     return parameters
 
 def exp_prior(n):
@@ -92,14 +92,17 @@ except:"""
 nrei = nre(lr=1e-4)
 nrei.build_model(len(l_real) + len(z)*2, 1, 
                     [100]*10, 'sigmoid')
+#nrei.build_model_compress_one(len(l_real), len(z)*2, 1,
+#                              [80, 80, 40, len(z)*2], [100]*10,
+#                              'sigmoid')
 
 #nrei.build_compress_model(len(exp2_freq), len(exp1_freq), 1, 
 #                       [len(exp2_freq), len(exp2_freq), len(exp2_freq)//2, 50, 10], 
 #                       [len(exp1_freq), len(exp1_freq), len(exp1_freq)//2, 50, 10], 
 #                       [10, 10, 10, 10, 10],
 #                       'sigmoid')
-nrei.build_simulations(planck_func, bao_func, exp_prior, exp_prior, signal_prior, n=20000)
-model, data_test, labels_test = nrei.training(epochs=1000, batch_size=1000)
+nrei.build_simulations(planck_func, bao_func, exp_prior, exp_prior, signal_prior, n=500)
+model, data_test, labels_test = nrei.training(epochs=500, batch_size=1000)
 nrei.save('bao_planck_model.pkl')
 """
 plt.plot(nrei.loss_history)
@@ -107,14 +110,17 @@ plt.plot(nrei.test_loss_history)
 plt.yscale('log')
 plt.show()"""
 
-nrei.__call__(iters=2000)
+nrei.__call__(iters=200)
 r = nrei.r_values
+print(r)
 mask = np.isfinite(r)
 sigr = tf.keras.layers.Activation('sigmoid')(r[mask])
 c = 0
 for i in range(len(sigr)):
     if sigr[i] < 0.75:
         c += 1
+
+print(c, sigr)
 
 Rs = [-0.055]
 sigma_Rs = [0.283]
