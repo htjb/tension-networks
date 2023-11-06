@@ -103,7 +103,7 @@ try:
 except:
     nrei = nre(lr=1e-4)
     nrei.build_model(len(l_real) + len(z)*2, 1, 
-                        [100]*10, 'sigmoid')
+                        [200]*4, 'sigmoid')
     #nrei.build_model_compress_one(len(l_real), len(z)*2, 1,
     #                              [80, 80, 40, len(z)*2], [100]*10,
     #                              'sigmoid')
@@ -122,7 +122,7 @@ plt.plot(nrei.test_loss_history)
 plt.yscale('log')
 plt.show()"""
 
-nrei.__call__(iters=2000)
+nrei.__call__(iters=10000)
 r = nrei.r_values
 print(r)
 mask = np.isfinite(r)
