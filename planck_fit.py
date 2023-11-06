@@ -40,7 +40,7 @@ inv_cov = np.linalg.inv(power_cov)
 
 predictor = evaluate(base_dir='cmbemu_model/', l=l_real)
 
-def prior(cube):
+def narrow_prior(cube):
     theta = np.zeros(len(cube))
     theta[0] = UniformPrior(0.0211, 0.0235)(cube[0]) # omegabh2
     theta[1] = UniformPrior(0.108, 0.131)(cube[1]) # omegach2
@@ -48,6 +48,16 @@ def prior(cube):
     theta[3] = UniformPrior(0.01, 0.16)(cube[3]) # tau
     theta[4] = UniformPrior(0.938, 1)(cube[4]) # ns
     theta[5] = UniformPrior(2.95, 3.25)(cube[5]) # log(10^10*As)
+    return theta
+
+def wide_prior(cube):
+    theta = np.zeros(len(cube))
+    theta[0] = UniformPrior(0.01, 0.085)(cube[0]) # omegabh2
+    theta[1] = UniformPrior(0.08, 0.21)(cube[1]) # omegach2
+    theta[2] = UniformPrior(0.97, 1.5)(cube[2]) # 100*thetaMC
+    theta[3] = UniformPrior(0.01, 0.16)(cube[3]) # tau
+    theta[4] = UniformPrior(0.8, 1.2)(cube[4]) # ns
+    theta[5] = UniformPrior(2.6, 3.8)(cube[5]) # log(10^10*As)
     return theta
 
 def likelihood(theta):
@@ -79,11 +89,11 @@ for i in range(5):
     print(time.time()-s)
 sys.exit(1)"""
 
-file = 'Planck_chains/'
+file = 'Planck_chains_wide/'
 RESUME = False
 if RESUME is False:
     import os, shutil
     if os.path.exists(file):
         shutil.rmtree(file)
 
-run_poly(prior, likelihood, file, RESUME=RESUME, nDims=6)
+run_poly(wide_prior, likelihood, file, RESUME=RESUME, nDims=6)
