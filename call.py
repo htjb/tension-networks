@@ -5,6 +5,7 @@ from cmbemu.eval import evaluate
 import camb
 import matplotlib as mpl
 from matplotlib import rc
+from scipy.stats import ecdf
 
 mpl.rcParams['axes.prop_cycle'] = mpl.cycler('color',
     ['ff7f00', '984ea3', '999999', '377eb8', '4daf4a','f781bf', 'a65628', 'e41a1c', 'dede00'])
@@ -58,7 +59,8 @@ def cl_func_gen():
 def bao_func():
     def bao(_, parameters):
         pars.set_cosmology(ombh2=parameters[0], omch2=parameters[1],
-                            tau=parameters[3], cosmomc_theta=parameters[2]/100)
+                            tau=parameters[3], cosmomc_theta=parameters[2]/100,
+                            theta_H0_range=[5, 1000])
         pars.InitPower.set_params(As=np.exp(parameters[5])/10**10, ns=parameters[4])
         pars.set_for_lmax(2500, lens_potential_accuracy=0)
         results = camb.get_background(pars) # computes evolution of background cosmology
@@ -82,6 +84,16 @@ def signal_prior(n):
     parameters[:, 5] = np.random.uniform(2.95, 3.25, n) # log(10^10*As)
     return parameters
 
+def signal_wide_prior(n):
+    theta = np.ones((n, 6))
+    theta[:, 0] = np.random.uniform(0.01, 0.085, n) # omegabh2
+    theta[:, 1] = np.random.uniform(0.08, 0.21, n) # omegach2
+    theta[:, 2] = np.random.uniform(0.97, 1.5, n) # 100*thetaMC
+    theta[:, 3] = np.random.uniform(0.01, 0.16, n) # tau
+    theta[:, 4] = np.random.uniform(0.8, 1.2, n) # ns
+    theta[:, 5] = np.random.uniform(2.6, 3.8, n) # log(10^10*As)
+    return theta
+
 def exp_prior(n):
     """
     The way tensionnet is set up it requires some
@@ -96,133 +108,113 @@ bao_func = bao_func()
 
 from tensionnet.tensionnet import nre
 
-try:
-    nrei = nre.load('bao_planck_model.pkl',
-                planck_func, bao_func, exp_prior,
-                exp_prior, signal_prior)
-except:
-    nrei = nre(lr=1e-4)
-    nrei.build_model(len(l_real) + len(z)*2, 1, 
-                        [200]*4, 'sigmoid')
-    #nrei.build_model_compress_one(len(l_real), len(z)*2, 1,
-    #                              [80, 80, 40, len(z)*2], [100]*10,
-    #                              'sigmoid')
+priors = [signal_prior, signal_wide_prior]
+nsamples = [50000, 100000]
+prior_strings = ['Narrow', 'Wide']
+file_strings = ['', '_wide']
+Rs = [-0.055, 3.032]
+sigma_Rs = [0.283, 0.470]
+nreis = []
+for j in range(len(priors)):
+    try:
+        nrei = nre.load('bao_planck_model' + file_strings[j] + '.pkl',
+                    planck_func, bao_func, exp_prior,
+                    exp_prior, signal_prior)
+    except:
+        nrei = nre(lr=1e-4)
+        nrei.build_model(len(l_real) + len(z)*2, 1, 
+                            [200]*4, 'sigmoid')
+        nrei.build_simulations(planck_func, bao_func, 
+                               exp_prior, exp_prior, priors[j], n=nsamples[j])
+        model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
+        nrei.save('bao_planck_model' + file_strings[j] + '.pkl')
+    nreis.append(nrei)
 
-    #nrei.build_compress_model(len(exp2_freq), len(exp1_freq), 1, 
-    #                       [len(exp2_freq), len(exp2_freq), len(exp2_freq)//2, 50, 10], 
-    #                       [len(exp1_freq), len(exp1_freq), len(exp1_freq)//2, 50, 10], 
-    #                       [10, 10, 10, 10, 10],
-    #                       'sigmoid')
-    nrei.build_simulations(planck_func, bao_func, exp_prior, exp_prior, signal_prior, n=50000)
-    model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
-    nrei.save('bao_planck_model.pkl')
-"""
-plt.plot(nrei.loss_history)
-plt.plot(nrei.test_loss_history)
-plt.yscale('log')
-plt.show()"""
+rs, acc = [], []
+for i, nrei in enumerate(nreis):
+    nrei.__call__(iters=1000)
+    r = nrei.r_values
+    mask = np.isfinite(r)
+    sigr = tf.keras.layers.Activation('sigmoid')(r[mask])
+    c = 0
+    good_idx = []
+    for i in range(len(sigr)):
+        if sigr[i] < 0.75:
+            c += 1
+        else:
+            good_idx.append(i)
 
-nrei.__call__(iters=10000)
-r = nrei.r_values
-print(r)
-mask = np.isfinite(r)
-sigr = tf.keras.layers.Activation('sigmoid')(r[mask])
-c = 0
-good_idx = []
-for i in range(len(sigr)):
-    if sigr[i] < 0.75:
-        c += 1
-    else:
-        good_idx.append(i)
-
-r = r[good_idx]
-mask = np.isfinite(r)
-
-Rs = [-0.055]
-sigma_Rs = [0.283]
-
+    r = r[good_idx]
+    mask = np.isfinite(r)
+    rs.append(r[mask])
+    acc.append(c/len(sigr)*100)
 
 fig, axes = plt.subplots(1, 2, figsize=(6.3, 3))
-axes[0].hist(r[mask], bins=25, label=f'{c/len(sigr)*100:.2f} % Mis-classified', color='C1')
-axes[0].set_yticks([])
-axes[0].axvline(Rs[0], ls='--', c='r')
-axes[0].axvspan(Rs[0] - sigma_Rs[0], Rs[0] + sigma_Rs[0], alpha=0.1, color='r')
-axes[0].set_xlabel(r'$\log R$')
-axes[0].set_ylabel('Frequency')
-axes[0].legend()
+for i in range(len(rs)):
+    axes[0].hist(rs[i], bins=25, label=prior_strings[i] + f': {acc[i]:.2f} \% Mis-classified', 
+                 color='C' + str(i), histtype='step', density=True)
+    axes[0].set_yticks([])
+    axes[0].axvline(Rs[i], ls='--', c='C' + str(i))
+    axes[0].axvspan(Rs[i] - sigma_Rs[i], Rs[i] + sigma_Rs[i], 
+                    alpha=0.1, color='C' + str(i))
+    axes[0].set_xlabel(r'$\log R$')
+    axes[0].set_ylabel('Frequency')
+    axes[0].legend()
 
+    rsort  = np.sort(rs[i])
+    c = ecdf(rsort)
 
-"""from anesthetic import MCMCSamples
-samples = MCMCSamples(data=r[mask], columns=['R'])
-axes = samples.plot_1d('R', fc='C1', ec='k')
-for i,t in enumerate(temperatures):
-    plt.axvline(Rs[i], ls='--', label= f'{round(t/0.2, 2)}', color=plt.get_cmap('jet')(i/len(temperatures)))
-    plt.axvspan(Rs[i] - sigma_Rs[i], Rs[i] + sigma_Rs[i], alpha=0.1, color=plt.get_cmap('jet')(i/len(temperatures)))
-plt.xlim([-5, 25])
-plt.xlabel(r'$\log R$')
-plt.ylabel('Frequency')
+    axes[1].plot(rsort, c.cdf.evaluate(rsort)) 
+    axes[1].axhline(c.cdf.evaluate(Rs[i]), ls='--',
+            color='C' + str(i))
+    axes[1].axhspan(c.cdf.evaluate(Rs[i] - sigma_Rs[i]), 
+            c.cdf.evaluate(Rs[i] + sigma_Rs[i]), 
+            alpha=0.1, 
+            color='C' + str(i))
+    axes[1].set_xlabel(r'$\log R$')
+    axes[1].set_ylabel(r'$P(\log R < \log R_{obs})$')
 plt.tight_layout()
-plt.legend()
-plt.savefig('test_r_kde.png', dpi=300)
-plt.show()"""
-
-from scipy.stats import ecdf
-
-r  = np.sort(r[mask])
-c = ecdf(r)
-
-axes[1].plot(r, c.cdf.evaluate(r)) 
-axes[1].axhline(c.cdf.evaluate(Rs[0]), ls='--',
-        color='r')
-axes[1].axhspan(c.cdf.evaluate(Rs[0] - sigma_Rs[0]), 
-        c.cdf.evaluate(Rs[0] + sigma_Rs[0]), 
-        alpha=0.1, 
-        color='r')
-axes[1].set_xlabel(r'$\log R$')
-axes[1].set_ylabel(r'$P(\log R < \log R_{obs})$')
-plt.tight_layout()
-plt.savefig('bao_planck_r_cdf_hist.png', dpi=300)
+plt.savefig('bao_planck_r_cdf_hist_multi_prior.png', dpi=300)
 plt.show()
 
-idx = [int(np.random.uniform(0, len(nrei.labels_test), 1)) for i in range(1000)]
+for k, nrei in enumerate(nreis):
+    idx = [int(np.random.uniform(0, len(nrei.labels_test), 1)) for i in range(1000)]
+    labels_test = nrei.labels_test[idx]
+    nrei.__call__(iters=nrei.data_test[idx])
+    p = tf.keras.layers.Activation('sigmoid')(nrei.r_values)
+    """plt.hist(p, bins=25)
+    plt.show()"""
 
-labels_test = nrei.labels_test[idx]
+    correct1, correct0, wrong1, wrong0, confused1, confused0 = 0, 0, 0, 0, 0, 0
+    for i in range(len(p)):
+        if p[i] > 0.75 and labels_test[i] == 1:
+            correct1 += 1
+        elif p[i] < 0.25 and labels_test[i] == 0:
+            correct0 += 1
+        elif p[i] > 0.75 and labels_test[i] == 0:
+            wrong0 += 1
+        elif p[i] < 0.25 and labels_test[i] == 1:
+            wrong1 += 1
+        elif p[i] > 0.25 and p[i] < 0.75 and labels_test[i] == 1:
+            confused1 += 1
+        elif p[i] > 0.25 and p[i] < 0.75 and labels_test[i] == 0:
+            confused0 += 1
 
-nrei.__call__(iters=nrei.data_test[idx])
-p = tf.keras.layers.Activation('sigmoid')(nrei.r_values)
-"""plt.hist(p, bins=25)
-plt.show()"""
+    total_0 = len(labels_test[labels_test == 0])
+    total_1 = len(labels_test[labels_test == 1])
 
-correct1, correct0, wrong1, wrong0, confused1, confused0 = 0, 0, 0, 0, 0, 0
-for i in range(len(p)):
-    if p[i] > 0.75 and labels_test[i] == 1:
-        correct1 += 1
-    elif p[i] < 0.25 and labels_test[i] == 0:
-        correct0 += 1
-    elif p[i] > 0.75 and labels_test[i] == 0:
-        wrong0 += 1
-    elif p[i] < 0.25 and labels_test[i] == 1:
-        wrong1 += 1
-    elif p[i] > 0.25 and p[i] < 0.75 and labels_test[i] == 1:
-        confused1 += 1
-    elif p[i] > 0.25 and p[i] < 0.75 and labels_test[i] == 0:
-        confused0 += 1
+    cm = [[correct0/total_0*100, wrong0/total_0*100, confused0/total_0*100],
+            [correct1/total_1*100, wrong1/total_1*100, confused1/total_1*100]]
 
-total_0 = len(labels_test[labels_test == 0])
-total_1 = len(labels_test[labels_test == 1])
-
-cm = [[correct0/total_0*100, wrong0/total_0*100, confused0/total_0*100],
-        [correct1/total_1*100, wrong1/total_1*100, confused1/total_1*100]]
-
-fig, axes = plt.subplots(1, 1, figsize=(5, 4))
-plt.imshow(cm, cmap='Blues')
-for i in range(2):
-    for j in range(3):
-        plt.text(j, i, '{:.3f} \%'.format(cm[i][j]), ha='center', va='center', color='k',
-                 bbox=dict(facecolor='white', lw=0))
-plt.xticks([0, 1, 2], ['Correct', 'Wrong', 'Confused'])
-plt.yticks([0, 1], ['In tension', 'Not In Tension'])
-plt.tight_layout()
-plt.savefig('bao_planck_confusion_matrix.png', dpi=300)
-plt.show()
+    fig, axes = plt.subplots(1, 1, figsize=(5, 4))
+    plt.imshow(cm, cmap='Blues')
+    for i in range(2):
+        for j in range(3):
+            plt.text(j, i, '{:.3f} \%'.format(cm[i][j]), ha='center', va='center', color='k',
+                    bbox=dict(facecolor='white', lw=0))
+    plt.xticks([0, 1, 2], ['Correct', 'Wrong', 'Confused'])
+    plt.yticks([0, 1], ['In tension', 'Not In Tension'])
+    plt.tight_layout()
+    plt.savefig('bao_planck_confusion_matrix' + file_strings[i] + '.png', dpi=300)
+    plt.show()
 
