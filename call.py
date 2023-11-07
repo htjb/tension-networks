@@ -110,6 +110,7 @@ from tensionnet.tensionnet import nre
 
 priors = [signal_prior, signal_wide_prior]
 nsamples = [50000, 100000]
+layers = [[200]*4, [200]*8]
 prior_strings = ['Narrow', 'Wide']
 file_strings = ['', '_wide']
 Rs = [-0.055, 3.032]
@@ -123,7 +124,7 @@ for j in range(len(priors)):
     except:
         nrei = nre(lr=1e-4)
         nrei.build_model(len(l_real) + len(z)*2, 1, 
-                            [200]*4, 'sigmoid')
+                            layers, 'sigmoid')
         nrei.build_simulations(planck_func, bao_func, 
                                exp_prior, exp_prior, priors[j], n=nsamples[j])
         model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
