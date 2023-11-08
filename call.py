@@ -116,6 +116,17 @@ file_strings = ['', '_wide']
 Rs = [-0.055, 3.032]
 sigma_Rs = [0.283, 0.470]
 nreis = []
+
+_ = nre(lr=1e-4)
+
+_.build_simulations(planck_func, bao_func, 
+                               exp_prior, exp_prior, 
+                               signal_wide_prior, n=50000)
+wide_data, wide_labels = _.data, _.labels
+np.savetxt('wide_data.txt', wide_data)
+np.savetxt('wide_labels.txt', wide_labels)
+sys.exit(1)
+
 for j in range(len(priors)):
     try:
         nrei = nre.load('bao_planck_model' + file_strings[j] + '.pkl',
