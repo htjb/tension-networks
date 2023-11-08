@@ -109,24 +109,13 @@ bao_func = bao_func()
 from tensionnet.tensionnet import nre
 
 priors = [signal_prior, signal_wide_prior]
-nsamples = [50000, 100000]
-layers = [[200]*4, [200]*8]
+nsamples = [50000, 50000]
+layers = [[200]*4, [200]*4]
 prior_strings = ['Narrow', 'Wide']
 file_strings = ['', '_wide']
 Rs = [-0.055, 3.032]
 sigma_Rs = [0.283, 0.470]
 nreis = []
-
-_ = nre(lr=1e-4)
-
-_.build_simulations(planck_func, bao_func, 
-                               exp_prior, exp_prior, 
-                               signal_wide_prior, n=50000)
-wide_data, wide_labels = _.data, _.labels
-np.savetxt('wide_data.txt', wide_data)
-np.savetxt('wide_labels.txt', wide_labels)
-sys.exit(1)
-
 for j in range(len(priors)):
     try:
         nrei = nre.load('bao_planck_model' + file_strings[j] + '.pkl',
@@ -135,9 +124,22 @@ for j in range(len(priors)):
     except:
         nrei = nre(lr=1e-4)
         nrei.build_model(len(l_real) + len(z)*2, 1, 
-                            layers, 'sigmoid')
-        nrei.build_simulations(planck_func, bao_func, 
+                            layers[j], 'sigmoid')
+        try:
+            wide_data = np.loadtxt('planck_bao' + file_strings[j] + '_data.txt')
+            wide_labels = np.loadtxt('planck_bao' + file_strings[j] + '_labels.txt')
+            nrei.data = wide_data
+            nrei.labels = wide_labels
+            nrei.simulation_func_A = planck_func
+            nrei.simulation_func_B = bao_func
+            nrei.prior_function_A = exp_prior
+            nrei.prior_function_B = exp_prior
+            nrei.shared_prior = priors[j]
+        except:
+            nrei.build_simulations(planck_func, bao_func, 
                                exp_prior, exp_prior, priors[j], n=nsamples[j])
+            np.savetxt('planck_bao' + file_strings[j] + '_data.txt', nrei.data)
+            np.savetxt('planck_bao' + file_strings[j] + '_wide_labels.txt', nrei.data)
         model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
         nrei.save('bao_planck_model' + file_strings[j] + '.pkl')
     nreis.append(nrei)
