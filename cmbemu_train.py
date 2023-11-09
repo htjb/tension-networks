@@ -32,8 +32,8 @@ def load_planck():
 
 p, _, l = load_planck()
 
-GEN_DATA = True
-PREPROCESS = True
+GEN_DATA = False
+PREPROCESS = False
 TRAIN = True
 PRIOR = '_wide'
 data_dir = 'cmbemu_training_data' + PRIOR + '/'
@@ -102,7 +102,7 @@ if PREPROCESS:
 if TRAIN:
     nn(batch_size=300, epochs=1000, 
        base_dir=model_dir, layer_sizes=[14, 14, 14, 14],
-        input_shape=7, patience=10, lr=1e-3)
+        input_shape=7, patience=100, lr=1e-3)
 
 test_d = np.loadtxt(data_dir + 'test_data.txt')
 test_l = np.loadtxt(data_dir + 'test_labels.txt')
