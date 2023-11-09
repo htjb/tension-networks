@@ -33,24 +33,36 @@ def load_planck():
 p, _, l = load_planck()
 
 GEN_DATA = True
-PREPROCESS = False
+PREPROCESS = True
 TRAIN = True
-data_dir = 'cmbemu_training_data/'
-model_dir = 'cmbemu_model/'
-nsamples = 10000
+PRIOR = '_wide'
+data_dir = 'cmbemu_training_data' + PRIOR + '/'
+model_dir = 'cmbemu_model' + PRIOR + '/'
+nsamples = 20000
 
 # generate test and train data
 if GEN_DATA:
-    def prior():
-        theta = np.zeros((nsamples, 6))
-        theta[:, 0] = np.random.uniform(0.0211, 0.0235, nsamples) # omegabh2
-        theta[:, 1] = np.random.uniform(0.108, 0.131, nsamples) # omegach2
-        theta[:, 2] = np.random.uniform(1.038, 1.044, nsamples) # 100*thetaMC
-        theta[:, 3] = np.random.uniform(0.01, 0.16, nsamples) # tau
-        theta[:, 4] = np.random.uniform(0.938, 1, nsamples) # ns
-        theta[:, 5] = np.random.uniform(2.95, 3.25, nsamples) # log(10^10*As)
-        return theta
-    
+    if PRIOR == '_wide':
+        def prior():
+            theta = np.ones((nsamples, 6))
+            theta[:, 0] = np.random.uniform(0.01, 0.085, nsamples) # omegabh2
+            theta[:, 1] = np.random.uniform(0.08, 0.21, nsamples) # omegach2
+            theta[:, 2] = np.random.uniform(0.97, 1.5, nsamples) # 100*thetaMC
+            theta[:, 3] = np.random.uniform(0.01, 0.16, nsamples) # tau
+            theta[:, 4] = np.random.uniform(0.8, 1.2, nsamples) # ns
+            theta[:, 5] = np.random.uniform(2.6, 3.8, nsamples) # log(10^10*As)
+            return theta
+    else: 
+        def prior():
+            theta = np.zeros((nsamples, 6))
+            theta[:, 0] = np.random.uniform(0.0211, 0.0235, nsamples) # omegabh2
+            theta[:, 1] = np.random.uniform(0.108, 0.131, nsamples) # omegach2
+            theta[:, 2] = np.random.uniform(1.038, 1.044, nsamples) # 100*thetaMC
+            theta[:, 3] = np.random.uniform(0.01, 0.16, nsamples) # tau
+            theta[:, 4] = np.random.uniform(0.938, 1, nsamples) # ns
+            theta[:, 5] = np.random.uniform(2.95, 3.25, nsamples) # log(10^10*As)
+            return theta
+        
     theta = prior()
     pars = camb.CAMBparams()
 
@@ -59,7 +71,8 @@ if GEN_DATA:
         t = theta[i].copy()
         try:
             pars.set_cosmology(ombh2=t[0], omch2=t[1],
-                            tau=t[3], cosmomc_theta=t[2]/100)
+                            tau=t[3], cosmomc_theta=t[2]/100,
+                            theta_H0_range=[5, 1000])
             pars.InitPower.set_params(As=np.exp(t[5])/10**10, ns=t[4])
             results = camb.get_background(pars) # computes evolution of background cosmology
 
