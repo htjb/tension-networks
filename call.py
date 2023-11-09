@@ -125,6 +125,13 @@ for j in range(len(priors)):
         nrei = nre(lr=1e-4)
         nrei.build_model(len(l_real) + len(z)*2, 1, 
                             layers[j], 'sigmoid')
+        """if file_strings[j] == '':
+            nrei.build_model(len(l_real) + len(z)*2, 1, 
+                            layers[j], 'sigmoid')
+        else:
+            nrei.build_compress_model(len(l_real), len(z)*2, 1, 
+                                      [100,100, 40, 40, 10, 10, 6],
+                                      [], [20]*4, 'sigmoid')"""
         try:
             wide_data = np.loadtxt('planck_bao' + file_strings[j] + '_data.txt')
             wide_labels = np.loadtxt('planck_bao' + file_strings[j] + '_labels.txt')
@@ -146,7 +153,7 @@ for j in range(len(priors)):
 
 rs, acc = [], []
 for i, nrei in enumerate(nreis):
-    nrei.__call__(iters=1000)
+    nrei.__call__(iters=10)
     r = nrei.r_values
     mask = np.isfinite(r)
     sigr = tf.keras.layers.Activation('sigmoid')(r[mask])
