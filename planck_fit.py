@@ -4,6 +4,7 @@ from pypolychord.priors import UniformPrior, LogUniformPrior
 import camb
 import matplotlib.pyplot as plt
 from cmbemu.eval import evaluate
+from scipy.stats import chi2
 
 
 def load_planck():
@@ -32,13 +33,10 @@ def load_planck():
 
 p, _, l_real = load_planck()
 
-power_cov = np.loadtxt('planck_mock_cov.txt')
-inv_cov = np.linalg.inv(power_cov)
+#power_cov = np.loadtxt('planck_mock_cov.txt')
+#inv_cov = np.linalg.inv(power_cov)
 
-#pars = camb.CAMBparams()
-#pars.set_for_lmax(2500, lens_potential_accuracy=0)
-
-predictor = evaluate(base_dir='cmbemu_model/', l=l_real)
+predictor = evaluate(base_dir='cmbemu_model_wide/', l=l_real)
 
 def narrow_prior(cube):
     theta = np.zeros(len(cube))
@@ -60,27 +58,35 @@ def wide_prior(cube):
     theta[5] = UniformPrior(2.6, 3.8)(cube[5]) # log(10^10*As)
     return theta
 
+# from montepython https://github.com/brinckmann/montepython_public/blob/3.6/montepython/likelihoods/fake_planck_bluebook/fake_planck_bluebook.data
+theta_planck = np.array([10, 7.1, 5.0]) # in arcmin
+sigma_T = np.array([68.1, 42.6, 65.4]) # in muK arcmin
+
+theta_planck *= np.array([np.pi/60/180])
+sigma_T *= np.array([np.pi/60/180])
+
+from scipy.special import logsumexp
+
+nis = []
+for i in range(len(sigma_T)):
+    # from montepython code https://github.com/brinckmann/montepython_public/blob/3.6/montepython/likelihood_class.py#L1096
+    ninst = 1/sigma_T[i]**2 + \
+        np.exp(-l_real*(l_real+1)*theta_planck[i]**2/(8*np.log(2))) #one over ninst
+    nis.append(ninst)
+ninst = np.array(nis).T
+ninst = np.sum(ninst, axis=1)
+noise = 1/ninst
+noise *= (l_real*(l_real+1)/(2*np.pi))
+
 def likelihood(theta):
-    try:
-        """pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
-                            tau=theta[3], cosmomc_theta=theta[2]/100)
-        pars.InitPower.set_params(As=np.exp(theta[5])/10**10, ns=theta[4])
-        results = camb.get_background(pars) # computes evolution of background cosmology
+    cl, _ = predictor(theta)
 
-        cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:, 0]
-        cl = np.interp(l_real, np.arange(len(cl)), cl)"""
-        cl, _ = predictor(theta)
+    cl += noise
+    
+    x = (2*l_real + 1)* p/cl
+    L = (-chi2(len(l_real) - 6).logpdf(x) - np.log((2*l_real + 1)/cl)).sum()
 
-        """plt.plot(_, cl, c='r')
-        plt.plot(l_real, p, c='k')
-        plt.show()"""
-
-        #L = -0.5*(p -cl).T @ inv_cov @ (p - cl)
-        Lein = -0.5 * np.einsum('i,ij,j', p - cl, inv_cov, p - cl)
-
-        return Lein, []
-    except:
-        return 1e-300, []
+    return L, []
     
 """import time
 for i in range(5):
