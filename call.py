@@ -42,9 +42,6 @@ def load_planck():
     return p, ps, l_real
 
 p, _, l_real = load_planck()
-power_cov = np.loadtxt('planck_mock_cov.txt')
-inv_cov = np.linalg.inv(power_cov)
-predictor = evaluate(base_dir='cmbemu_model/', l=l_real)
 
 pars = camb.CAMBparams()
 pars.set_for_lmax(2500, lens_potential_accuracy=0)
@@ -117,6 +114,7 @@ Rs = [-0.055, 3.032]
 sigma_Rs = [0.283, 0.470]
 nreis = []
 for j in range(len(priors)):
+    predictor = evaluate(base_dir='cmbemu_model' + file_strings[j] + '/', l=l_real)
     try:
         nrei = nre.load('bao_planck_model' + file_strings[j] + '.pkl',
                     planck_func, bao_func, exp_prior,
@@ -125,13 +123,6 @@ for j in range(len(priors)):
         nrei = nre(lr=1e-4)
         nrei.build_model(len(l_real) + len(z)*2, 1, 
                             layers[j], 'sigmoid')
-        """if file_strings[j] == '':
-            nrei.build_model(len(l_real) + len(z)*2, 1, 
-                            layers[j], 'sigmoid')
-        else:
-            nrei.build_compress_model(len(l_real), len(z)*2, 1, 
-                                      [100,100, 40, 40, 10, 10, 6],
-                                      [], [20]*4, 'sigmoid')"""
         try:
             wide_data = np.loadtxt('planck_bao' + file_strings[j] + '_data.txt')
             wide_labels = np.loadtxt('planck_bao' + file_strings[j] + '_labels.txt')
@@ -153,7 +144,7 @@ for j in range(len(priors)):
 
 rs, acc = [], []
 for i, nrei in enumerate(nreis):
-    nrei.__call__(iters=10)
+    nrei.__call__(iters=1000)
     r = nrei.r_values
     mask = np.isfinite(r)
     sigr = tf.keras.layers.Activation('sigmoid')(r[mask])
