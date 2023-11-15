@@ -1,10 +1,25 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pypolychord.priors import UniformPrior
-from cmbemu.eval import evaluate
-from scipy.stats import chi2
+from scipy.stats import chi2, invgamma
 import camb
+import warnings
 
+########## check if cmbemu is available ############
+# if it is it assumes you have the model in the working
+# directory. else use camb.
+####################################################
+
+try:
+    from cmbemu.eval import evaluate
+    emulator = True
+except:
+    warnings.warn('Could not import cmbemu. Will use CAMB instead.')
+    pars = camb.CAMBparams()
+
+############### load the planck data ###############
+# should be in the working directory
+####################################################
 def load_planck():
 
     """
@@ -31,9 +46,19 @@ def load_planck():
 
 p, _, l_real = load_planck()
 
-predictor = evaluate(base_dir='cmbemu_model_wide/', l=l_real)
+############ if cmbemu load the emulator ############
+# should be in the working directory
+#####################################################
+if emulator:
+    predictor = evaluate(base_dir='cmbemu_model_wide/', l=l_real)
+
+################# define priors #####################
+# a lot of this is taken from the quantifying tensions
+# paper
+#####################################################
 
 def narrow_prior(cube):
+    # tight around planck as in the qunatifying tensions paper
     theta = np.zeros(len(cube))
     theta[0] = UniformPrior(0.0211, 0.0235)(cube[0]) # omegabh2
     theta[1] = UniformPrior(0.108, 0.131)(cube[1]) # omegach2
@@ -44,6 +69,7 @@ def narrow_prior(cube):
     return theta
 
 def wide_prior(cube):
+    # wide prior apart from tau which I left tight
     theta = np.zeros(len(cube))
     theta[0] = UniformPrior(0.01, 0.085)(cube[0]) # omegabh2
     theta[1] = UniformPrior(0.08, 0.21)(cube[1]) # omegach2
@@ -53,15 +79,22 @@ def wide_prior(cube):
     theta[5] = UniformPrior(2.6, 3.8)(cube[5]) # log(10^10*As)
     return theta
 
+######### Calcualte the noie #############
+# noise from planck. I stole some code from montepython
+# the noise gets plotted on the summary plot and you can
+# compare with figure 5 in the CORE inflation paper
+# looks good to me?
+##########################################
+
 # from montepython https://github.com/brinckmann/montepython_public/blob/3.6/montepython/likelihoods/fake_planck_bluebook/fake_planck_bluebook.data
 theta_planck = np.array([10, 7.1, 5.0]) # in arcmin
 sigma_T = np.array([68.1, 42.6, 65.4]) # in muK arcmin
 
+# convert to radians
 theta_planck *= np.array([np.pi/60/180])
 sigma_T *= np.array([np.pi/60/180])
 
-from scipy.special import logsumexp
-
+# calculate the noise for each map and multipole
 nis = []
 for i in range(len(sigma_T)):
     # from montepython code https://github.com/brinckmann/montepython_public/blob/3.6/montepython/likelihood_class.py#L1096
@@ -74,30 +107,99 @@ noise = 1/ninst
 noise *= (l_real*(l_real+1)/(2*np.pi))
 
 
-def likelihood(t, nn):
-    cl, _ = predictor(theta)
+############# define the likelihood ##############
+# there are a bunch of different equatiosn here
+# that can be selected with the mode paraemter
+#################################################
+
+def likelihood(t, nn, mode):
+
+    """
+    Calcualte a mock cmb likelihood.
+
+    Parameters:
+    -----------
+    t: array
+        the cosmological parameters
+
+    nn: array
+        the noise
     
+    mode: str
+        the likelihood function
+    
+    """
+
+    # use emulator if available else camb
+    if emulator:
+        cl, _ = predictor(t)
+    else:
+        # camb stuff
+        pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
+                            tau=theta[3], cosmomc_theta=theta[2]/100,
+                            theta_H0_range=[5, 1000])
+        pars.InitPower.set_params(As=np.exp(theta[5])/10**10, ns=theta[4])
+        pars.set_for_lmax(2500, lens_potential_accuracy=0)
+        results = camb.get_background(pars) # computes evolution of background cosmology
+
+        cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:,0]
+        cl = np.interp(l_real, np.arange(len(cl)), cl)
+    
+    # if noise then add noise
     if nn is not None:
         cl += nn
+    
+    # calculate the likelihood
+    # there is some confusion here
+    # in lewis they refer to posteriors as P(D|M) which is not 
+    # right... and similarly they refer to a likelihood as P(M|D)
+    # which feels wrong... equation 13 in that paper is quite 
+    # notationally fun...
 
-    x = (2*l_real + 1)* p/cl
-    L = (-chi2(len(l_real) - 6).logpdf(x) - np.log((2*l_real + 1)/cl)).sum()
+    if mode == 'scipy':
+        # scipy chi2 with 2l+1 degrees of freedom
+        # this is the scipy version of lewis eq 8 in theory
+        # chi2*change of variables
+        # seems to give higher likelihood to smaller cl
+        x = (2*l_real + 1)* p/cl
+        L = (-chi2(2*l_real+1).logpdf(x) - np.log((2*l_real + 1)/cl)).sum()
+    elif mode == 'lewis-eq8':
+        # is this equation a posterior or a likelihood?
+        L = (-1/2*(2*l_real + 1)*(np.log(cl) + p/cl - (2*l_real-1)/(2*l_real + 1)*np.log(p))).sum()
+    elif mode == 'core':
+        # from the core paper... there is a sign difference with lewis eq 15.
+        L = -0.5*((2*l_real + 1)*(np.log(p/cl) + p/cl) -1).sum()
+    elif mode == 'lewis-eq15':
+        # okay they say this is a likelihood but it is L(M|D) and
+        # not clear how they went from 8 to the single cl version of 15
+        L = -1/2*((2*l_real + 1)*(p/cl - np.log(p/cl) -1)).sum()
+    elif mode == 'invgamma':
+        # missing a change of varibales...
+        x = 2/(2*l_real+1)*cl/p
+        L = (invgamma(0.5*(2*l_real+1)).logpdf(x)).sum()
 
     return L, cl
 
-ns = [None, noise]
+ns = [None, noise] # loop over this to do with and without noise
+MODE = 'scipy' # select the likelihood function
+nsamples = 100 # number of samples to draw
 
-u = np.random.uniform(0, 1, (250, 6))
+######### make a nice plot ############
+# plot the likelihoods 
+# will save a figure showing the example signals vs data
+# coloured by likelihood value
+# will plot the distribution of likelihood values
+# will plot the noise
+# will do noise and no noise case
+#######################################
+u = np.random.uniform(0, 1, (nsamples, 6)) # for the priors
 fig, axes = plt.subplots(3, 2, figsize=(8, 8))
 for j in range(len(ns)):
+    # get models and associated likelihoods
     likes, cls = [], []
-    for i in range(250):
-        theta = narrow_prior(u[i])
-        l, c = likelihood(theta, ns[j])
-        likes.append(l)
-        cls.append(c)
+    for i in range(nsamples):
         theta = wide_prior(u[i])
-        l, c = likelihood(theta, ns[j])
+        l, c = likelihood(theta, ns[j], MODE)
         likes.append(l)
         cls.append(c)
 
@@ -106,6 +208,7 @@ for j in range(len(ns)):
     likes = likes[mask]
     cls = np.array(cls)[mask]
 
+    # order
     idx = np.argsort(likes)#[::-1]
     cls = cls[idx]
     likes = likes[idx]
@@ -132,5 +235,5 @@ for j in range(len(ns)):
     else:
         axes[2, j].set_axis_off()
 plt.tight_layout()
-plt.savefig('planck_likelihood_analytic.png', dpi=300)
+plt.savefig('planck_likelihood_analytic_' + MODE +'.png', dpi=300)
 plt.show()
