@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pypolychord.priors import UniformPrior
 from scipy.stats import chi2, invgamma
+from tqdm import tqdm
 import camb
 import warnings
 
@@ -10,9 +11,14 @@ import warnings
 # directory. else use camb.
 ####################################################
 
+emulator = False
+
 try:
-    from cmbemu.eval import evaluate
-    emulator = True
+    if emulator:
+        from cmbemu.eval import evaluate
+    else:
+        warnings.warn('Could not import cmbemu. Will use CAMB instead.')
+        pars = camb.CAMBparams()
 except:
     warnings.warn('Could not import cmbemu. Will use CAMB instead.')
     pars = camb.CAMBparams()
@@ -166,23 +172,21 @@ def likelihood(t, nn, mode):
     elif mode == 'lewis-eq8':
         # is this equation a posterior or a likelihood?
         L = (-1/2*(2*l_real + 1)*(np.log(cl) + p/cl - (2*l_real-1)/(2*l_real + 1)*np.log(p))).sum()
-    elif mode == 'core':
-        # from the core paper... there is a sign difference with lewis eq 15.
-        L = -0.5*((2*l_real + 1)*(np.log(p/cl) + p/cl) -1).sum()
-    elif mode == 'lewis-eq15':
-        # okay they say this is a likelihood but it is L(M|D) and
-        # not clear how they went from 8 to the single cl version of 15
-        L = -1/2*((2*l_real + 1)*(p/cl - np.log(p/cl) -1)).sum()
-    elif mode == 'invgamma':
-        # missing a change of varibales...
-        x = 2/(2*l_real+1)*cl/p
-        L = (invgamma(0.5*(2*l_real+1)).logpdf(x)).sum()
 
     return L, cl
 
 ns = [None, noise] # loop over this to do with and without noise
 MODE = 'scipy' # select the likelihood function
+PLANCK = True
 nsamples = 100 # number of samples to draw
+
+if PLANCK:
+    from anesthetic import read_chains
+    root = read_chains(root='/Users/harrybevins/Documents/Resources/data.1902.04029/runs_default/chains/planck')
+    root = root.compress(10000)
+
+    names = ['omegabh2', 'omegach2', 'theta', 'tau', 'ns', 'logA']
+    planck_chains = root[names].values
 
 ######### make a nice plot ############
 # plot the likelihoods 
@@ -196,14 +200,21 @@ u = np.random.uniform(0, 1, (nsamples, 6)) # for the priors
 fig, axes = plt.subplots(3, 2, figsize=(8, 8))
 for j in range(len(ns)):
     # get models and associated likelihoods
+    print('Making models and calculating likelihoods...')
     likes, cls = [], []
-    for i in range(nsamples):
-        theta = wide_prior(u[i])
+    for i in tqdm(range(nsamples)):
+        if PLANCK:
+            theta = planck_chains[i]
+        else:
+            theta = wide_prior(u[i])
         l, c = likelihood(theta, ns[j], MODE)
         likes.append(l)
         cls.append(c)
+    print('Models made...')
 
     likes = np.array(likes)
+    likes -= likes.max()
+    likes = np.exp(likes)
     mask = np.isfinite(likes)
     likes = likes[mask]
     cls = np.array(cls)[mask]
@@ -220,7 +231,7 @@ for j in range(len(ns)):
     axes[0, j].cla()
     [axes[0, j].plot(l_real, cls[i], c=plt.get_cmap('Blues')(likes[i]/likes.max())) 
         for i in range(len(cls))]
-    axes[0, j].plot(l_real, p, c='k', marker='.', ls='-', label='Planck')
+    axes[0, j].plot(l_real, p, c='r', marker='.', ls='-', label='Planck')
     axes[1, j].hist(likes, bins=20, histtype='step', color='k')
     axes[0, j].set_xlabel(r'$l$')
     axes[0, j].set_ylabel(r'$C_l$')
