@@ -3,7 +3,6 @@ from tensionnet.robs import run_poly
 from pypolychord.priors import UniformPrior, LogUniformPrior
 import camb
 import matplotlib.pyplot as plt
-from cmbemu.eval import evaluate
 from scipy.stats import chi2
 
 
@@ -36,7 +35,6 @@ p, _, l_real = load_planck()
 #power_cov = np.loadtxt('planck_mock_cov.txt')
 #inv_cov = np.linalg.inv(power_cov)
 
-predictor = evaluate(base_dir='cmbemu_model_wide/', l=l_real)
 
 def narrow_prior(cube):
     theta = np.zeros(len(cube))
@@ -78,23 +76,27 @@ ninst = np.sum(ninst, axis=1)
 noise = 1/ninst
 noise *= (l_real*(l_real+1)/(2*np.pi))
 
+pars = camb.CAMBparams()
+
 def likelihood(theta):
-    cl, _ = predictor(theta)
+    # camb stuff
+    pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
+                        tau=theta[3], cosmomc_theta=theta[2]/100,
+                        theta_H0_range=[5, 1000])
+    pars.InitPower.set_params(As=np.exp(theta[5])/10**10, ns=theta[4])
+    pars.set_for_lmax(2500, lens_potential_accuracy=0)
+    results = camb.get_background(pars) # computes evolution of background cosmology
+
+    cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:,0]
+    cl = np.interp(l_real, np.arange(len(cl)), cl)
 
     cl += noise
-    
+
     x = (2*l_real + 1)* p/cl
-    L = (-chi2(len(l_real) - 6).logpdf(x) - np.log((2*l_real + 1)/cl)).sum()
+    L = (-chi2(2*l_real + 1).logpdf(x) - np.log((2*l_real + 1)/cl)).sum()
 
     return L, []
     
-"""import time
-for i in range(5):
-    s = time.time()
-    print(likelihood(prior(np.random.uniform(0, 1, 6))))
-    print(time.time()-s)
-sys.exit(1)"""
-
 file = 'Planck_chains_wide/'
 RESUME = False
 if RESUME is False:
@@ -102,4 +104,4 @@ if RESUME is False:
     if os.path.exists(file):
         shutil.rmtree(file)
 
-run_poly(wide_prior, likelihood, file, RESUME=RESUME, nDims=6)
+run_poly(narrow_prior, likelihood, file, RESUME=RESUME, nDims=6)
