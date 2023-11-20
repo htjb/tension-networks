@@ -1,0 +1,4 @@
+numpy
+scipy
+git+https://github.com/PolyChord/PolyChordLite@master
+camb
