@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 from anesthetic import read_chains
 import pypolychord
 from pypolychord.settings import  PolyChordSettings
-from margarine.maf import MAF
 from anesthetic import make_2d_axes
 
 def run_poly(prior, likelihood, file, RESUME = False, nDims=4,
