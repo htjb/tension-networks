@@ -47,7 +47,7 @@ def signal(l, theta):
 
 from fgivenx import plot_contours, plot_lines
 fig, axes = plt.subplots(1)
-#samples = samples.compress()
+samples = samples.compress()
 print(samples)
 names = ['p'+str(i) for i in range(6)]
 samples = samples[names].values
