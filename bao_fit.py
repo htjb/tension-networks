@@ -67,7 +67,7 @@ def likelihood(theta):
         return 1e-300, []
 
 prior = wide_prior
-file = 'BAO_chains_wide_prior/'
+file = 'test/'
 RESUME = False
 if RESUME is False:
     import os, shutil

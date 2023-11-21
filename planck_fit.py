@@ -1,10 +1,16 @@
+#from mpi4py import MPI
 import numpy as np
-from tensionnet.robs import run_poly
+#from tensionnet.robs import run_poly
+from pypolychord.settings import PolyChordSettings
 from pypolychord.priors import UniformPrior, LogUniformPrior
 import camb
 import matplotlib.pyplot as plt
 from scipy.stats import chi2
+import pypolychord
 
+
+nDims = 6
+nDerived = 0
 
 def load_planck():
 
@@ -63,7 +69,6 @@ sigma_T = np.array([68.1, 42.6, 65.4]) # in muK arcmin
 theta_planck *= np.array([np.pi/60/180])
 sigma_T *= np.array([np.pi/60/180])
 
-from scipy.special import logsumexp
 
 nis = []
 for i in range(len(sigma_T)):
@@ -80,6 +85,7 @@ pars = camb.CAMBparams()
 
 def likelihood(theta):
     # camb stuff
+    print(theta)
     pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
                         tau=theta[3], cosmomc_theta=theta[2]/100,
                         theta_H0_range=[5, 1000])
@@ -96,12 +102,20 @@ def likelihood(theta):
     L = (-chi2(2*l_real + 1).logpdf(x) - np.log((2*l_real + 1)/cl)).sum()
 
     return L, []
-    
+
+
 file = 'Planck_chains_wide/'
 RESUME = False
-if RESUME is False:
-    import os, shutil
-    if os.path.exists(file):
-        shutil.rmtree(file)
+#if RESUME is False:
+#    import os, shutil
+#    if os.path.exists(file):
+#        shutil.rmtree(file)
 
-run_poly(narrow_prior, likelihood, file, RESUME=RESUME, nDims=6)
+#run_poly(narrow_prior, likelihood, file, RESUME=RESUME, nDims=6)
+settings = PolyChordSettings(nDims, 0) #settings is an object
+settings.read_resume = RESUME
+settings.base_dir = file + '/'
+
+output = pypolychord.run_polychord(likelihood, nDims, nDerived, settings, wide_prior)
+paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(nDims)]
+output.make_paramnames_files(paramnames)
