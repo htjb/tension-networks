@@ -98,8 +98,7 @@ def likelihood(theta):
 
     cl += noise
 
-    x = (2*l_real + 1)* p/cl
-    L = (-chi2(2*l_real + 1).logpdf(x) - np.log((2*l_real + 1)/cl)).sum()
+    L = (-1/2*(2*l_real + 1)*(np.log(cl) + p/cl - (2*l_real-1)/(2*l_real + 1)*np.log(p))).sum()
 
     return L, []
 
