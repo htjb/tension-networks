@@ -176,8 +176,8 @@ def likelihood(t, nn, mode):
     return L, cl
 
 ns = [None, noise] # loop over this to do with and without noise
-MODE = 'scipy' # select the likelihood function
-PLANCK = True
+MODE = 'lewis-eq8' # select the likelihood function
+PLANCK = False
 nsamples = 100 # number of samples to draw
 
 if PLANCK:
