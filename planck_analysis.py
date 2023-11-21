@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from cmbemu.eval import evaluate
+import camb
 from anesthetic import read_chains
 
 def load_planck():
@@ -29,12 +29,20 @@ def load_planck():
 
 p, _, l_real = load_planck()
 
-samples = read_chains('Planck_chains/test')
+samples = read_chains('Planck_chains_wide/test')
 
-predictor = evaluate(base_dir='cmbemu_model/', l=l_real)
+pars = camb.CAMBparams()
 
 def signal(l, theta):
-    cl, _ = predictor(theta)
+    pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
+                        tau=theta[3], cosmomc_theta=theta[2]/100,
+                        theta_H0_range=[5, 1000])
+    pars.InitPower.set_params(As=np.exp(theta[5])/10**10, ns=theta[4])
+    pars.set_for_lmax(2500, lens_potential_accuracy=0)
+    results = camb.get_background(pars) # computes evolution of background cosmology
+
+    cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:,0]
+    cl = np.interp(l_real, np.arange(len(cl)), cl)
     return cl
 
 from fgivenx import plot_contours, plot_lines
