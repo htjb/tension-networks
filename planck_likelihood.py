@@ -52,6 +52,8 @@ def load_planck():
 
 p, _, l_real = load_planck()
 
+p *= (2*np.pi)/(l_real*(l_real+1)) # convert to C_l
+
 ############ if cmbemu load the emulator ############
 # should be in the working directory
 #####################################################
@@ -110,7 +112,7 @@ for i in range(len(sigma_T)):
 ninst = np.array(nis).T
 ninst = np.sum(ninst, axis=1)
 noise = 1/ninst
-noise *= (l_real*(l_real+1)/(2*np.pi))
+#noise *= (l_real*(l_real+1)/(2*np.pi))
 
 
 ############# define the likelihood ##############
@@ -151,6 +153,7 @@ def likelihood(t, nn, mode):
         cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:,0]
         cl = np.interp(l_real, np.arange(len(cl)), cl)
     
+    cl *= (2*np.pi)/(l_real*(l_real+1)) # convert to C_l
     # if noise then add noise
     if nn is not None:
         cl += nn
@@ -173,7 +176,7 @@ def likelihood(t, nn, mode):
         # is this equation a posterior or a likelihood?
         L = (-1/2*(2*l_real + 1)*(np.log(cl) + p/cl - (2*l_real-1)/(2*l_real + 1)*np.log(p))).sum()
 
-    return L, cl
+    return L, cl*(l_real*(l_real+1)/(2*np.pi))
 
 ns = [None, noise] # loop over this to do with and without noise
 MODE = 'lewis-eq8' # select the likelihood function
@@ -231,7 +234,8 @@ for j in range(len(ns)):
     axes[0, j].cla()
     [axes[0, j].plot(l_real, cls[i], c=plt.get_cmap('Blues')(likes[i]/likes.max())) 
         for i in range(len(cls))]
-    axes[0, j].plot(l_real, p, c='r', marker='.', ls='-', label='Planck')
+    axes[0, j].plot(l_real, p*(l_real*(l_real+1))/(2*np.pi), 
+                    c='r', marker='.', ls='-', label='Planck')
     axes[1, j].hist(likes, bins=20, histtype='step', color='k')
     axes[0, j].set_xlabel(r'$l$')
     axes[0, j].set_ylabel(r'$C_l$')
