@@ -37,6 +37,7 @@ def load_planck():
     return p, ps, l_real
 
 p, _, l_real = load_planck()
+p *= (2*np.pi)/(l_real*(l_real+1)) # convert to C_l
 
 #power_cov = np.loadtxt('planck_mock_cov.txt')
 #inv_cov = np.linalg.inv(power_cov)
@@ -79,7 +80,7 @@ for i in range(len(sigma_T)):
 ninst = np.array(nis).T
 ninst = np.sum(ninst, axis=1)
 noise = 1/ninst
-noise *= (l_real*(l_real+1)/(2*np.pi))
+#noise *= (l_real*(l_real+1)/(2*np.pi))
 
 pars = camb.CAMBparams()
 
@@ -96,6 +97,8 @@ def likelihood(theta):
     cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:,0]
     cl = np.interp(l_real, np.arange(len(cl)), cl)
 
+    cl *= (2*np.pi)/(l_real*(l_real+1)) # convert to C_l
+    
     cl += noise
 
     L = (-1/2*(2*l_real + 1)*(np.log(cl) + p/cl - (2*l_real-1)/(2*l_real + 1)*np.log(p))).sum()
