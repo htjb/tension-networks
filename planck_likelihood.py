@@ -171,7 +171,13 @@ def likelihood(t, nn, mode):
         # chi2*change of variables
         # seems to give higher likelihood to smaller cl
         x = (2*l_real + 1)* p/cl
-        L = (-chi2(2*l_real+1).logpdf(x) - np.log((2*l_real + 1)/cl)).sum()
+        L = -0.5*(chi2(2*l_real+1).logpdf(x) 
+                  # additional terms that come out of chi2 on x
+                  # and need to be removed to make this like lewis
+                  + 2*np.log(cl) 
+                  + (2*l_real-1)*np.log(2*l_real + 1)
+                  # the change of variables P(cl) = P(x)*dx/dcl
+                  - (2*l_real+1)*np.log(cl)).sum()
     elif mode == 'lewis-eq8':
         # is this equation a posterior or a likelihood?
         L = (-1/2*(2*l_real + 1)*(np.log(cl) + p/cl - (2*l_real-1)/(2*l_real + 1)*np.log(p))).sum()
@@ -179,9 +185,9 @@ def likelihood(t, nn, mode):
     return L, cl*(l_real*(l_real+1)/(2*np.pi))
 
 ns = [None, noise] # loop over this to do with and without noise
-MODE = 'lewis-eq8' # select the likelihood function
+modes = ['lewis-eq8', 'scipy'] # select the likelihood function
 PLANCK = False
-nsamples = 100 # number of samples to draw
+nsamples = 300 # number of samples to draw
 
 if PLANCK:
     from anesthetic import read_chains
@@ -200,55 +206,65 @@ if PLANCK:
 # will do noise and no noise case
 #######################################
 u = np.random.uniform(0, 1, (nsamples, 6)) # for the priors
-fig, axes = plt.subplots(3, 2, figsize=(8, 8))
-for j in range(len(ns)):
-    # get models and associated likelihoods
-    print('Making models and calculating likelihoods...')
-    likes, cls = [], []
-    for i in tqdm(range(nsamples)):
-        if PLANCK:
-            theta = planck_chains[i]
+fig, axes = plt.subplots(1, 4, figsize=(15, 3), sharey=True)
+for f in range(len(modes)):
+    for j in range(len(ns)):
+        # get models and associated likelihoods
+        print('Making models and calculating likelihoods...')
+        likes, cls = [], []
+        for i in tqdm(range(nsamples)):
+            if PLANCK:
+                theta = planck_chains[i]
+            else:
+                theta = wide_prior(u[i])
+            l, c = likelihood(theta, ns[j], modes[f])
+            likes.append(l)
+            cls.append(c)
+        print('Models made...')
+
+        likes = np.array(likes)
+        likes -= likes.max()
+        likes = np.exp(likes)
+        mask = np.isfinite(likes)
+        likes = likes[mask]
+        cls = np.array(cls)[mask]
+
+        # order
+        idx = np.argsort(likes)#[::-1]
+        cls = cls[idx]
+        likes = likes[idx]
+        if j == 0:
+            color_likes = likes.copy()
+
+        if f == 1:
+            idx = j+2
         else:
-            theta = wide_prior(u[i])
-        l, c = likelihood(theta, ns[j], MODE)
-        likes.append(l)
-        cls.append(c)
-    print('Models made...')
-
-    likes = np.array(likes)
-    likes -= likes.max()
-    likes = np.exp(likes)
-    mask = np.isfinite(likes)
-    likes = likes[mask]
-    cls = np.array(cls)[mask]
-
-    # order
-    idx = np.argsort(likes)#[::-1]
-    cls = cls[idx]
-    likes = likes[idx]
-    if j == 0:
-        color_likes = likes.copy()
-
-    cb = axes[0, j].scatter(likes, likes, c=likes, cmap='Blues')
-    plt.colorbar(cb, label=r'$\log \mathcal{L}$')
-    axes[0, j].cla()
-    [axes[0, j].plot(l_real, cls[i], c=plt.get_cmap('Blues')(likes[i]/likes.max())) 
-        for i in range(len(cls))]
-    axes[0, j].plot(l_real, p*(l_real*(l_real+1))/(2*np.pi), 
-                    c='r', marker='.', ls='-', label='Planck')
-    axes[1, j].hist(likes, bins=20, histtype='step', color='k')
-    axes[0, j].set_xlabel(r'$l$')
-    axes[0, j].set_ylabel(r'$C_l$')
-    axes[1, j].set_xlabel(r'$\log \mathcal{L}$')
-    axes[1, j].set_ylabel(r'$N$')
-    if ns[j] is not None:
-        axes[2, j].plot(l_real, ns[j], c='k')
-        axes[2, j].set_xlabel(r'$l$')
-        axes[2, j].set_ylabel(r'$N_l$')
-        axes[2, j].set_yscale('log')
-        axes[2, j].set_xscale('log')
-    else:
-        axes[2, j].set_axis_off()
+            idx = j
+        cb = axes[idx].scatter(likes, likes, c=likes, cmap='Blues')
+        plt.colorbar(cb, label=r'$\log \mathcal{L}$')
+        axes[idx].cla()
+        [axes[idx].plot(l_real, cls[i], c=plt.get_cmap('Blues')(likes[i]/likes.max())) 
+            for i in range(len(cls))]
+        axes[idx].plot(l_real, p*(l_real*(l_real+1))/(2*np.pi), 
+                        c='r', marker='.', ls='-', label='Planck')
+        #axes[1, idx].hist(likes, bins=20, histtype='step', color='k')
+        axes[idx].set_xlabel(r'$l$')
+        axes[idx].set_ylabel(r'$C_l$')
+        #axes[1, idx].set_xlabel(r'$\log \mathcal{L}$')
+        #axes[1, idx].set_ylabel(r'$N$')
+        """if ns[j] is not None:
+            axes[2, idx].plot(l_real, ns[j], c='k')
+            axes[2, idx].set_xlabel(r'$l$')
+            axes[2, idx].set_ylabel(r'$N_l$')
+            axes[2, idx].set_yscale('log')
+            axes[2, idx].set_xscale('log')
+        else:
+            axes[2, idx].set_axis_off()"""
+axes[0].set_title('No noise/lewis-eq8')
+axes[1].set_title('Noise/lewis-eq8')
+axes[2].set_title('No noise/scipy')
+axes[3].set_title('Noise/scipy')
+#axes[4].plot(l_real, ns[1], c='k')
 plt.tight_layout()
-plt.savefig('planck_likelihood_analytic_' + MODE +'.png', dpi=300)
+plt.savefig('planck_likelihood_analytic.png', dpi=300)
 plt.show()
