@@ -29,9 +29,27 @@ def load_planck():
 
 p, _, l_real = load_planck()
 
-samples = read_chains('Planck_chains_wide/test')
+samples = read_chains('Planck_chains_wide_scipy_test_nlive=50/test')
 
 pars = camb.CAMBparams()
+
+theta_planck = np.array([10, 7.1, 5.0]) # in arcmin
+sigma_T = np.array([68.1, 42.6, 65.4]) # in muK arcmin
+
+theta_planck *= np.array([np.pi/60/180])
+sigma_T *= np.array([np.pi/60/180])
+
+
+nis = []
+for i in range(len(sigma_T)):
+    # from montepython code https://github.com/brinckmann/montepython_public/blob/3.6/montepython/likelihood_class.py#L1096
+    ninst = 1/sigma_T[i]**2 + \
+        np.exp(-l_real*(l_real+1)*theta_planck[i]**2/(8*np.log(2))) #one over ninst
+    nis.append(ninst)
+ninst = np.array(nis).T
+ninst = np.sum(ninst, axis=1)
+noise = 1/ninst
+noise *= (l_real*(l_real+1)/(2*np.pi))
 
 def signal(l, theta):
     pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
@@ -43,7 +61,7 @@ def signal(l, theta):
 
     cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:,0]
     cl = np.interp(l_real, np.arange(len(cl)), cl)
-    return cl
+    return cl + noise
 
 from fgivenx import plot_contours, plot_lines
 fig, axes = plt.subplots(1)
