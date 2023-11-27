@@ -171,15 +171,7 @@ def likelihood(t, nn, mode):
         # chi2*change of variables
         # seems to give higher likelihood to smaller cl
         x = (2*l_real + 1)* p/cl
-        L = (chi2(2*l_real+1).logpdf(x) 
-                  # additional terms that come out of chi2 on x
-                  # and need to be removed to make this like lewis
-                  + np.log(cl) 
-                  + (2*l_real-1)*np.log(2*l_real + 1)
-                  # the change of variables P(cl) = P(x)*dx/dcl
-                  + np.log(2*l_real+1) 
-                  - np.log(cl)
-                  ).sum()
+        L = (chi2(2*l_real+1).logpdf(x)).sum()
     elif mode == 'lewis-eq8':
         # is this equation a posterior or a likelihood?
         L = (-1/2*(2*l_real + 1)*(np.log(cl) + p/cl - (2*l_real-1)/(2*l_real + 1)*np.log(p))).sum()
