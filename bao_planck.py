@@ -1,10 +1,11 @@
 import numpy as np
 from tensionnet.robs import run_poly
 from pypolychord.priors import UniformPrior, LogUniformPrior
+from pypolychord.settings import PolyChordSettings
+import pypolychord
 import camb
 import matplotlib.pyplot as plt
-from cmbemu.eval import evaluate
-
+from scipy.stats import chi2
 
 def load_planck():
 
@@ -31,9 +32,6 @@ def load_planck():
     return p, ps, l_real
 
 p, _, l_real = load_planck()
-power_cov = np.loadtxt('planck_mock_cov.txt')
-inv_cov = np.linalg.inv(power_cov)
-predictor = evaluate(base_dir='cmbemu_model/', l=l_real)
 
 pars = camb.CAMBparams()
 
@@ -44,17 +42,8 @@ d16 = np.loadtxt('bao_data/sdss_DR16_LRG_BAO_DMDH.dat',usecols=[0, 1])
 d12cov = np.loadtxt('bao_data/sdss_DR12_LRG_BAO_DMDH_covtot.txt')
 d16cov = np.loadtxt('bao_data/sdss_DR16_LRG_BAO_DMDH_covtot.txt')
 
-def narrow_prior(cube):
-    theta = np.zeros(len(cube))
-    theta[0] = UniformPrior(0.0211, 0.0235)(cube[0]) # omegabh2
-    theta[1] = UniformPrior(0.108, 0.131)(cube[1]) # omegach2
-    theta[2] = UniformPrior(1.038, 1.044)(cube[2]) # 100*thetaMC
-    theta[3] = UniformPrior(0.01, 0.16)(cube[3]) # tau
-    theta[4] = UniformPrior(0.938, 1)(cube[4]) # ns
-    theta[5] = UniformPrior(2.95, 3.25)(cube[5]) # log(10^10*As)
-    return theta
 
-def wide_prior(cube):
+def prior(cube):
     theta = np.zeros(len(cube))
     theta[0] = UniformPrior(0.01, 0.085)(cube[0]) # omegabh2
     theta[1] = UniformPrior(0.08, 0.21)(cube[1]) # omegach2
@@ -64,40 +53,72 @@ def wide_prior(cube):
     theta[5] = UniformPrior(2.6, 3.8)(cube[5]) # log(10^10*As)
     return theta
 
+# from montepython https://github.com/brinckmann/montepython_public/blob/3.6/montepython/likelihoods/fake_planck_bluebook/fake_planck_bluebook.data
+theta_planck = np.array([10, 7.1, 5.0]) # in arcmin
+sigma_T = np.array([68.1, 42.6, 65.4]) # in muK arcmin
+
+theta_planck *= np.array([np.pi/60/180])
+sigma_T *= np.array([np.pi/60/180])
+
+
+nis = []
+for i in range(len(sigma_T)):
+    # from montepython code https://github.com/brinckmann/montepython_public/blob/3.6/montepython/likelihood_class.py#L1096
+    ninst = 1/sigma_T[i]**2 + \
+        np.exp(-l_real*(l_real+1)*theta_planck[i]**2/(8*np.log(2))) #one over ninst
+    nis.append(ninst)
+ninst = np.array(nis).T
+ninst = np.sum(ninst, axis=1)
+noise = 1/ninst
+#noise *= (l_real*(l_real+1)/(2*np.pi))
+
 def joint_likelihood(theta):
-    try:
-        cl, _ = predictor(theta)
-        Lplanck = -0.5 * np.einsum('i,ij,j', p - cl, inv_cov, p - cl)
 
-        pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
-                            tau=theta[3], cosmomc_theta=theta[2]/100,
-                            theta_H0_range=[5, 1000])
-        pars.InitPower.set_params(As=np.exp(theta[5])/10**10, ns=theta[4])
-        pars.set_for_lmax(2500, lens_potential_accuracy=0)
-        results = camb.get_background(pars) # computes evolution of background cosmology
+    pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
+                        tau=theta[3], cosmomc_theta=theta[2]/100,
+                        theta_H0_range=[5, 1000])
+    pars.InitPower.set_params(As=np.exp(theta[5])/10**10, ns=theta[4])
+    pars.set_for_lmax(2500, lens_potential_accuracy=0)
+    results = camb.get_background(pars) # computes evolution of background cosmology
 
-        da = (1+z) * results.angular_diameter_distance(z)
-        dh = 3e5/results.hubble_parameter(z) # 1/Mpc
-        rs = results.get_derived_params()['rdrag'] # Mpc
+    da = (1+z) * results.angular_diameter_distance(z)
+    dh = 3e5/results.hubble_parameter(z) # 1/Mpc
+    rs = results.get_derived_params()['rdrag'] # Mpc
 
-        datad12 = [da[0]/rs, dh[0]/rs, da[1]/rs, dh[1]/rs]
-        datad16 = [da[2]/rs, dh[2]/rs]
+    datad12 = [da[0]/rs, dh[0]/rs, da[1]/rs, dh[1]/rs]
+    datad16 = [da[2]/rs, dh[2]/rs]
 
-        Lbaod12 = -0.5*(d12[:, 1] - datad12).T @ np.linalg.inv(d12cov) @ (d12[:, 1] - datad12)
-        Lbaod16 = -0.5*(d16[:, 1] - datad16).T @ np.linalg.inv(d16cov) @ (d16[:, 1] - datad16)
+    Lbaod12 = -0.5*(d12[:, 1] - datad12).T @ np.linalg.inv(d12cov) @ (d12[:, 1] - datad12)
+    Lbaod16 = -0.5*(d16[:, 1] - datad16).T @ np.linalg.inv(d16cov) @ (d16[:, 1] - datad16)
 
-        return Lplanck+Lbaod12+Lbaod16, []
-    except:
-        return 1e-300, []
+    cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:,0]
+    cl = np.interp(l_real, np.arange(len(cl)), cl)
+
+    cl *= (2*np.pi)/(l_real*(l_real+1)) # convert to C_l
+    
+    cl += noise
+
+    #L = (-1/2*(2*l_real + 1)*(np.log(cl) + p/cl - (2*l_real-1)/(2*l_real + 1)*np.log(p))).sum()
+
+    x = (2*l_real + 1)* p/cl
+    Lplanck = (chi2(2*l_real+1).logpdf(x)).sum()
+
+    return Lplanck+Lbaod12+Lbaod16, []
     
 file = 'Planck_bao_chains_wide/'
-RESUME = True
-if RESUME is False:
-    import os, shutil
-    if os.path.exists(file):
-        shutil.rmtree(file)
+RESUME = False
+nDims=6
 
-run_poly(wide_prior, joint_likelihood, file, RESUME=RESUME, nDims=6)
+#run_poly(prior, joint_likelihood, file, RESUME=RESUME, nDims=6)
+settings = PolyChordSettings(nDims, 0) #settings is an object
+settings.read_resume = RESUME
+settings.base_dir = file + '/'
+#settings.nlive = 25
+#settings.num_repeats = 2
+
+output = pypolychord.run_polychord(joint_likelihood, nDims, 0, settings, prior)
+paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(nDims)]
+output.make_paramnames_files(paramnames)
 
 from anesthetic import read_chains
 
