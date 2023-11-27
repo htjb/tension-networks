@@ -86,7 +86,7 @@ pars = camb.CAMBparams()
 
 def likelihood(theta):
     # camb stuff
-    print(theta)
+    #print(theta)
     pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
                         tau=theta[3], cosmomc_theta=theta[2]/100,
                         theta_H0_range=[5, 1000])
@@ -101,12 +101,15 @@ def likelihood(theta):
     
     cl += noise
 
-    L = (-1/2*(2*l_real + 1)*(np.log(cl) + p/cl - (2*l_real-1)/(2*l_real + 1)*np.log(p))).sum()
+    #L = (-1/2*(2*l_real + 1)*(np.log(cl) + p/cl - (2*l_real-1)/(2*l_real + 1)*np.log(p))).sum()
+
+    x = (2*l_real + 1)* p/cl
+    L = (chi2(2*l_real+1).logpdf(x)).sum()
 
     return L, []
 
 
-file = 'Planck_chains_wide/'
+file = 'Planck_chains_wide_scipy_test_nlive=50/'
 RESUME = False
 #if RESUME is False:
 #    import os, shutil
@@ -117,6 +120,8 @@ RESUME = False
 settings = PolyChordSettings(nDims, 0) #settings is an object
 settings.read_resume = RESUME
 settings.base_dir = file + '/'
+settings.nlive = 25
+settings.num_repeats = 2
 
 output = pypolychord.run_polychord(likelihood, nDims, nDerived, settings, wide_prior)
 paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(nDims)]
