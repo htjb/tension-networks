@@ -109,7 +109,7 @@ def likelihood(theta):
     return L, []
 
 
-file = 'Planck_chains_wide_scipy_test_nlive=50/'
+file = 'Planck_chains_wide/'
 RESUME = False
 #if RESUME is False:
 #    import os, shutil
@@ -120,8 +120,8 @@ RESUME = False
 settings = PolyChordSettings(nDims, 0) #settings is an object
 settings.read_resume = RESUME
 settings.base_dir = file + '/'
-settings.nlive = 25
-settings.num_repeats = 2
+#settings.nlive = 25
+#settings.num_repeats = 2
 
 output = pypolychord.run_polychord(likelihood, nDims, nDerived, settings, wide_prior)
 paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(nDims)]
