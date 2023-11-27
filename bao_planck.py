@@ -1,5 +1,4 @@
 import numpy as np
-from tensionnet.robs import run_poly
 from pypolychord.priors import UniformPrior, LogUniformPrior
 from pypolychord.settings import PolyChordSettings
 import pypolychord
