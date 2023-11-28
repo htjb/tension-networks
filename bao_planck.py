@@ -103,7 +103,7 @@ def joint_likelihood(theta):
     x = (2*l_real + 1)* p/cl
     Lplanck = (chi2(2*l_real+1).logpdf(x)).sum()
 
-    print(Lplanck, Lbaod12, Lbaod16)
+    #print(Lplanck, Lbaod12, Lbaod16)
 
     return Lplanck+Lbaod12+Lbaod16, []
     
