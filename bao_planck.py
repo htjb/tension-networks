@@ -31,6 +31,7 @@ def load_planck():
     return p, ps, l_real
 
 p, _, l_real = load_planck()
+p *= (2*np.pi)/(l_real*(l_real+1))
 
 pars = camb.CAMBparams()
 
@@ -101,6 +102,8 @@ def joint_likelihood(theta):
 
     x = (2*l_real + 1)* p/cl
     Lplanck = (chi2(2*l_real+1).logpdf(x)).sum()
+
+    print(Lplanck, Lbaod12, Lbaod16)
 
     return Lplanck+Lbaod12+Lbaod16, []
     
