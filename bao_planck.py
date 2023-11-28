@@ -105,7 +105,7 @@ def joint_likelihood(theta):
     return Lplanck+Lbaod12+Lbaod16, []
     
 file = 'Planck_bao_chains_wide/'
-RESUME = False
+RESUME = True
 nDims=6
 
 #run_poly(prior, joint_likelihood, file, RESUME=RESUME, nDims=6)
