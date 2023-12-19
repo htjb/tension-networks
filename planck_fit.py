@@ -39,21 +39,7 @@ def load_planck():
 p, _, l_real = load_planck()
 p *= (2*np.pi)/(l_real*(l_real+1)) # convert to C_l
 
-#power_cov = np.loadtxt('planck_mock_cov.txt')
-#inv_cov = np.linalg.inv(power_cov)
-
-
-def narrow_prior(cube):
-    theta = np.zeros(len(cube))
-    theta[0] = UniformPrior(0.0211, 0.0235)(cube[0]) # omegabh2
-    theta[1] = UniformPrior(0.108, 0.131)(cube[1]) # omegach2
-    theta[2] = UniformPrior(1.038, 1.044)(cube[2]) # 100*thetaMC
-    theta[3] = UniformPrior(0.01, 0.16)(cube[3]) # tau
-    theta[4] = UniformPrior(0.938, 1)(cube[4]) # ns
-    theta[5] = UniformPrior(2.95, 3.25)(cube[5]) # log(10^10*As)
-    return theta
-
-def wide_prior(cube):
+def prior(cube):
     theta = np.zeros(len(cube))
     theta[0] = UniformPrior(0.01, 0.085)(cube[0]) # omegabh2
     theta[1] = UniformPrior(0.08, 0.21)(cube[1]) # omegach2
@@ -80,7 +66,6 @@ for i in range(len(sigma_T)):
 ninst = np.array(nis).T
 ninst = np.sum(ninst, axis=1)
 noise = 1/ninst
-#noise *= (l_real*(l_real+1)/(2*np.pi))
 
 pars = camb.CAMBparams()
 
@@ -100,29 +85,40 @@ def likelihood(theta):
     cl *= (2*np.pi)/(l_real*(l_real+1)) # convert to C_l
     
     cl += noise
-
-    #L = (-1/2*(2*l_real + 1)*(np.log(cl) + p/cl - (2*l_real-1)/(2*l_real + 1)*np.log(p))).sum()
-
+    
     x = (2*l_real + 1)* p/cl
     L = (chi2(2*l_real+1).logpdf(x)).sum()
+    plt.plot(l_real, A*cl, label='{:.2f}'.format(L), ls='--')
 
     return L, []
 
+A = (l_real*(l_real+1))/(2*np.pi)
 
-file = 'Planck_chains_wide/'
+print(likelihood([0.022, 0.12, 1.04, 0.06, 0.96, 3.0]))
+print(likelihood([0.01146527, 0.09108639, 1.08655005, 0.1493919,  1.1031649,  3.30260607]))
+"""for i in range(100):
+    r = np.random.rand(6)
+    print(likelihood(prior(r)), prior(r))"""
+plt.plot(l_real, A*p)
+plt.plot(l_real, A*noise)
+plt.xlabel(r'$l$')
+plt.ylabel(r'$l(l+1)C_l/2\pi$')
+plt.legend()
+plt.title('Blue = Planck Best Fit\n Orange = Random Higher Likelihood')
+plt.tight_layout()
+plt.savefig('planck_bad_likelihood.png')
+plt.show()
+sys.exit(1)
+
+file = 'Planck_chains_wide_test/'
 RESUME = False
-#if RESUME is False:
-#    import os, shutil
-#    if os.path.exists(file):
-#        shutil.rmtree(file)
 
-#run_poly(narrow_prior, likelihood, file, RESUME=RESUME, nDims=6)
 settings = PolyChordSettings(nDims, 0) #settings is an object
 settings.read_resume = RESUME
 settings.base_dir = file + '/'
-#settings.nlive = 25
-#settings.num_repeats = 2
+settings.nlive = 10
+settings.num_repeats = 2
 
-output = pypolychord.run_polychord(likelihood, nDims, nDerived, settings, wide_prior)
+output = pypolychord.run_polychord(likelihood, nDims, nDerived, settings, prior)
 paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(nDims)]
 output.make_paramnames_files(paramnames)

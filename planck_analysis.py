@@ -29,7 +29,7 @@ def load_planck():
 
 p, _, l_real = load_planck()
 
-samples = read_chains('Planck_chains_wide_scipy_test_nlive=50/test')
+samples = read_chains('Planck_chains_wide_test/test')
 
 pars = camb.CAMBparams()
 
@@ -66,15 +66,16 @@ def signal(l, theta):
 from fgivenx import plot_contours, plot_lines
 fig, axes = plt.subplots(1)
 samples = samples.compress()
-print(samples)
-names = ['p'+str(i) for i in range(6)]
+
+names = ['p' + str(i) for i in range(6)]
 samples = samples[names].values
 #cbar = plot_contours(bao, z, samples, axes)
 plot_lines(signal, l_real, samples, axes, color='r')
 plt.plot(l_real, p, c='k', label='Planck')
+plt.plot(l_real, noise, c='b', label='noise')
 plt.xlabel(r'$l$')
 plt.ylabel(r'$C_l$')
 plt.legend()
 plt.tight_layout()
-plt.savefig('planck_fit.png', dpi=300)
+plt.savefig('planck_fit_test.png', dpi=300)
 plt.show()
