@@ -29,7 +29,7 @@ def load_planck():
 
 p, _, l_real = load_planck()
 
-samples = read_chains('Planck_chains_wide_test/test')
+samples = read_chains('Planck_chains_wide_test_with_variance_term/test')
 
 pars = camb.CAMBparams()
 
@@ -77,5 +77,5 @@ plt.xlabel(r'$l$')
 plt.ylabel(r'$C_l$')
 plt.legend()
 plt.tight_layout()
-plt.savefig('planck_fit_test.png', dpi=300)
+plt.savefig('planck_fit_test_with_variance_term.png', dpi=300)
 plt.show()

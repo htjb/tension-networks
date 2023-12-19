@@ -84,21 +84,18 @@ def likelihood(theta):
 
     cl *= (2*np.pi)/(l_real*(l_real+1)) # convert to C_l
     
-    cl += noise
+    cl += noise*2/(l_real+1)
     
     x = (2*l_real + 1)* p/cl
     L = (chi2(2*l_real+1).logpdf(x)).sum()
-    plt.plot(l_real, A*cl, label='{:.2f}'.format(L), ls='--')
+    #plt.plot(l_real, A*cl, label='{:.2f}'.format(L), ls='--')
 
     return L, []
 
 A = (l_real*(l_real+1))/(2*np.pi)
 
-print(likelihood([0.022, 0.12, 1.04, 0.06, 0.96, 3.0]))
+"""print(likelihood([0.022, 0.12, 1.04, 0.06, 0.96, 3.0]))
 print(likelihood([0.01146527, 0.09108639, 1.08655005, 0.1493919,  1.1031649,  3.30260607]))
-"""for i in range(100):
-    r = np.random.rand(6)
-    print(likelihood(prior(r)), prior(r))"""
 plt.plot(l_real, A*p)
 plt.plot(l_real, A*noise)
 plt.xlabel(r'$l$')
@@ -106,11 +103,11 @@ plt.ylabel(r'$l(l+1)C_l/2\pi$')
 plt.legend()
 plt.title('Blue = Planck Best Fit\n Orange = Random Higher Likelihood')
 plt.tight_layout()
-plt.savefig('planck_bad_likelihood.png')
+plt.savefig('planck_bad_likelihood_with_cosmic_vairance_term.png')
 plt.show()
-sys.exit(1)
+sys.exit(1)"""
 
-file = 'Planck_chains_wide_test/'
+file = 'Planck_chains_wide_test_with_variance_term/'
 RESUME = False
 
 settings = PolyChordSettings(nDims, 0) #settings is an object
