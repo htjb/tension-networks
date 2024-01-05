@@ -66,7 +66,7 @@ for i in range(len(sigma_T)):
 ninst = np.array(nis).T
 ninst = np.sum(ninst, axis=1)
 noise = 1/ninst
-
+noise *= (2*np.pi)/(l_real*(l_real+1))
 """plt.plot(l_real, noise*(l_real*(l_real+1))/(2*np.pi))
 plt.plot(l_real, p*(l_real*(l_real+1))/(2*np.pi))
 plt.xscale('log')
@@ -91,7 +91,7 @@ def likelihood(theta):
 
     cl *= (2*np.pi)/(l_real*(l_real+1)) # convert to C_l
     
-    #cl += noise
+    cl += noise
     
     x = (2*l_real + 1)* p/cl
     L = -0.5*(-2*chi2(2*l_real+1).logpdf(x) 

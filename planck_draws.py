@@ -93,6 +93,7 @@ for i in range(len(sigma_T)):
 ninst = np.array(nis).T
 ninst = np.sum(ninst, axis=1)
 noise = 1/ninst
+ninst *= (2*np.pi)/(l_real*(l_real+1))
 # noise is in the cl space
 
 #mpn = np.loadtxt('montypython_noise.txt')

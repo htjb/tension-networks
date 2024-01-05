@@ -49,7 +49,7 @@ for i in range(len(sigma_T)):
 ninst = np.array(nis).T
 ninst = np.sum(ninst, axis=1)
 noise = 1/ninst
-noise *= (l_real*(l_real+1)/(2*np.pi))
+noise *= (2*np.pi)/(l_real*(l_real+1))
 
 def signal(l, theta):
     pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
