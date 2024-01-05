@@ -106,13 +106,19 @@ sigma_T *= np.array([np.pi/60/180])
 nis = []
 for i in range(len(sigma_T)):
     # from montepython code https://github.com/brinckmann/montepython_public/blob/3.6/montepython/likelihood_class.py#L1096
-    ninst = 1/sigma_T[i]**2 + \
+    ninst = 1/sigma_T[i]**2* \
         np.exp(-l_real*(l_real+1)*theta_planck[i]**2/(8*np.log(2))) #one over ninst
     nis.append(ninst)
 ninst = np.array(nis).T
 ninst = np.sum(ninst, axis=1)
 noise = 1/ninst
 #noise *= (l_real*(l_real+1)/(2*np.pi))
+
+"""plt.plot(l_real, noise*(l_real*(l_real+1)/(2*np.pi)))
+plt.yscale('log')
+plt.xscale('log')
+plt.show()
+sys.exit(1)"""
 
 
 ############# define the likelihood ##############
@@ -143,10 +149,10 @@ def likelihood(t, nn, mode):
         cl, _ = predictor(t)
     else:
         # camb stuff
-        pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
-                            tau=theta[3], cosmomc_theta=theta[2]/100,
+        pars.set_cosmology(ombh2=t[0], omch2=t[1],
+                            tau=t[3], cosmomc_theta=t[2]/100,
                             theta_H0_range=[5, 1000])
-        pars.InitPower.set_params(As=np.exp(theta[5])/10**10, ns=theta[4])
+        pars.InitPower.set_params(As=np.exp(t[5])/10**10, ns=t[4])
         pars.set_for_lmax(2500, lens_potential_accuracy=0)
         results = camb.get_background(pars) # computes evolution of background cosmology
 
@@ -171,17 +177,17 @@ def likelihood(t, nn, mode):
         # chi2*change of variables
         # seems to give higher likelihood to smaller cl
         x = (2*l_real + 1)* p/cl
-        L = (chi2(2*l_real+1).logpdf(x)).sum()
+        L = -0.5*(-2*chi2(2*l_real+1).logpdf(x) - 2*np.log((2*l_real+1)/cl)).sum()
     elif mode == 'lewis-eq8':
         # is this equation a posterior or a likelihood?
         L = (-1/2*(2*l_real + 1)*(np.log(cl) + p/cl - (2*l_real-1)/(2*l_real + 1)*np.log(p))).sum()
-
+    
     return L, cl*(l_real*(l_real+1)/(2*np.pi))
 
 ns = [None, noise] # loop over this to do with and without noise
 modes = ['lewis-eq8', 'scipy'] # select the likelihood function
 PLANCK = False
-nsamples = 50 # number of samples to draw
+nsamples = 10 # number of samples to draw
 
 if PLANCK:
     from anesthetic import read_chains
@@ -217,6 +223,7 @@ for f in range(len(modes)):
         print('Models made...')
 
         likes = np.array(likes)
+        #print(modes[f] + ': ' + str(likes.max()))
         likes -= likes.max()
         likes = np.exp(likes)
         mask = np.isfinite(likes)

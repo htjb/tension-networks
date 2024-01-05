@@ -29,7 +29,7 @@ def load_planck():
 
 p, _, l_real = load_planck()
 
-samples = read_chains('Planck_chains_wide_test_with_variance_term/test')
+samples = read_chains('Planck_chains_testing/test')
 
 pars = camb.CAMBparams()
 
@@ -43,7 +43,7 @@ sigma_T *= np.array([np.pi/60/180])
 nis = []
 for i in range(len(sigma_T)):
     # from montepython code https://github.com/brinckmann/montepython_public/blob/3.6/montepython/likelihood_class.py#L1096
-    ninst = 1/sigma_T[i]**2 + \
+    ninst = 1/sigma_T[i]**2 *\
         np.exp(-l_real*(l_real+1)*theta_planck[i]**2/(8*np.log(2))) #one over ninst
     nis.append(ninst)
 ninst = np.array(nis).T

@@ -60,12 +60,19 @@ sigma_T *= np.array([np.pi/60/180])
 nis = []
 for i in range(len(sigma_T)):
     # from montepython code https://github.com/brinckmann/montepython_public/blob/3.6/montepython/likelihood_class.py#L1096
-    ninst = 1/sigma_T[i]**2 + \
-        np.exp(-l_real*(l_real+1)*theta_planck[i]**2/(8*np.log(2))) #one over ninst
-    nis.append(ninst)
+    ninst = sigma_T[i]**2 * \
+        np.exp(l_real*(l_real+1)*theta_planck[i]**2/(8*np.log(2))) #one over ninst
+    nis.append(1/ninst)
 ninst = np.array(nis).T
 ninst = np.sum(ninst, axis=1)
 noise = 1/ninst
+
+"""plt.plot(l_real, noise*(l_real*(l_real+1))/(2*np.pi))
+plt.plot(l_real, p*(l_real*(l_real+1))/(2*np.pi))
+plt.xscale('log')
+plt.yscale('log')
+plt.show()
+sys.exit(1)"""
 
 pars = camb.CAMBparams()
 
@@ -84,17 +91,18 @@ def likelihood(theta):
 
     cl *= (2*np.pi)/(l_real*(l_real+1)) # convert to C_l
     
-    cl += noise*2/(l_real+1)
+    #cl += noise
     
     x = (2*l_real + 1)* p/cl
-    L = (chi2(2*l_real+1).logpdf(x)).sum()
-    #plt.plot(l_real, A*cl, label='{:.2f}'.format(L), ls='--')
+    L = -0.5*(-2*chi2(2*l_real+1).logpdf(x) 
+              - 2*np.log((2*l_real+1)/cl)).sum()
+    plt.plot(l_real, A*cl, label='{:.2f}'.format(L), ls='--')
 
     return L, []
 
 A = (l_real*(l_real+1))/(2*np.pi)
 
-"""print(likelihood([0.022, 0.12, 1.04, 0.06, 0.96, 3.0]))
+print(likelihood([0.022, 0.12, 1.04, 0.06, 0.96, 3.0]))
 print(likelihood([0.01146527, 0.09108639, 1.08655005, 0.1493919,  1.1031649,  3.30260607]))
 plt.plot(l_real, A*p)
 plt.plot(l_real, A*noise)
@@ -105,9 +113,9 @@ plt.title('Blue = Planck Best Fit\n Orange = Random Higher Likelihood')
 plt.tight_layout()
 plt.savefig('planck_bad_likelihood_with_cosmic_vairance_term.png')
 plt.show()
-sys.exit(1)"""
+sys.exit(1)
 
-file = 'Planck_chains_wide_test_with_variance_term/'
+file = 'Planck_chains_testing/'
 RESUME = False
 
 settings = PolyChordSettings(nDims, 0) #settings is an object
