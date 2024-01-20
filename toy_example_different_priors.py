@@ -76,7 +76,7 @@ def exp_prior(n):
     return np.zeros((n, 2))
 
 
-base = 'toy_chains_priors/'
+base = 'toy_chains_priors_nlive1000/'
 if not os.path.exists(base):
     os.mkdir(base)
 RESUME = True
@@ -117,7 +117,8 @@ for i, ps in enumerate(prior_sets):
             + np.random.normal(0, 0.025, 100)
         np.savetxt(sbase + 'exp1_data.txt', exp1_data)
 
-    run_poly(signal_prior, exp1likelihood, sbase + f'exp1', RESUME=RESUME)
+    run_poly(signal_prior, exp1likelihood, sbase + f'exp1',
+             nlive=1000, RESUME=RESUME)
     exp1_samples = read_chains(sbase + f'exp1/test')
 
     try:
@@ -127,8 +128,10 @@ for i, ps in enumerate(prior_sets):
             + np.random.normal(0, 0.025, 100)
         np.savetxt(sbase + f'exp2_data.txt', exp2_data)
 
-    run_poly(joint_prior, jointlikelihood, sbase + f'joint', RESUME=RESUME, nDims=5)
-    run_poly(signal_prior, exp2likelihood, sbase + f'exp2', RESUME=RESUME)
+    run_poly(joint_prior, jointlikelihood, sbase + f'joint',
+             nlive=1000, RESUME=RESUME, nDims=5)
+    run_poly(signal_prior, exp2likelihood, sbase + f'exp2',
+             nlive=1000, RESUME=RESUME)
 
     exp2_samples = read_chains(sbase + f'exp2/test')
     joint_samples = read_chains(sbase + f'joint/test')
