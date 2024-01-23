@@ -31,7 +31,7 @@ def nre_signal_func_gen(freqs):
     def signal(_, parameters):
         amp, nu_0, w = parameters
         return -amp * np.exp(-(freqs-nu_0)**2 / (2*w**2)) + \
-            np.random.normal(0, 0.025, len(freqs))
+            np.random.normal(0, 0.002, len(freqs))
     return signal
 
 def exp1likelihood(theta):
@@ -87,13 +87,13 @@ def exp_prior(n):
     return np.zeros((n, 2))
 
 
-base = 'toy_chains_priors_nlive5000/'
+base = 'toy_example_too_good_agreement/'
 if not os.path.exists(base):
     os.mkdir(base)
 RESUME = True
 
 exp1_freq = np.linspace(60, 90, 100)
-exp2_freq = np.linspace(80, 120, 100)
+exp2_freq = np.linspace(60, 90, 100)
 exp1_sf = signal_func_gen(exp1_freq)
 exp2_sf = signal_func_gen(exp2_freq)
 exp1_sf_nre = nre_signal_func_gen(exp1_freq)
@@ -106,15 +106,15 @@ conservative_prior_bounds = np.array([[0.0, 1.0], [70.0, 80.0], [5.0, 15.0]])
 narrow_prior_bounds = np.array([[0.0, 0.3], [76.0, 80.0], [8.0, 12.0]])
 
 prior_sets = [wide_prior_bounds, 
-              conservative_prior_bounds,
-              narrow_prior_bounds
+              #conservative_prior_bounds,
+              #narrow_prior_bounds
               ]
 prior_sets_names = ['wide', 
-                    'conservative', 
-                    'narrow'
+                    #'conservative', 
+                    #'narrow'
                     ]
 Rs = []
-fig, axes = plt.subplots(3, 3, figsize=(6.3, 6.3))
+fig, axes = plt.subplots(1, 2, figsize=(6.3, 3.15))
 for i, ps in enumerate(prior_sets):
     signal_prior, joint_prior = build_priors(ps)
     sbase = base + prior_sets_names[i] + '/'
@@ -124,29 +124,24 @@ for i, ps in enumerate(prior_sets):
     try:
         exp1_data = np.loadtxt(sbase + 'exp1_data.txt')
     except:
+        noise = np.random.normal(0, 0.002, 100)
         exp1_data = exp1_sf([None], true_params) \
-            + np.random.normal(0, 0.025, 100)
+            + noise
         np.savetxt(sbase + 'exp1_data.txt', exp1_data)
 
     run_poly(signal_prior, exp1likelihood, sbase + f'exp1',
-             nlive=5000, RESUME=RESUME)
+             nlive=1000, RESUME=RESUME)
     exp1_samples = read_chains(sbase + f'exp1/test')
 
-    try:
-        exp2_data = np.loadtxt(sbase + f'exp2_data.txt')
-    except:
-        exp2_data = exp2_sf([None], true_params) \
-            + np.random.normal(0, 0.025, 100)
-        np.savetxt(sbase + f'exp2_data.txt', exp2_data)
+    exp2_data = exp1_data.copy()
 
     run_poly(joint_prior, jointlikelihood, sbase + f'joint',
-             nlive=5000, RESUME=RESUME, nDims=5)
+             nlive=1000, RESUME=RESUME, nDims=5)
     run_poly(signal_prior, exp2likelihood, sbase + f'exp2',
-             nlive=5000, RESUME=RESUME)
+             nlive=1000, RESUME=RESUME)
 
     exp2_samples = read_chains(sbase + f'exp2/test')
     joint_samples = read_chains(sbase + f'joint/test')
-
 
     Rs.append((joint_samples.logZ(1000) - 
               exp1_samples.logZ(1000) - exp2_samples.logZ(1000)).values)
@@ -162,7 +157,7 @@ for i, ps in enumerate(prior_sets):
         nrei.build_model(len(exp2_freq) + len(exp1_freq), 1, 
                             [100]*10, 'sigmoid')
         nrei.build_simulations(exp2_sf_nre, exp1_sf_nre, 
-                               exp_prior, exp_prior, nre_signal_prior, n=100000)
+                               exp_prior, exp_prior, nre_signal_prior, n=200000)
         model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
         nrei.save(sbase + 'model.pkl')
 
@@ -186,56 +181,36 @@ for i, ps in enumerate(prior_sets):
     Robs = Rs[-1].mean()
     errorRs = np.std(Rs[-1])
 
-    axes[i, 0].hist(r[mask], bins=50, density=True)
-    axes[i, 0].axvline(Robs, color='r', ls='--')
-    axes[i, 0].set_title('No. Sig. ' + r'$=$ ' + str(len(r[mask])) + '\n' +
+    axes[0].hist(r[mask], bins=50, density=True)
+    axes[0].axvline(Robs, color='r', ls='--')
+    axes[0].set_title('No. Sig. ' + r'$=$ ' + str(len(r[mask])) + '\n' +
                          r'$R_{obs}=$' + str(np.round(Robs, 2)) + r'$\pm$' +
                             str(np.round(errorRs, 2)))
-    axes[i, 0].axvspan(Robs - errorRs, Robs + errorRs, alpha=0.1, color='r')
+    axes[0].axvspan(Robs - errorRs, Robs + errorRs, alpha=0.1, color='r')
 
     if i > 0:
-        axes[i, 0].set_xlim(0, axes[0, 0].get_xlim()[1])
+        axes[0].set_xlim(0, axes[0, 0].get_xlim()[1])
 
     r  = np.sort(r[mask])
     c = ecdf(r)
-    axes[i, 1].plot(r, c.cdf.evaluate(r))
-    axes[i, 1].axhline(c.cdf.evaluate(Robs), ls='--',
+    axes[1].plot(r, c.cdf.evaluate(r))
+    axes[1].axhline(c.cdf.evaluate(Robs), ls='--',
                 color='r')
-    axes[i, 1].set_title(r'$P=$' + str(np.round(c.cdf.evaluate(Robs), 3)) +
+    axes[1].set_title(r'$P=$' + str(np.round(c.cdf.evaluate(Robs), 3)) +
                 r'$+$' + str(np.round(c.cdf.evaluate(Robs + errorRs) - c.cdf.evaluate(Robs), 3)) +
                 r'$(-$' + str(np.round(c.cdf.evaluate(Robs) - c.cdf.evaluate(Robs - errorRs),3)) + r'$)$')
-    axes[i, 1].axhspan(c.cdf.evaluate(Robs - errorRs), 
+    axes[1].axhspan(c.cdf.evaluate(Robs - errorRs), 
             c.cdf.evaluate(Robs + errorRs), 
             alpha=0.1, 
             color='r')
 
     if i == 0:
         prior_label = 'Wide'
-        axes[i, 0].set_ylabel('Wide Prior\nDensity')
-        axes[i, 1].set_ylabel(r'$P(\log R < \log R_{obs})$')
-    elif i == 1:
-        prior_label = 'Conservative'
-        axes[i, 0].set_ylabel('Conservative Prior\nDensity')
-        axes[i, 1].set_ylabel(r'$P(\log R < \log R_{obs})$')
-    else:
-        prior_label = 'Narrow'
-        axes[i, 0].set_ylabel('Narrow Prior\nDensity')
-        axes[i, 1].set_ylabel(r'$P(\log R < \log R_{obs})$')
-        axes[i, 0].set_xlabel(r'$\log R$')
-        axes[i, 1].set_xlabel(r'$\log R$')
+        axes[0].set_ylabel('Wide Prior\nDensity')
+        axes[1].set_ylabel(r'$P(\log R < \log R_{obs})$')
 
-    
-    axes[i, 2].axis('off')
-    axes[i, 2].table(cellText=[[str(ps[0, 0]) + ' - ' + str(ps[0, 1])],
-                                [str(ps[1, 0]) + ' - ' + str(ps[1, 1])], 
-                                [str(ps[2, 0]) + ' - ' + str(ps[2, 1])]],
-                     colLabels=[prior_label],
-                     rowLabels=[r'$A$', r'$\nu_0$', r'$w$'],
-                     cellLoc='center',
-                     loc='center',
-                     fontsize=15)
 
 plt.tight_layout()
-plt.savefig('toy_example_different_priors.pdf', bbox_inches='tight')
+plt.savefig('toy_example_too_confident.pdf', bbox_inches='tight')
 plt.close()
 
