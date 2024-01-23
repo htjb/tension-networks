@@ -10,7 +10,7 @@ prior = baos.prior
 likelihood = baos.loglikelihood()
 
 file = 'bao_fit/'
-RESUME = False
+RESUME = True
 if RESUME is False:
     import os, shutil
     if os.path.exists(file):

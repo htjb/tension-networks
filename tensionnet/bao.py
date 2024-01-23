@@ -11,7 +11,6 @@ class BAO():
         self.d12, self.d16, self.d12cov, self.d16cov = \
               self.get_data(data_location=self.data_location)
         self.z = np.hstack((self.d12[:, 0], self.d16[:, 0]))[::2]
-        print(self.z)
 
     def prior(self, cube):
 
