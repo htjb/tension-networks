@@ -9,6 +9,17 @@ import os
 from tensionnet.tensionnet import nre
 import tensorflow as tf
 from scipy.stats import ecdf
+import matplotlib as mpl
+from matplotlib import rc
+
+mpl.rcParams['axes.prop_cycle'] = mpl.cycler('color',
+    ['ff7f00', '984ea3', '999999', '377eb8', '4daf4a','f781bf', 'a65628', 'e41a1c', 'dede00'])
+mpl.rcParams['text.usetex'] = True
+rc('font', family='serif')
+rc('font', serif='cm')
+rc('savefig', pad_inches=0.05)
+
+plt.rc('text.latex', preamble=r'\usepackage{amsmath} \usepackage{amssymb}')
 
 def signal_func_gen(freqs):
     def signal(_, parameters):
@@ -76,7 +87,7 @@ def exp_prior(n):
     return np.zeros((n, 2))
 
 
-base = 'toy_chains_priors_nlive1000/'
+base = 'toy_chains_priors_nlive5000/'
 if not os.path.exists(base):
     os.mkdir(base)
 RESUME = True
@@ -95,15 +106,15 @@ conservative_prior_bounds = np.array([[0.0, 1.0], [70.0, 80.0], [5.0, 15.0]])
 narrow_prior_bounds = np.array([[0.0, 0.3], [76.0, 80.0], [8.0, 12.0]])
 
 prior_sets = [wide_prior_bounds, 
-              #conservative_prior_bounds
-              #, narrow_prior_bounds
+              conservative_prior_bounds,
+              narrow_prior_bounds
               ]
 prior_sets_names = ['wide', 
-                    #'conservative', 
-                    #'narrow'
+                    'conservative', 
+                    'narrow'
                     ]
 Rs = []
-fig, axes = plt.subplots(3, 2, figsize=(5, 10))
+fig, axes = plt.subplots(3, 3, figsize=(6.3, 6.3))
 for i, ps in enumerate(prior_sets):
     signal_prior, joint_prior = build_priors(ps)
     sbase = base + prior_sets_names[i] + '/'
@@ -118,7 +129,7 @@ for i, ps in enumerate(prior_sets):
         np.savetxt(sbase + 'exp1_data.txt', exp1_data)
 
     run_poly(signal_prior, exp1likelihood, sbase + f'exp1',
-             nlive=1000, RESUME=RESUME)
+             nlive=5000, RESUME=RESUME)
     exp1_samples = read_chains(sbase + f'exp1/test')
 
     try:
@@ -129,9 +140,9 @@ for i, ps in enumerate(prior_sets):
         np.savetxt(sbase + f'exp2_data.txt', exp2_data)
 
     run_poly(joint_prior, jointlikelihood, sbase + f'joint',
-             nlive=1000, RESUME=RESUME, nDims=5)
+             nlive=5000, RESUME=RESUME, nDims=5)
     run_poly(signal_prior, exp2likelihood, sbase + f'exp2',
-             nlive=1000, RESUME=RESUME)
+             nlive=5000, RESUME=RESUME)
 
     exp2_samples = read_chains(sbase + f'exp2/test')
     joint_samples = read_chains(sbase + f'joint/test')
@@ -176,18 +187,55 @@ for i, ps in enumerate(prior_sets):
     errorRs = np.std(Rs[-1])
 
     axes[i, 0].hist(r[mask], bins=50, density=True)
-    axes[i, 0].set_xlabel(r'\log R')
-    axes[i, 0].axvline(Robs, color='k')
+    axes[i, 0].axvline(Robs, color='r', ls='--')
+    axes[i, 0].set_title('No. Sig. ' + r'$=$ ' + str(len(r[mask])) + '\n' +
+                         r'$R_{obs}=$' + str(np.round(Robs, 2)) + r'$\pm$' +
+                            str(np.round(errorRs, 2)))
+    axes[i, 0].axvspan(Robs - errorRs, Robs + errorRs, alpha=0.1, color='r')
+
+    if i > 0:
+        axes[i, 0].set_xlim(0, axes[0, 0].get_xlim()[1])
 
     r  = np.sort(r[mask])
     c = ecdf(r)
     axes[i, 1].plot(r, c.cdf.evaluate(r))
     axes[i, 1].axhline(c.cdf.evaluate(Robs), ls='--',
                 color='r')
+    axes[i, 1].set_title(r'$P=$' + str(np.round(c.cdf.evaluate(Robs), 3)) +
+                r'$+$' + str(np.round(c.cdf.evaluate(Robs + errorRs) - c.cdf.evaluate(Robs), 3)) +
+                r'$(-$' + str(np.round(c.cdf.evaluate(Robs) - c.cdf.evaluate(Robs - errorRs),3)) + r'$)$')
     axes[i, 1].axhspan(c.cdf.evaluate(Robs - errorRs), 
             c.cdf.evaluate(Robs + errorRs), 
             alpha=0.1, 
             color='r')
 
-plt.show()
+    if i == 0:
+        prior_label = 'Wide'
+        axes[i, 0].set_ylabel('Wide Prior\nDensity')
+        axes[i, 1].set_ylabel(r'$P(\log R < \log R_{obs})$')
+    elif i == 1:
+        prior_label = 'Conservative'
+        axes[i, 0].set_ylabel('Conservative Prior\nDensity')
+        axes[i, 1].set_ylabel(r'$P(\log R < \log R_{obs})$')
+    else:
+        prior_label = 'Narrow'
+        axes[i, 0].set_ylabel('Narrow Prior\nDensity')
+        axes[i, 1].set_ylabel(r'$P(\log R < \log R_{obs})$')
+        axes[i, 0].set_xlabel(r'$\log R$')
+        axes[i, 1].set_xlabel(r'$\log R$')
+
+    
+    axes[i, 2].axis('off')
+    axes[i, 2].table(cellText=[[str(ps[0, 0]) + ' - ' + str(ps[0, 1])],
+                                [str(ps[1, 0]) + ' - ' + str(ps[1, 1])], 
+                                [str(ps[2, 0]) + ' - ' + str(ps[2, 1])]],
+                     colLabels=[prior_label],
+                     rowLabels=[r'$A$', r'$\nu_0$', r'$w$'],
+                     cellLoc='center',
+                     loc='center',
+                     fontsize=15)
+
+plt.tight_layout()
+plt.savefig('toy_example_different_priors.pdf', bbox_inches='tight')
+plt.close()
 
