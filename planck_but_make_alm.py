@@ -32,53 +32,78 @@ def wide_prior(cube):
 
 pars = camb.CAMBparams()
 
-def data_gen(theta):
-    pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
-                                tau=theta[3], cosmomc_theta=theta[2]/100,
-                                theta_H0_range=[5, 1000])
-    pars.InitPower.set_params(As=np.exp(theta[5])/10**10, ns=theta[4])
-    pars.set_for_lmax(2500, lens_potential_accuracy=0)
-    results = camb.get_background(pars) # computes evolution of background cosmology
+import matplotlib.gridspec as gridspec
 
-    cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:,0]
-    #cl = np.interp(l, np.arange(len(cl)), cl)
-    cl *= 2*np.pi/(np.arange(len(cl))*(np.arange(len(cl))+1))
-    lgen = np.arange(len(cl))
-    noise = planck_noise(lgen).calculate_noise()
+fig = plt.figure(figsize=(6.3, 6.3))
+spec = gridspec.GridSpec(ncols=2, nrows=3, figure=fig)
 
-    alm = hp.synalm(cl)
-    nalm = hp.synalm(noise)
-    obscl = hp.alm2cl(alm+nalm)
+theta = wide_prior(np.random.rand(6))
 
-    obscl = np.interp(l, np.arange(len(obscl)), obscl)
+pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
+                            tau=theta[3], cosmomc_theta=theta[2]/100,
+                            theta_H0_range=[5, 1000])
+pars.InitPower.set_params(As=np.exp(theta[5])/10**10, ns=theta[4])
+pars.set_for_lmax(2500, lens_potential_accuracy=0)
+results = camb.get_background(pars) # computes evolution of background cosmology
 
-    cl = np.interp(l, np.arange(len(cl)), cl)
-    noise = np.interp(l, np.arange(len(noise)), noise)
-    A = (l*(l+1))/(2*np.pi)
+cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:,0]
+#cl = np.interp(l, np.arange(len(cl)), cl)
+cl *= 2*np.pi/(np.arange(len(cl))*(np.arange(len(cl))+1))
+cl = cl[1:]
+lgen = np.arange(len(cl))
 
-    plt.plot(l, (obscl - noise)*A, label='Obs. Planck')
 
-    noise = wmap_noise(lgen).calculate_noise()
+pnoise = planck_noise(lgen).calculate_noise()
 
-    nalm = hp.synalm(noise)
-    obscl = hp.alm2cl(alm+nalm)
+alm = hp.synalm(cl)
+axalm = fig.add_subplot(spec[0, :])
 
-    wmap, lwmap = get_data(base_dir='cosmology-data/').get_wmap()
-    obscl = np.interp(lwmap, np.arange(len(obscl)), obscl)
-    noise = np.interp(lwmap, np.arange(len(noise)), noise)
-    A = (lwmap*(lwmap+1))/(2*np.pi)
+plt.axes(axalm)
+m = hp.alm2map(alm, nside=2064,)
+hp.mollview(m, hold=True, cmap='jet', title='Anisotropies', unit=r'\small$\mu K$')
 
-    plt.plot(lwmap, (obscl - noise)*A, label='Obs. WMAP')
+nalm = hp.synalm(pnoise)
+axnoisep = fig.add_subplot(spec[1, 0])
+plt.axes(axnoisep)
+m = hp.alm2map(nalm, nside=2064,)
+hp.mollview(m, hold=True, cmap='jet', title='Planck Noise', unit=r'\small$\mu K$')
+obscl = hp.alm2cl(alm+nalm)
 
-    plt.plot(l, cl*(l*(l+1))/(2*np.pi), label='Theory')
-    return obscl, cl
+obscl = np.interp(l, np.arange(len(obscl)), obscl)
 
-plt.figure(figsize=(4, 4))
-obscl, cl = data_gen(wide_prior(np.random.rand(6)))
+#cl = np.interp(l, np.arange(len(cl)), cl)
+axclp = fig.add_subplot(spec[2, 0])
+axclp.plot(lgen, cl*(lgen*(lgen+1))/(2*np.pi), label='Theory')
 
-plt.legend()
-plt.xlabel(r'$l$')
-plt.ylabel(r'$\frac{l(l+1)}{2\pi} C_l$')
+pnoise = np.interp(l, np.arange(len(pnoise)), pnoise)
+A = (l*(l+1))/(2*np.pi)
+axclp.plot(l, (obscl - pnoise)*A, label='Obs. Planck')
+
+noise = wmap_noise(lgen).calculate_noise()
+
+nalm = hp.synalm(noise)
+axnoisew = fig.add_subplot(spec[1, 1])
+plt.axes(axnoisew)
+m = hp.alm2map(nalm, nside=2064,)
+hp.mollview(m, hold=True, cmap='jet', title='WMAP Noise', unit=r'\small $\mu K$')
+obscl = hp.alm2cl(alm+nalm)
+
+wmap, lwmap = get_data(base_dir='cosmology-data/').get_wmap()
+obscl = np.interp(lwmap, np.arange(len(obscl)), obscl)
+noise = np.interp(lwmap, np.arange(len(noise)), noise)
+A = (lwmap*(lwmap+1))/(2*np.pi)
+
+axclw = fig.add_subplot(spec[2, 1])
+axclw.plot(lgen, cl*(lgen*(lgen+1))/(2*np.pi))
+axclw.plot(lwmap, (obscl - noise)*A, label='Obs. WMAP')
+
+axclw.legend()
+axclp.legend()
+axclw.set_xlabel(r'$l$')
+axclp.set_xlabel(r'$l$')
+axclp.set_ylabel(r'$\frac{l(l+1)}{2\pi} C_l$')
 plt.tight_layout()
-plt.savefig('planck_wmap_example.png', dpi=300)
-plt.show()
+plt.subplots_adjust(wspace=0.3, hspace=0.5)
+plt.savefig('planck_wmap_example.pdf', dpi=300, bbox_inches='tight')
+#plt.show()
+plt.close()
