@@ -3,6 +3,7 @@ import pypolychord
 from cmblike.data import get_data
 from cmblike.noise import planck_noise
 from cmblike.cmb import CMB
+import numpy as np
 
 nDims = 6
 nDerived = 0
@@ -16,12 +17,12 @@ likelihood = cmbs.get_likelihood(p, l, noise=planck_noise)
 prior = cmbs.prior
 
 file = 'Planck_fit/'
-RESUME = False
+RESUME = True
 
 settings = PolyChordSettings(nDims, 0) #settings is an object
 settings.read_resume = RESUME
 settings.base_dir = file + '/'
-settings.nlive = 200*6
+#settings.nlive = 200*6
 
 output = pypolychord.run_polychord(likelihood, nDims, nDerived, settings, prior)
 paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(nDims)]
@@ -34,18 +35,18 @@ from anesthetic import read_chains
 def signal():
     def signal_func(_, parameters):
         cl, sample = cmbs.get_samples(l, parameters, noise=planck_noise)
-        return sample
+        return sample*(l*(l+1))/(2*np.pi)
     return signal_func
 
 fig, axes = plt.subplots(1)
 
-samples = read_chains('Planck_chains_testing/test')
+samples = read_chains('Planck_fit/test')
 samples = samples.compress()
 
 names = ['p' + str(i) for i in range(6)]
 samples = samples[names].values
 plot_lines(signal, l, samples, axes, color='r')
-plt.plot(l, p, c='k', label='Planck')
+plt.plot(l, p*(l*(l+1))/(2*np.pi), c='k', label='Planck')
 plt.xlabel(r'$l$')
 plt.ylabel(r'$C_l$')
 plt.legend()
