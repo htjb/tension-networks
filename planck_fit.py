@@ -22,7 +22,7 @@ RESUME = True
 settings = PolyChordSettings(nDims, 0) #settings is an object
 settings.read_resume = RESUME
 settings.base_dir = file + '/'
-#settings.nlive = 200*6
+settings.nlive = 200*6
 
 output = pypolychord.run_polychord(likelihood, nDims, nDerived, settings, prior)
 paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(nDims)]
@@ -41,11 +41,12 @@ def signal():
 fig, axes = plt.subplots(1)
 
 samples = read_chains('Planck_fit/test')
-samples = samples.compress()
+samples = samples.compress(1000)
 
 names = ['p' + str(i) for i in range(6)]
 samples = samples[names].values
-plot_lines(signal, l, samples, axes, color='r')
+sf = signal()
+plot_lines(sf, l, samples, axes, color='r')
 plt.plot(l, p*(l*(l+1))/(2*np.pi), c='k', label='Planck')
 plt.xlabel(r'$l$')
 plt.ylabel(r'$C_l$')
