@@ -22,7 +22,7 @@ baos = BAO(data_location='cosmology-data/bao_data/')
 bao_likelihood = baos.loglikelihood()
 
 def likelihood(theta):
-    return planck_likelihood(theta) + bao_likelihood(theta), []
+    return planck_likelihood(theta)[0] + bao_likelihood(theta)[0], []
 
 pars = camb.CAMBparams()
 
