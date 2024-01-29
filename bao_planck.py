@@ -15,7 +15,7 @@ p, l = get_data(base_dir='cosmology-data/').get_planck()
 pnoise = planck_noise(l).calculate_noise()
 
 cmbs = CMB()
-planck_likelihood = cmbs.get_likelihood(p, l, noise=planck_noise)
+planck_likelihood = cmbs.get_likelihood(p, l, noise=pnoise)
 prior = cmbs.prior
 
 baos = BAO(data_location='cosmology-data/bao_data/')
