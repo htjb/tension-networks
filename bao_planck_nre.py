@@ -64,7 +64,7 @@ bao_func = bao_func()
 
 from tensionnet.tensionnet import nre
 
-nsamples = 50000
+nsamples = 100000
 layers = [200]*4
 Rs, errorRs = 3.428, 0.172
 
@@ -90,7 +90,7 @@ except:
         nrei.build_simulations(planck_func, bao_func, 
                             exp_prior, exp_prior, signal_prior, n=nsamples)
         np.savetxt('planck_bao_data.txt', nrei.data)
-        np.savetxt('planck_bao_wide_labels.txt', nrei.labels)
+        np.savetxt('planck_bao_labels.txt', nrei.labels)
     model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
     nrei.save('bao_planck_model.pkl')
 
