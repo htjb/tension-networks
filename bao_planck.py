@@ -27,7 +27,7 @@ def likelihood(theta):
 pars = camb.CAMBparams()
 
 file = 'Planck_bao_fit/'
-RESUME = False
+RESUME = True
 nDims=6
 
 settings = PolyChordSettings(nDims, 0) #settings is an object

@@ -66,7 +66,7 @@ from tensionnet.tensionnet import nre
 
 nsamples = 50000
 layers = [200]*4
-Rs, errorRs = 0, 0
+Rs, errorRs = 3.428, 0.172
 
 try:
     nrei = nre.load('bao_planck_model.pkl',
@@ -94,7 +94,7 @@ except:
     model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
     nrei.save('bao_planck_model.pkl')
 
-nrei.__call__(iters=1000)
+nrei.__call__(iters=2000)
 r = nrei.r_values
 mask = np.isfinite(r)
 sigr = tf.keras.layers.Activation('sigmoid')(r[mask])
@@ -110,30 +110,29 @@ r = r[good_idx]
 mask = np.isfinite(r)
 acc = c/len(sigr)*100
 
-fig, axes = plt.subplots(1, 3, figsize=(6.3, 3))
-axes[0].hist(r[mask], bins=25,density=True)
-axes[0].axvline(Rs, ls='--', c='r')
-axes[0].set_title('No. Sig. ' + r'$=$ ' + str(len(r[mask])) + '\n' +
+fig, axes = plt.subplots(2, 2, figsize=(6.3, 6.3))
+axes[0, 0].hist(r[mask], bins=25,density=True)
+axes[0, 0].axvline(Rs, ls='--', c='r')
+axes[0, 0].set_title('No. Sig. ' + r'$=$ ' + str(len(r[mask])) + '\n' +
                          r'$R_{obs}=$' + str(np.round(Rs, 2)) + r'$\pm$' +
                             str(np.round(errorRs, 2)))
-axes[0].axvspan(Rs - errorRs, Rs + errorRs, alpha=0.1, color='r')
-axes[0].set_xlabel(r'$\log R$')
-axes[0].set_ylabel('Density')
-axes[0].legend()
+axes[0, 0].axvspan(Rs - errorRs, Rs + errorRs, alpha=0.1, color='r')
+axes[0, 0].set_xlabel(r'$\log R$')
+axes[0, 0].set_ylabel('Density')
 
 rsort  = np.sort(r[mask])
 c = ecdf(rsort)
 
-axes[1].plot(rsort, c.cdf.evaluate(rsort)) 
-axes[1].axhline(c.cdf.evaluate(Rs), ls='--',
+axes[0, 1].plot(rsort, c.cdf.evaluate(rsort)) 
+axes[0, 1].axhline(c.cdf.evaluate(Rs), ls='--',
         color='r')
-axes[1].axhspan(c.cdf.evaluate(Rs - errorRs), 
+axes[0, 1].axhspan(c.cdf.evaluate(Rs - errorRs), 
         c.cdf.evaluate(Rs + errorRs), 
         alpha=0.1, 
         color='r')
-axes[1].set_xlabel(r'$\log R$')
-axes[1].set_ylabel(r'$P(\log R < \log R_{obs})$')
-axes[1].set_title(r'$P=$' + str(np.round(c.cdf.evaluate(Rs), 3)) +
+axes[0, 1].set_xlabel(r'$\log R$')
+axes[0, 1].set_ylabel(r'$P(\log R < \log R_{obs})$')
+axes[0, 1].set_title(r'$P=$' + str(np.round(c.cdf.evaluate(Rs), 3)) +
                 r'$+$' + str(np.round(c.cdf.evaluate(Rs + errorRs) - c.cdf.evaluate(Rs), 3)) +
                 r'$(-$' + str(np.round(c.cdf.evaluate(Rs) - c.cdf.evaluate(Rs - errorRs),3)) + r'$)$')
 
@@ -166,13 +165,15 @@ total_1 = len(labels_test[labels_test == 1])
 cm = [[correct0/total_0*100, wrong0/total_0*100, confused0/total_0*100],
         [correct1/total_1*100, wrong1/total_1*100, confused1/total_1*100]]
 
-axes[2].imshow(cm, cmap='Blues')
+axes[1,0].imshow(cm, cmap='Blues')
 for i in range(2):
     for j in range(3):
-        axes[2].text(j, i, '{:.2f} \%'.format(cm[i][j]), ha='center', va='center', color='k',
-                bbox=dict(facecolor='white', lw=0))
-axes[2].set_xticks([0, 1, 2], ['Correct', 'Wrong', 'Confused'])
-axes[2].set_yticks([0, 1], ['In tension', 'Not In Tension'])
+        axes[1, 0].text(j, i, '{:.2f} \%'.format(cm[i][j]), ha='center', va='center', color='k',
+                bbox=dict(facecolor='white', lw=0), fontsize=10)
+axes[1, 0].set_xticks([0, 1, 2], ['Correct', 'Wrong', 'Confused'])
+axes[1, 0].set_yticks([0, 1], ['In tension', 'Not In Tension'])
+
+axes[1, 1].axis('off')
 plt.tight_layout()
 plt.savefig('bao_planck.pdf', bbox_inches='tight')
 plt.show()
