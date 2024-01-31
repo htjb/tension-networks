@@ -291,17 +291,10 @@ class nre():
                             self.shared_prior, n=iters, call_type='eval')
         else:
             data = iters.copy()
-
         r_values = []
         for i in range(len(data)):
             params = tf.convert_to_tensor(np.array([[*data[i]]]).astype('float32'))
             if self.compress:
-                import matplotlib.pyplot as plt
-                print(params[:, self.input_dimA:].numpy())
-                plt.plot(params[:, :self.input_dimA].numpy()[0])
-                plt.plot(params[:, self.input_dimA:].numpy()[0])
-                plt.show()
-                sys.exit(1)
                 logr = self.model([params[:, :self.input_dimA],
                                 params[:, self.input_dimA:]]).numpy()[0]
             else:
