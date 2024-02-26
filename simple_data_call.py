@@ -72,20 +72,10 @@ for i in range(len(sigr)):
 r = r[good_idx]
 mask = np.isfinite(r)
 
-"""temperatures = np.array([0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5])/0.2
-Rs =[ -63.01687826,  -12.40474379,    9.77660272,  -17.25641865,  -33.974196,
-  -87.30443093, -114.3616329,  -134.16389689, -157.02886038,] 
-sigma_Rs = [0.21169332, 0.20684563, 0.21888224, 0.21734393, 0.21426394, 0.21660869,
- 0.2113068,  0.22946067, 0.22718888]"""
 
 temperatures = np.array([0.15, 0.2, 0.25])/0.2
 Rs =[-12.40474379,    9.77660272,  -17.25641865,] 
 sigma_Rs = [0.20684563, 0.21888224, 0.21734393]
-
-# get every other temperature
-"""temperatures = temperatures[::2]
-Rs = Rs[::2]
-sigma_Rs = sigma_Rs[::2]"""
 
 y_pos = [100]*len(temperatures)
 
@@ -93,16 +83,16 @@ fig, axes = plt.subplots(2, 2, figsize=(6.3, 6.3))
 
 for i, t in enumerate(temperatures):
         exp2_data_no_tension = np.loadtxt(f'toy_chains_temp_sweep/exp2_data_{t*0.2}.txt')
-        axes[0, 0].plot(exp2_freq, exp2_data_no_tension, label=f'Exp. 2: {t*0.2} K', c='r', alpha=1/(i+1))
+        axes[0, 0].plot(exp2_freq, exp2_data_no_tension, label=f'Exp. B: {t*0.2} K', c='r', alpha=1/(i+1))
 
 exp1_data = np.loadtxt('toy_chains_temp_sweep/exp1_data_no_tension.txt')
-axes[0, 0].plot(exp1_freq, exp1_data, label='Exp. 1: 0.2 K', c='k')
+axes[0, 0].plot(exp1_freq, exp1_data, label='Exp. A: 0.2 K', c='k')
 axes[0, 0].legend(fontsize=8)
 axes[0, 0].set_xlabel('Frequency [MHz]')
 axes[0, 0].set_ylabel(r'$\delta T_b$ [K]')
 
 
-axes[1, 0].hist(r[mask], bins=25, color='C1')
+axes[1, 0].hist(r[mask], bins=25, color='C0')
 axes[1, 0].set_yticks([])
 for i,t in enumerate(temperatures):
         axes[1, 0].axvline(Rs[i], ls='--', c='r')
@@ -110,15 +100,30 @@ for i,t in enumerate(temperatures):
         axes[1, 0].annotate(r'$A_2 = $' + f'{round(t, 2)}'+ r'$A_1$', (Rs[i], y_pos[i]), ha='center', va='center',
                     rotation=90, bbox=dict(color='w', ec='k'), fontsize=8)
 axes[1, 0].set_xlabel(r'$\log R$')
-axes[1, 0].set_ylabel('Frequency')
+axes[1, 0].set_ylabel(r'$P(\log R)$')
 
-from scipy.stats import ecdf
+from scipy.stats import ecdf, norm
 
 r  = np.sort(r[mask])
 c = ecdf(r)
 
 axes[1, 1].plot(r, c.cdf.evaluate(r))
 for i,t in enumerate(temperatures):
+        sigmaD = norm.isf(c.cdf.evaluate(Rs[i])/2)
+        sigma_D_upper = norm.isf((c.cdf.evaluate(Rs[i] + sigma_Rs[i]))/2)
+        sigma_D_lower = norm.isf((c.cdf.evaluate(Rs[i] - sigma_Rs[i]))/2)
+        p = 2 - 2*c.cdf.evaluate(Rs[i])
+        sigmaR = norm.isf(p/2)
+        sigmaR_upper = norm.isf((2 - 2*(c.cdf.evaluate(Rs[i] + sigma_Rs[i])))/2)
+        sigmaR_lower = norm.isf((2 - 2*(c.cdf.evaluate(Rs[i] - sigma_Rs[i])))/2)
+        print(f'Temp: {temperatures[i]}')
+        print(f'Rs: {Rs[i]}, Rs_upper: {Rs[i] + sigma_Rs[i]}, Rs_lower: {Rs[i] - sigma_Rs[i]}')
+        print(f'CDF(Rs): {c.cdf.evaluate(Rs[i])}, CDF(Rs_upper): {c.cdf.evaluate(Rs[i] + sigma_Rs[i])}, ' +
+              f'CDF(Rs_lower): {c.cdf.evaluate(Rs[i] - sigma_Rs[i])}')
+        print(f'sigmaD: {sigmaD}, sigma_D_upper: {np.abs(sigmaD - sigma_D_upper)}, ' +
+              f'sigma_D_lower: {np.abs(sigma_D_lower - sigmaD)}')
+        print(f'sigmaR: {sigmaR}, sigmaR_upper: {np.abs(sigmaR - sigmaR_upper)}, ' +
+              f'sigmaR_lower: {np.abs(sigmaR_lower - sigmaR)}')
         if temperatures[i] == 1:
             axes[1, 1].axhline(c.cdf.evaluate(Rs[i]), ls='--',
                     color='r')
@@ -138,7 +143,7 @@ axes[1, 1].axhspan(c.cdf.evaluate(Rs[0] - sigma_Rs[i]),
 axes[1, 1].annotate(r'In Tension. $A_2 \neq A_1$', (Rs[1], 0.), ha='center', va='center',
             bbox=dict(color='w', ec='k'), fontsize=8)
 axes[1, 1].set_xlabel(r'$\log R$')
-axes[1, 1].set_ylabel(r'$P(\log R < \log R_{obs})$')
+axes[1, 1].set_ylabel(r'$P(\log R < \log R_\mathrm{obs})$')
 
 idx = [int(np.random.uniform(0, len(nrei.labels_test), 1)) for i in range(1000)]
 
