@@ -27,11 +27,6 @@ class nre():
         self.output_dim = output_dim
         self.layer_sizes = layer_sizes
         self.activation = activation
-
-        # the output activation is sigmoid by default
-        # required for interpretable results
-        # dont change this
-        self.output_activation='sigmoid'
         
         # build the model
         a0 = self.Inputs(shape=(self.input_dim,))
