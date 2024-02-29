@@ -27,6 +27,8 @@ except FileNotFoundError:
     with open('gaussian_param_posterior.pkl', 'wb') as f:
         pickle.dump(posterior, f)
 
+print(posterior)
+
 samples = posterior.sample((100,), x=true_signal)
 log_probability = posterior.log_prob(samples, x=true_signal)
 _ = analysis.pairplot(samples, figsize=(6, 6))
@@ -37,9 +39,10 @@ def gaussian_likelihood(parameters):
         (-0.5*np.log(2*np.pi*0.5**2) - 0.5*(7 - parameters[1])**2/0.5**2)
 
 
-logL = [gaussian_likelihood(samples[i].numpy()) for i in range(len(samples))]
+logL = np.array([gaussian_likelihood(samples[i].numpy()) for i in range(len(samples))])
+prior = np.log(1/10*1/10)
 
-plt.plot(log_probability.numpy(), logL, 'o')
+plt.plot(log_probability.numpy()-prior, logL, 'o')
 plt.plot(logL, logL, 'k--')
 plt.ylabel('log likelihood')
 plt.xlabel('log probability')
