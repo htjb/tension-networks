@@ -2,10 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import ecdf, norm
 
-x = np.hstack([np.random.normal(5, 3, 10000),
-                np.random.normal(0.2, 1, 10000)])
+x = np.hstack([np.random.normal(5, 3, 10000)+1,
+                np.random.normal(0.2, 1, 10000)+3])
 
-fig, ax = plt.subplots(1, 3, figsize=(10, 4))
+fig, ax = plt.subplots(1, 4, figsize=(10, 4))
 ax[0].hist(x, bins=30, density=True)
 ax[0].set_xlabel(r'$\log R$')
 ax[0].set_ylabel(r'$P(\log R)$')
@@ -48,5 +48,19 @@ ax[2].axvline(norm.isf((2 - 2*c.cdf.evaluate(np.median(x)))/2), color='r', ls='-
 ax[2].legend()
 ax[2].set_xlabel(r'$\sigma_R$')
 ax[2].set_ylabel(r'$\sigma_D$')
+
+sigmaA = norm.isf((1 - c.cdf.evaluate(r))/2)
+args = np.argsort(sigmaA)
+sigmaA = sigmaA[args]
+sigmaR = sigmaR[args]
+
+ax[3].plot(sigmaR, sigmaA, ls='--')
+ax[3].axvline(norm.isf((2 - 2*c.cdf.evaluate(np.mean(x)))/2), color='C4', ls='--', label=r'$\sigma_R(Mean) =$' + f'{norm.isf((2 - 2*c.cdf.evaluate(np.mean(x)))/2):.2f}')
+ax[3].axhline(norm.isf((1 - c.cdf.evaluate(centers[np.argmax(hist)]))/2), color='C1', ls='--', label=r'$\sigma_A(Mode) =$' + f'{norm.isf((1 - c.cdf.evaluate(centers[np.argmax(hist)]))/2):.2f}')
+ax[3].axhline(norm.isf((1 - c.cdf.evaluate(np.mean(x)))/2), color='C4', ls='--', label=r'$\sigma_A(Mean) =$' + f'{norm.isf((1 - c.cdf.evaluate(np.mean(x)))/2):.2f}')
+ax[3].axvline(norm.isf((2 - 2*c.cdf.evaluate(centers[np.argmax(hist)]))/2), color='C1', ls='--', label=r'$\sigma_R(Mode) =$' + f'{norm.isf((2 - 2*c.cdf.evaluate(centers[np.argmax(hist)]))/2):.2f}')
+ax[3].axhline(norm.isf((1 - c.cdf.evaluate(np.median(x)))/2), color='r', ls='--', label=r'$\sigma_A(Median) =$' + f'{norm.isf((1 - c.cdf.evaluate(np.median(x)))/2):.2f}')
+ax[3].axvline(norm.isf((2 - 2*c.cdf.evaluate(np.median(x)))/2), color='r', ls='--', label=r'$\sigma_R(Median) =$' + f'{norm.isf((2 - 2*c.cdf.evaluate(np.median(x)))/2):.2f}')
+ax[3].legend()
 plt.tight_layout()
 plt.show()
