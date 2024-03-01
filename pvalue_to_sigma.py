@@ -21,9 +21,9 @@ p = n.cdf(x)
 
 example_r = 5.87
 
-fig, axes = plt.subplots(3, 2, figsize=(6.3, 6.3))
+fig, axes = plt.subplots(3, 3, figsize=(6.3, 5))
 
-for i in range(2):
+for i in range(3):
     axes[0, i].hist(x, bins=30, density=True)
     axes[0, i].axvline(example_r, color='C4', ls='--')
     axes[0, i].set_xlabel(r'$\log R$')
@@ -36,13 +36,17 @@ for i in range(2):
     axes[1, i].set_ylabel(r'$P(\log R < \log R_\mathrm{obs})$')
      
 
-axes[1, 1].axhspan(1-0.68, 0.68, color='C1', alpha=0.8)
-axes[1, 1].axhspan(1-0.95, 0.95, color='C1', alpha=0.5)
-axes[1, 1].axhspan(1-0.98, 0.98, color='C1', alpha=0.5)
+axes[1, 2].axhspan(1-0.68, 0.68, color='C1', alpha=0.8)
+axes[1, 2].axhspan(1-0.95, 0.95, color='C1', alpha=0.5)
+axes[1, 2].axhspan(1-0.98, 0.98, color='C1', alpha=0.2)
 
 axes[1, 0].axhspan(1-0.68, 1, color='C1', alpha=0.8)
 axes[1, 0].axhspan(1-0.95, 1, color='C1', alpha=0.5)
-axes[1, 0].axhspan(1-0.98, 1, color='C1', alpha=0.5)
+axes[1, 0].axhspan(1-0.98, 1, color='C1', alpha=0.2)
+
+axes[1, 1].axhspan(0, 0.68, color='C1', alpha=0.8)
+axes[1, 1].axhspan(0, 0.95, color='C1', alpha=0.5)
+axes[1, 1].axhspan(0, 0.98, color='C1', alpha=0.2)
 
 y = norm.isf(p/2)
 axes[2, 0].plot(p, norm.isf(p/2))
@@ -57,36 +61,50 @@ axes[2, 0].set_xlabel(r'$P(\log R < \log R_\mathrm{obs})$')
 axes[2, 0].set_ylabel(r'$\sigma_D$')
 axes[2, 0].legend()
 
-pr = 1 - np.abs(p - (1 - p))
+
+y = norm.isf((1-p)/2)
+axes[2, 1].plot(p, norm.isf((1-p)/2))
+axes[2, 1].axvline(n.cdf(example_r), color='C4', ls='--')
+axes[2, 1].axhline(norm.isf((1 - n.cdf(example_r))/2), color='C4', 
+                   ls='--', label=r'$\sigma_A =$' + f'{norm.isf((1 - n.cdf(example_r))/2):.2f}')
+axes[2, 1].axvspan(np.interp(1, y, p), 0, color='C1', alpha=0.8)
+axes[2, 1].axvspan(np.interp(2, y, p), 0, color='C1', alpha=0.5)
+axes[2, 1].axvspan(np.interp(3, y, p), 0, color='C1', alpha=0.3)
+#axes[2, 0].set_xscale('log')
+axes[2, 1].set_xlabel(r'$P(\log R < \log R_\mathrm{obs})$')
+axes[2, 1].set_ylabel(r'$\sigma_A$')
+axes[2, 1].legend()
+
+pr = 2 - 2*p
 y = norm.isf(pr/2)
 
-axes[2, 1].plot(p, y, ls='-')
+axes[2, 2].plot(p, y, ls='-')
 
 h = pr[np.isclose(y, 1, rtol=1e-3, atol=1e-3)][0]
 h = (2 - h)/2
-axes[2, 1].axvspan(h, 1-h, color='C1', alpha=0.8)
+axes[2, 2].axvspan(h, 1-h, color='C1', alpha=0.8)
 
 h = pr[np.isclose(y, 2, rtol=1e-3, atol=1e-3)][0]
 h = (2 - h)/2
-axes[2, 1].axvspan(h, 1-h, color='C1', alpha=0.5)
+axes[2, 2].axvspan(h, 1-h, color='C1', alpha=0.5)
 
 h = pr[np.isclose(y, 3, rtol=1e-3, atol=1e-3)][0]
 h = (2 - h)/2
-axes[2, 1].axvspan(h, 1-h, color='C1', alpha=0.3)
+axes[2, 2].axvspan(h, 1-h, color='C1', alpha=0.3)
 
-axes[2, 1].axvline(n.cdf(example_r), color='C4', ls='--')
+axes[2, 2].axvline(n.cdf(example_r), color='C4', ls='--')
 p_example = n.cdf(example_r)
-pr_example = 1 - np.abs(p_example - (1 - p_example)) 
-axes[2, 1].axhline(norm.isf(pr_example/2), color='C4', ls='--', 
+pr_example = 2 - 2*p_example
+axes[2, 2].axhline(norm.isf(pr_example/2), color='C4', ls='--', 
                    label=r'$\sigma_R =$' + f'{norm.isf(pr_example/2):.2f}')
-axes[2, 1].legend()
+axes[2, 2].legend()
 
-axes[2, 1].set_xlabel(r'$P(\log R < \log R_\mathrm{obs})$')
-#axes[2, 1].set_xscale('log')
-axes[2, 1].set_ylabel(r'$\sigma_R$')
+axes[2, 2].set_xlabel(r'$P(\log R < \log R_\mathrm{obs})$')
+axes[2, 2].set_ylabel(r'$\sigma_R$')
 
 axes[0, 0].set_title('How in tension are\nthe data sets?')
-axes[0, 1].set_title('How unexpected is the\nrecovered value of' + r'$R$?')
+axes[0, 1].set_title('How consistent are\nthe data sets?')
+axes[0, 2].set_title('How unexpected is the\nrecovered value of ' + r'$\log R$?')
 
 plt.tight_layout()
 plt.savefig('pvalue_to_sigma.pdf', dpi=300, bbox_inches='tight')
