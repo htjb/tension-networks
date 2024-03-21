@@ -5,24 +5,28 @@ from cmblike.noise import planck_noise
 from cmblike.cmb import CMB
 import numpy as np
 
-nDims = 6
+nDims = 5
 nDerived = 0
 
 p, l = get_data(base_dir='cosmology-data/').get_planck()
 planck_noise = planck_noise(l).calculate_noise()
 
-cmbs = CMB()
+parameters = ['As', 'omegabh2', 'thetaMC', 'omegach2', 'ns']
+prior_mins = [2.6, 0.01, 0.97, 0.08, 0.8]
+prior_maxs = [3.8, 0.085, 1.5, 0.21, 1.2]
+
+cmbs = CMB(parameters=parameters, prior_mins=prior_mins, 
+           prior_maxs=prior_maxs)
 
 likelihood = cmbs.get_likelihood(p, l, noise=planck_noise)
 prior = cmbs.prior
 
-file = 'Planck_fit/'
+file = 'Planck_fit_no_tau/'
 RESUME = True
 
 settings = PolyChordSettings(nDims, 0) #settings is an object
 settings.read_resume = RESUME
 settings.base_dir = file + '/'
-settings.nlive = 200*6
 
 output = pypolychord.run_polychord(likelihood, nDims, nDerived, settings, prior)
 paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(nDims)]
