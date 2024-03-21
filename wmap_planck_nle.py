@@ -18,11 +18,16 @@ import pickle
 wmapraw, lwmap = get_data(base_dir='cosmology-data/').get_wmap()
 praw, l = get_data(base_dir='cosmology-data/').get_planck()
 
-NUM_NETS = 12
+NUM_NETS = 8
 DATA_NORM = 'independent'
+BASE_DIR = 'wmap_planck_nle_no_tau/'
 HIDDEN_LAYERS = 1
 REPEAT = 1
 NOTAU = True
+
+import os
+if not os.path.exists(BASE_DIR):
+    os.makedirs(BASE_DIR)
 
 if NOTAU:
     prior = utils.BoxUniform(low=torch.tensor([0.01, 0.08, 0.97, 0.8, 2.6]),
@@ -94,12 +99,12 @@ inference = inference.append_simulations(theta, x)
 density_estimator = inference.train()
 
 if REPEAT > 1:
-    with open('planck_wmap_likelihood_with_' + DATA_NORM + '_'+ 
+    with open(BASE_DIR + 'planck_wmap_likelihood_with_' + DATA_NORM + '_'+ 
             'data_norm_plus_batch_norm_' + str(NUM_NETS) +
             '_nets_number' + str(REPEAT) + '_' + str(HIDDEN_LAYERS) + '_hls.pkl', 'wb') as f:
         pickle.dump(density_estimator, f)
 else:
-    with open('planck_wmap_likelihood_with_' + DATA_NORM + '_'+ 
+    with open(BASE_DIR + 'planck_wmap_likelihood_with_' + DATA_NORM + '_'+ 
           'data_norm_plus_batch_norm_' + str(NUM_NETS) +'_nets_' + str(HIDDEN_LAYERS) + '_hls.pkl', 'wb') as f:
         pickle.dump(density_estimator, f)
 print(x, theta)
@@ -109,7 +114,7 @@ plt.plot(np.array(inference._summary['training_log_probs']), label='Train')
 plt.plot(np.array(inference._summary['validation_log_probs']), label='test')
 plt.yscale('log')
 plt.legend()
-plt.savefig('planck_wmap_likelihood_with_' + DATA_NORM + '_data_norm' +
+plt.savefig(BASE_DIR + 'planck_wmap_likelihood_with_' + DATA_NORM + '_data_norm' +
             '_plus_batch_norm_' + str(NUM_NETS) +'_nets_number' + str(REPEAT) + '_' + 
             str(HIDDEN_LAYERS) + '_hls_loss.png', dpi=300,
             bbox_inches='tight')
