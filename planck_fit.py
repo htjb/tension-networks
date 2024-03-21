@@ -44,7 +44,7 @@ def signal():
 
 fig, axes = plt.subplots(1)
 
-samples = read_chains('Planck_fit/test')
+samples = read_chains('Planck_fit_no_tau/test')
 samples = samples.compress(1000)
 
 names = ['p' + str(i) for i in range(6)]
@@ -56,5 +56,5 @@ plt.xlabel(r'$l$')
 plt.ylabel(r'$C_l$')
 plt.legend()
 plt.tight_layout()
-plt.savefig('planck_fit.png', dpi=300)
+plt.savefig('planck_fit_no_tau.png', dpi=300)
 plt.show()

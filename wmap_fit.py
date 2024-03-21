@@ -5,18 +5,23 @@ from cmblike.noise import wmap_noise
 from cmblike.cmb import CMB
 import numpy as np
 
-nDims = 6
+nDims = 5
 nDerived = 0
 
 p, l = get_data(base_dir='cosmology-data/').get_wmap()
 wmap_noise = wmap_noise(l).calculate_noise()
 
-cmbs = CMB()
+parameters = ['As', 'omegabh2', 'thetaMC', 'omegach2', 'ns']
+prior_mins = [2.6, 0.01, 0.97, 0.08, 0.8]
+prior_maxs = [3.8, 0.085, 1.5, 0.21, 1.2]
+
+cmbs = CMB(parameters=parameters, prior_mins=prior_mins,
+		           prior_maxs=prior_maxs)
 
 likelihood = cmbs.get_likelihood(p, l, noise=wmap_noise)
 prior = cmbs.prior
 
-file = 'wmap_fit/'
+file = 'wmap_fit_no_tau/'
 RESUME = True
 
 settings = PolyChordSettings(nDims, 0) #settings is an object
@@ -39,7 +44,7 @@ def signal():
 
 fig, axes = plt.subplots(1)
 
-samples = read_chains('wmap_fit/test')
+samples = read_chains('wmap_fit_no_tau/test')
 samples = samples.compress()
 
 names = ['p' + str(i) for i in range(6)]
@@ -50,5 +55,5 @@ plt.xlabel(r'$l$')
 plt.ylabel(r'$C_l$')
 plt.legend()
 plt.tight_layout()
-plt.savefig('wmap_fit.png', dpi=300)
+plt.savefig('wmap_fit_no_tau.png', dpi=300)
 plt.show()
