@@ -11,17 +11,19 @@ def jointClGen():
 
     pars = camb.CAMBparams()
 
-    def cl(_, parameters):
-        pars.set_cosmology(ombh2=parameters[0], omch2=parameters[1],
-                            tau=parameters[3], cosmomc_theta=parameters[2]/100,
-                            theta_H0_range=[5, 1000])
-        pars.InitPower.set_params(As=np.exp(parameters[5])/10**10, ns=parameters[4])
-        pars.set_for_lmax(2500, lens_potential_accuracy=0)
-        results = camb.get_background(pars) # computes evolution of background cosmology
+    def cl(_, parameters, clexample=None):
+        if clexample is None:
+            pars.set_cosmology(ombh2=parameters[0], omch2=parameters[1],
+                                tau=parameters[3], cosmomc_theta=parameters[2]/100,
+                                theta_H0_range=[5, 1000])
+            pars.InitPower.set_params(As=np.exp(parameters[5])/10**10, ns=parameters[4])
+            pars.set_for_lmax(2500, lens_potential_accuracy=0)
+            results = camb.get_background(pars) # computes evolution of background cosmology
 
-        cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:,0]
-        #cl = np.interp(l, np.arange(len(cl)), cl)
-        cl *= 2*np.pi/(np.arange(len(cl))*(np.arange(len(cl))+1))
+            cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:,0]
+            cl *= 2*np.pi/(np.arange(len(cl))*(np.arange(len(cl))+1))
+        else:
+            cl = clexample
         cl = cl[1:]
         lgen = np.arange(len(cl))
 

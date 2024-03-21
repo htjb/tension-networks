@@ -6,7 +6,7 @@ import pypolychord
 from pypolychord.settings import  PolyChordSettings
 from anesthetic import make_2d_axes
 
-def run_poly(prior, likelihood, file, RESUME = False, nDims=4,
+def run_poly(prior, likelihood, file, RESUME = False, nDims=3,
              **kwargs):
 
     nlive = kwargs.get('nlive', None)
