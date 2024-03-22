@@ -18,13 +18,23 @@ import pickle
 wmapraw, lwmap = get_data(base_dir='cosmology-data/').get_wmap()
 praw, l = get_data(base_dir='cosmology-data/').get_planck()
 
-prior = utils.BoxUniform(low=torch.tensor([0.01, 0.08, 0.97, 0.01, 0.8, 2.6]),
-                            high=torch.tensor([0.085, 0.21, 1.5, 0.16, 1.2, 3.8]))
-
-NUM_NETS = 12
+NUM_NETS = 8
 DATA_NORM = 'independent'
+BASE_DIR = 'wmap_planck_nle_no_tau/'
 HIDDEN_LAYERS = 1
 REPEAT = 1
+NOTAU = True
+
+import os
+if not os.path.exists(BASE_DIR):
+    os.makedirs(BASE_DIR)
+
+if NOTAU:
+    prior = utils.BoxUniform(low=torch.tensor([0.01, 0.08, 0.97, 0.8, 2.6]),
+                            high=torch.tensor([0.085, 0.21, 1.5, 1.2, 3.8]))
+else:
+    prior = utils.BoxUniform(low=torch.tensor([0.01, 0.08, 0.97, 0.01, 0.8, 2.6]),
+                                high=torch.tensor([0.085, 0.21, 1.5, 0.16, 1.2, 3.8]))
 
 density_estimator_build_fun = likelihood_nn(
     model="maf", hidden_features=50, hidden_layers=HIDDEN_LAYERS,
@@ -58,6 +68,10 @@ except FileNotFoundError:
     np.savetxt('planck-wmap-nle-examples.txt', x)
     np.savetxt('planck-wmap-nle-params.txt', theta)
 
+if NOTAU:
+    theta = np.delete(theta, 3, axis=1)
+
+
 if DATA_NORM == 'independent':
     planck = x[:, :len(praw)] 
     wmap = x[:, len(praw):]
@@ -85,12 +99,12 @@ inference = inference.append_simulations(theta, x)
 density_estimator = inference.train()
 
 if REPEAT > 1:
-    with open('planck_wmap_likelihood_with_' + DATA_NORM + '_'+ 
+    with open(BASE_DIR + 'planck_wmap_likelihood_with_' + DATA_NORM + '_'+ 
             'data_norm_plus_batch_norm_' + str(NUM_NETS) +
             '_nets_number' + str(REPEAT) + '_' + str(HIDDEN_LAYERS) + '_hls.pkl', 'wb') as f:
         pickle.dump(density_estimator, f)
 else:
-    with open('planck_wmap_likelihood_with_' + DATA_NORM + '_'+ 
+    with open(BASE_DIR + 'planck_wmap_likelihood_with_' + DATA_NORM + '_'+ 
           'data_norm_plus_batch_norm_' + str(NUM_NETS) +'_nets_' + str(HIDDEN_LAYERS) + '_hls.pkl', 'wb') as f:
         pickle.dump(density_estimator, f)
 print(x, theta)
@@ -100,16 +114,8 @@ plt.plot(np.array(inference._summary['training_log_probs']), label='Train')
 plt.plot(np.array(inference._summary['validation_log_probs']), label='test')
 plt.yscale('log')
 plt.legend()
-plt.savefig('planck_wmap_likelihood_with_' + DATA_NORM + '_data_norm' +
+plt.savefig(BASE_DIR + 'planck_wmap_likelihood_with_' + DATA_NORM + '_data_norm' +
             '_plus_batch_norm_' + str(NUM_NETS) +'_nets_number' + str(REPEAT) + '_' + 
             str(HIDDEN_LAYERS) + '_hls_loss.png', dpi=300,
             bbox_inches='tight')
 plt.show()
-
-"""true_signal = np.concatenate([praw, wmapraw])
-
-samples = posterior.sample((100,), x=true_signal)
-print(type(samples))
-log_probability = posterior.log_prob(samples, x=true_signal)
-_ = analysis.pairplot(samples, figsize=(6, 6))
-plt.show()"""

@@ -33,23 +33,24 @@ def prior(cube):
     theta[0] = UniformPrior(0.01, 0.085)(cube[0]) # omegabh2
     theta[1] = UniformPrior(0.08, 0.21)(cube[1]) # omegach2
     theta[2] = UniformPrior(0.97, 1.5)(cube[2]) # 100*thetaMC
-    theta[3] = UniformPrior(0.01, 0.16)(cube[3]) # tau
-    theta[4] = UniformPrior(0.8, 1.2)(cube[4]) # ns
-    theta[5] = UniformPrior(2.6, 3.8)(cube[5]) # log(10^10*As)
+    #theta[3] = UniformPrior(0.01, 0.16)(cube[3]) # tau
+    theta[3] = UniformPrior(0.8, 1.2)(cube[3]) # ns
+    theta[4] = UniformPrior(2.6, 3.8)(cube[4]) # log(10^10*As)
     return theta
 
 DATA_NORM = 'independent'
-NUM_NETS = 12
+NUM_NETS = 8
 HIDDEN_LAYERS = 1
+BASE_DIR = 'wmap_planck_nle_no_tau/'
 REPEAT = 1
 
 data = np.concatenate([praw, wmapraw]).astype(np.float32)
 if REPEAT > 1:
-    like = pickle.load(open('planck_wmap_likelihood_with_' + DATA_NORM + '_' + 
+    like = pickle.load(open(BASE_DIR +'planck_wmap_likelihood_with_' + DATA_NORM + '_' + 
                         'data_norm_plus_batch_norm_' + str(NUM_NETS) + 
                         '_nets_number' + str(REPEAT) + '_' + str(HIDDEN_LAYERS) + '_hls.pkl', 'rb'))
 else:
-    like = pickle.load(open('planck_wmap_likelihood_with_' + DATA_NORM + '_' + 
+    like = pickle.load(open(BASE_DIR +'planck_wmap_likelihood_with_' + DATA_NORM + '_' + 
                         'data_norm_plus_batch_norm_' + str(NUM_NETS) + 
                         '_nets_' + str(HIDDEN_LAYERS) + '_hls.pkl', 'rb'))
 
@@ -102,7 +103,7 @@ print(likelihood(params))
 sys.exit(1)
 """
 nDerived = 0
-nDims=6
+nDims=5
 RESUME=False
 
 import pypolychord
@@ -111,10 +112,10 @@ from pypolychord.settings import  PolyChordSettings
 settings = PolyChordSettings(nDims, 0) #settings is an object
 settings.read_resume = RESUME
 if REPEAT > 1:
-    settings.base_dir =  'wmap_planck_fit_with_' + DATA_NORM +'_data_norm' + \
+    settings.base_dir =  BASE_DIR +'wmap_planck_fit_with_' + DATA_NORM +'_data_norm' + \
         '_plus_batch_norm_' + str(NUM_NETS) + '_nets_number' + str(REPEAT) + '_' + str(HIDDEN_LAYERS) + '_hls/'
 else:
-    settings.base_dir =  'wmap_planck_fit_with_' + DATA_NORM +'_data_norm' + \
+    settings.base_dir =  BASE_DIR +'wmap_planck_fit_with_' + DATA_NORM +'_data_norm' + \
         '_plus_batch_norm_' + str(NUM_NETS) + '_nets_' + str(HIDDEN_LAYERS) + '_hls/'
 #settings.nlive = 200*6 
 
@@ -125,12 +126,13 @@ output.make_paramnames_files(paramnames)
 from anesthetic import read_chains
 
 chains = read_chains(settings.base_dir + '/test')
-paramnames = ['p%i' for i in range(6)]
-axes = chains.plot_2d(['p0', 'p1', 'p2', 'p3', 'p4', 'p5'])
+paramnames = ['p%i' for i in range(nDims)]
+axes = chains.plot_2d(['p0', 'p1', 'p2', 'p3', 'p4'])
 plt.savefig(settings.base_dir + '/2d.png')
 plt.show()
 
-planck = read_chains('Planck_fit/test')
-wmap = read_chains('wmap_fit/test')
+# should be no tau for no tau case
+planck = read_chains('planck-wmap-with-tau/Planck_fit/test')
+wmap = read_chains('planck-wmap-with-tau/wmap_fit/test')
 
 print((chains.logZ(1000) - planck.logZ(1000) - wmap.logZ(1000)).mean())

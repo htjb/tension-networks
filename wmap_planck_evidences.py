@@ -36,7 +36,7 @@ def get_info(split):
 
 # could train a bunch of networks with best set up and average the estimates of
 # the evidence from polychord...
-file_names = ['wmap_planck_fit_with_independent_data_norm_plus_batch_norm_2_nets_2_hls/',
+"""file_names = ['wmap_planck_fit_with_independent_data_norm_plus_batch_norm_2_nets_2_hls/',
               'wmap_planck_fit_with_independent_data_norm_plus_batch_norm_2_nets_number2_2_hls/',
               'wmap_planck_fit_with_custom_data_norm_plus_batch_norm_2_nets_2_hls/',
               'wmap_planck_fit_with_custom_data_norm_plus_batch_norm_2_nets_number2_2_hls/',
@@ -53,7 +53,16 @@ file_names = ['wmap_planck_fit_with_independent_data_norm_plus_batch_norm_2_nets
               'wmap_planck_fit_with_independent_data_norm_plus_batch_norm_8_nets_1_hls/',
               'wmap_planck_fit_with_independent_data_norm_plus_batch_norm_8_nets_number2_1_hls/',
               'wmap_planck_fit_with_independent_data_norm_plus_batch_norm_10_nets_1_hls/',
-              'wmap_planck_fit_with_independent_data_norm_plus_batch_norm_12_nets_1_hls/',]
+              'wmap_planck_fit_with_independent_data_norm_plus_batch_norm_12_nets_1_hls/',]"""
+
+BASE_DIR = 'wmap_planck_nle_no_tau/'
+
+filenames = ['wmap_planck_fit_with_independent_data_norm_plus_batch_norm_2_nets_1_hls/',
+             'wmap_planck_fit_with_independent_data_norm_plus_batch_norm_2_nets_number2_1_hls/',
+             'wmap_planck_fit_with_independent_data_norm_plus_batch_norm_4_nets_1_hls/',
+             'wmap_planck_fit_with_independent_data_norm_plus_batch_norm_8_nets_1_hls/',]
+
+file_names = [BASE_DIR + file for file in filenames]
 
 PLOT_EVIDENCES = True
 PLOT_LIKELIHOODS = True
@@ -63,8 +72,8 @@ if PLOT_EVIDENCES:
     axr = ax[1]
     ax = ax[0]
 
-    planck_chains = read_chains('Planck_fit/test')
-    wmap_chains = read_chains('wmap_fit/test')
+    planck_chains = read_chains('planck-wmap-with-tau/Planck_fit/test')
+    wmap_chains = read_chains('planck-wmap-with-tau/wmap_fit/test')
     sumlogZ = planck_chains.logZ(1000).values + wmap_chains.logZ(1000).values
     ax.axhline(np.mean(sumlogZ), color='k', linestyle='--', label='Planck + WMAP')
     ax.axhspan(np.mean(sumlogZ) - np.std(sumlogZ), np.mean(sumlogZ) + np.std(sumlogZ),
@@ -101,7 +110,7 @@ if PLOT_EVIDENCES:
     ax.scatter([], [], marker='*', c='k', label='structured')
     ax.legend(loc='lower right')
     plt.tight_layout()
-    plt.savefig('nle-evidences.png', dpi=300, bbox_inches='tight')
+    plt.savefig('nle-evidences_no_tau.png', dpi=300, bbox_inches='tight')
     plt.show()
 
 if PLOT_LIKELIHOODS:
@@ -110,6 +119,7 @@ if PLOT_LIKELIHOODS:
 
     training_data = np.loadtxt('planck-wmap-nle-examples.txt').astype(np.float32)
     training_params = np.loadtxt('planck-wmap-nle-params.txt').astype(np.float32)
+    training_params = np.delete(training_params, 3, axis=1) # remove tau
     import random
     idx = random.sample(range(len(training_data)), 5000)
     training_data = training_data[idx]
@@ -122,8 +132,8 @@ if PLOT_LIKELIHOODS:
     cls = []
     marks = []
     for i in range(len(file_names)):
-        pickle_file = file_names[i].split('/')[0] + '.pkl'
-        pickle_file = 'planck_wmap_likelihood_' + ''.join(pickle_file[16:])
+        pickle_file = file_names[i].split('/')[1] + '.pkl'
+        pickle_file = BASE_DIR + 'planck_wmap_likelihood_' + ''.join(pickle_file[16:])
         with open(pickle_file, 'rb') as f:
             density_estimator = pickle.load(f)
         split = file_names[i].split('_')
@@ -188,5 +198,5 @@ if PLOT_LIKELIHOODS:
     #plt.yscale('log')
     plt.ylim(-10, 0)
     plt.tight_layout()
-    plt.savefig('nle-likelihoods.png', dpi=300, bbox_inches='tight')
+    plt.savefig('nle-likelihoods_no_tau.png', dpi=300, bbox_inches='tight')
     plt.show()
