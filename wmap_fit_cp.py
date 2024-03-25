@@ -11,13 +11,13 @@ nDerived = 0
 p, l = get_data(base_dir='cosmology-data/').get_wmap()
 wmap_noise = wmap_noise(l).calculate_noise()
 
-parameters = ['As', 'omegabh2', 'h', 'omegach2', 'ns']
-prior_mins = [2.6, 0.01, 0.6, 0.08, 0.8]
-prior_maxs = [3.8, 0.085, 0.75, 0.21, 1.2]
+parameters = ['omegabh2', 'omegach2', 'ns', 'As', 'h']
+prior_mins = [0.005, 0.08, 0.8, 2.6, 0.5]
+prior_maxs = [0.04, 0.21, 1.2, 3.8, 0.9]
 
 cmbs = CMB(parameters=parameters, prior_mins=prior_mins,
 		           prior_maxs=prior_maxs,
-                   path_to_cp='/Users/harry/Documents/Software/cosmopower')
+                   path_to_cp='/Users/harrybevins/Documents/Software/cosmopower')
 
 likelihood = cmbs.get_likelihood(p, l, noise=wmap_noise, cp=True)
 prior = cmbs.prior
