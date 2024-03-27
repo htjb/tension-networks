@@ -144,8 +144,8 @@ class nre():
         simsB = np.array(simsB)
         self.params = np.array(params)
 
-        simsA = (simsA - simsA.mean(axis=0)) / simsA.std(axis=0)
-        simsB = (simsB - simsB.mean(axis=0)) / simsB.std(axis=0)
+        #simsA = (simsA - simsA.mean(axis=0)) / simsA.std(axis=0)
+        #simsB = (simsB - simsB.mean(axis=0)) / simsB.std(axis=0)
 
         #simsA = (simsA - simsA.min(axis=0)) / (simsA.max(axis=0) - simsA.min(axis=0))
         #simsB = (simsB - simsB.min(axis=0)) / (simsB.max(axis=0) - simsB.min(axis=0))
@@ -181,17 +181,31 @@ class nre():
             self.labels = labels
         
         print('Simulations built.')
-        
-
-    def training(self, epochs, early_stop=True, batch_size=32):
 
         data_train, data_test, labels_train, labels_test = \
                 train_test_split(self.data, self.labels, test_size=0.2)
         
-        self.data_test = data_test
         self.labels_test = labels_test
+        self.labels_train = labels_train
+
+        data_trainA = data_train[:, :len(simsA[0])]
+        data_trainB = data_train[:, len(simsA[0]):]
+        data_testA = data_test[:, :len(simsA[0])]
+        data_testB = data_test[:, len(simsA[0]):]
+
+        data_testA = (data_testA - data_trainA.mean(axis=0)) / data_trainA.std(axis=0)
+        data_testB = (data_testB - data_trainB.mean(axis=0)) / data_trainB.std(axis=0)
+        data_trainA = (data_trainA - data_trainA.mean(axis=0)) / data_trainA.std(axis=0)
+        data_trainB = (data_trainB - data_trainB.mean(axis=0)) / data_trainB.std(axis=0)
+
+        self.data_train = np.hstack([data_trainA, data_trainB])
+        self.data_test = np.hstack([data_testA, data_testB])
         
-        train_dataset = np.hstack([data_train, labels_train[:, np.newaxis]]).astype(np.float32)
+
+    def training(self, epochs, early_stop=True, batch_size=32):
+        
+        train_dataset = np.hstack([self.data_train, 
+                                   self.labels_train[:, np.newaxis]]).astype(np.float32)
         train_dataset = tf.data.Dataset.from_tensor_slices(train_dataset)
         train_dataset = train_dataset.batch(batch_size)
 
@@ -206,7 +220,8 @@ class nre():
             epoch_loss_avg.update_state(loss)
             self.loss_history.append(epoch_loss_avg.result())
 
-            self.test_loss_history.append(self._test_step(data_test, labels_test))
+            self.test_loss_history.append(self._test_step(self.data_test, 
+                                                          self.labels_test))
 
             if early_stop:
                 c += 1
@@ -224,8 +239,8 @@ class nre():
                     if c == round((epochs/100)*2):
                         print('Early stopped. Epochs used = ' + str(i) +
                                 '. Minimum at epoch = ' + str(minimum_epoch))
-                        return minimum_model, data_test, labels_test
-        return self.model, data_test, labels_test
+                        return minimum_model, self.data_test, self.labels_test
+        return self.model, self.data_test, self.labels_test
 
     @tf.function(jit_compile=True)
     def _test_step(self, param, truth):
