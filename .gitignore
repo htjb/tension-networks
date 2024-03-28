@@ -1,6 +1,2 @@
-cmbemu_model/train_dataset.csv
-cmbemu_model_wide/train_dataset.csv
-cmbemu_model_wide/train_data.txt
-cmbemu_model_wide/test_data.txt
-cmbemu_model_wide/test_label.txt
-cmbemu_model_wide/train_label.txt
+**/test.resume
+**/.DS_Store
