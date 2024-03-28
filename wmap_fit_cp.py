@@ -8,7 +8,18 @@ import numpy as np
 nDims = 5
 nDerived = 0
 
-p, l = get_data(base_dir='cosmology-data/').get_wmap()
+PRETEND_DATA = True
+RESUME = True
+BASE_DIR = 'cosmopower-stuff/'
+data_label = '_diff_samples'
+
+if PRETEND_DATA:
+    file = 'pretend_wmap_fit_with_cp_no_tau' + data_label + '/'
+    p = np.load(BASE_DIR + 'random_wmap_like_data' + data_label + '.npy')
+    _, l = get_data(base_dir='cosmology-data/').get_wmap()
+else:
+    file = 'wmap_fit_with_cp_no_tau/'
+    p, l = get_data(base_dir='cosmology-data/').get_wmap()
 wmap_noise = wmap_noise(l).calculate_noise()
 
 parameters = ['omegabh2', 'omegach2', 'ns', 'As', 'h']
@@ -22,12 +33,9 @@ cmbs = CMB(parameters=parameters, prior_mins=prior_mins,
 likelihood = cmbs.get_likelihood(p, l, noise=wmap_noise, cp=True)
 prior = cmbs.prior
 
-file = 'wmap_fit_with_cp_no_tau/'
-RESUME = False
-
 settings = PolyChordSettings(nDims, 0) #settings is an object
 settings.read_resume = RESUME
-settings.base_dir = file + '/'
+settings.base_dir = BASE_DIR + file + '/'
 
 output = pypolychord.run_polychord(likelihood, nDims, nDerived, settings, prior)
 paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(nDims)]
@@ -45,7 +53,7 @@ def signal():
 
 fig, axes = plt.subplots(1)
 
-samples = read_chains('wmap_fit_with_cp_no_tau/test')
+samples = read_chains(BASE_DIR + file + 'test')
 samples = samples.compress()
 
 names = ['p' + str(i) for i in range(5)]
@@ -56,5 +64,8 @@ plt.xlabel(r'$l$')
 plt.ylabel(r'$C_l$')
 plt.legend()
 plt.tight_layout()
-plt.savefig('wmap_fit_with_cp_no_tau.png', dpi=300)
+if PRETEND_DATA:
+    plt.savefig(BASE_DIR + 'pretend_wmap_fit_with_cp_no_tau' + data_label + '.png', dpi=300)
+else:
+    plt.savefig(BASE_DIR + 'wmap_fit_with_cp_no_tau.png', dpi=300)
 plt.show()
