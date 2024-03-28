@@ -38,7 +38,7 @@ train_params_mean = np.loadtxt('cosmopower-stuff/train_params_mean.txt')
 train_params_std = np.loadtxt('cosmopower-stuff/train_params_std.txt')
 
 data = chains.values[:, :5]
-idx = random.sample(range(len(data)), 100)
+idx = random.sample(range(len(data)), 1000)
 data = data[idx]
 f = []
 for j in tqdm(range(len(data))):
@@ -65,6 +65,7 @@ for j in tqdm(range(len(data))):
     test_samples = np.delete(test_samples, idx, axis=0)
     
     # comparing P(x_ij|theta_i) and P(x_j|theta_i)
+    # hmmm i mean technically im not comparing the likelihoods here...
     ff = np.mean([1 if model(tf.convert_to_tensor(np.array([[*test_samples[t, len(praw):], 
                 *data[j], *test_samples[t, :len(praw)]]]).astype('float32'))) < 
                   reference else 0 for t in range(1, len(test_samples))])
