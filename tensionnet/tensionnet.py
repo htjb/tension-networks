@@ -41,37 +41,40 @@ class nre():
         self.model = self.Model(inputs, outputs)
     
     def build_simulations(self, simulation_func_A, simulation_func_B,
-                           prior_function_A, prior_function_B,
-                            shared_prior, n=10000, call_type='train'):
+                            shared_prior, n=10000, call_type='train',
+                            prior_function_A=None, prior_function_B=None):
         
         print('Building simulations...')
 
         self.simulation_func_A = simulation_func_A
         self.simulation_func_B = simulation_func_B
-        self.prior_function_A = prior_function_A
-        self.prior_function_B = prior_function_B
-        self.shared_prior = shared_prior
 
-        thetaA = self.prior_function_A(n)
-        thetaB = self.prior_function_B(n)
+
+        self.shared_prior = shared_prior
         thetaShared = self.shared_prior(n)
 
+        if prior_function_A:
+            self.prior_function_A = prior_function_A
+            thetaA = self.prior_function_A(n)
+            thetaA = np.hstack([thetaA, thetaShared])
+        else:
+            thetaA = thetaShared.copy()
+
+        if prior_function_B:
+            self.prior_function_B = prior_function_B
+            thetaB = self.prior_function_B(n)
+            thetaB = np.hstack([thetaB, thetaShared])
+        else:
+            thetaB = thetaShared.copy()
+        
+
         # generate lots of simulations 
-        simsA, params = [], []
-        simsB = []
+        simsB, simsA = [], []
         for i in tqdm.tqdm(range(n)):
-            simsA.append(self.simulation_func_A(thetaA[i], thetaShared[i]))
-            simsB.append(self.simulation_func_B(thetaB[i], thetaShared[i]))
-            params.append([*thetaA[i], *thetaB[i], *thetaShared[i]])
+            simsA.append(self.simulation_func_A(thetaA[i]))
+            simsB.append(self.simulation_func_B(thetaB[i]))
         simsA = np.array(simsA)
         simsB = np.array(simsB)
-        self.params = np.array(params)
-
-        #simsA = (simsA - simsA.mean(axis=0)) / simsA.std(axis=0)
-        #simsB = (simsB - simsB.mean(axis=0)) / simsB.std(axis=0)
-
-        #simsA = (simsA - simsA.min(axis=0)) / (simsA.max(axis=0) - simsA.min(axis=0))
-        #simsB = (simsB - simsB.min(axis=0)) / (simsB.max(axis=0) - simsB.min(axis=0))
 
         idx = np.arange(0, n, 1)
         shuffle(idx)
@@ -104,6 +107,7 @@ class nre():
             self.labels = labels
         
         print('Simulations built.')
+        print('Splitting data and normalizing...')
 
         data_train, data_test, labels_train, labels_test = \
                 train_test_split(self.data, self.labels, test_size=0.2)
@@ -123,8 +127,9 @@ class nre():
 
         self.data_train = np.hstack([data_trainA, data_trainB])
         self.data_test = np.hstack([data_testA, data_testB])
-        
 
+        print('Data split and normalized.')
+        
     def training(self, epochs, early_stop=True, batch_size=32):
         
         train_dataset = np.hstack([self.data_train, 
