@@ -21,7 +21,7 @@ class nre():
         self.lr = lr
         self.compress = False
 
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
+        self.optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=self.lr)
 
     def build_model(
             self, input_dim, layer_sizes, activation):
