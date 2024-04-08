@@ -57,6 +57,7 @@ class nre():
             thetaA = self.prior_function_A(n)
             thetaA = np.hstack([thetaA, thetaShared])
         else:
+            self.prior_function_A = None
             thetaA = thetaShared.copy()
 
         if prior_function_B:
@@ -64,6 +65,7 @@ class nre():
             thetaB = self.prior_function_B(n)
             thetaB = np.hstack([thetaB, thetaShared])
         else:
+            self.prior_function_B = None
             thetaB = thetaShared.copy()
         
 
@@ -110,6 +112,7 @@ class nre():
             dataB = (dataB - data_trainB.mean(axis=0)) / \
                 data_trainB.std(axis=0)
             input_data = np.hstack([dataA, dataB])
+            print('Simulations built and normalized.')
             return input_data, labels
         elif call_type == 'train':
             self.data = input_data
@@ -280,7 +283,9 @@ class nre():
                          self.loss_history,
                          self.test_loss_history,
                          self.data_test,
-                         self.labels_test
+                         self.labels_test,
+                         self.data_train,
+                        self.labels_train,
                          ], f)
     
     @classmethod
@@ -299,7 +304,8 @@ class nre():
             weights, input_dim, layer_sizes, \
                 activation, \
                 loss_history, test_loss_history, \
-                     data_test, labels_test = data
+                     data_test, labels_test, \
+                         data_train, labels_train = data
             
             inst = cls()
             inst.build_model(input_dim, 
@@ -316,5 +322,7 @@ class nre():
             inst.shared_prior = shared_prior
             inst.data_test = data_test
             inst.labels_test = labels_test
+            inst.data_train = data_train
+            inst.labels_train = labels_train
         
         return inst
