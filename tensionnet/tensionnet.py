@@ -7,6 +7,9 @@ from keras import layers
 import pickle
 import tqdm
 
+"""import os
+os.environ['TF_USE_LEGACY_KERAS']='True'"""
+
 
 class nre():
     def __init__(self, lr=1e-4):
@@ -18,7 +21,7 @@ class nre():
         self.lr = lr
         self.compress = False
 
-        self.optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=self.lr)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
 
     def build_model(
             self, input_dim, layer_sizes, activation):
@@ -188,7 +191,7 @@ class nre():
                         return minimum_model, self.data_test, self.labels_test
         return self.model, self.data_test, self.labels_test
 
-    #@tf.function(jit_compile=True)
+    @tf.function(jit_compile=True)
     def _test_step(self, param, truth):
             
             r"""
@@ -197,19 +200,14 @@ class nre():
             optimizer algorithm.
             """
     
-            if self.compress:
-                prediction = tf.transpose(self.model([
-                                param[:, :self.input_dimA],
-                                param[:, self.input_dimA:]], training=True))[0]
-            else:
-                prediction = tf.transpose(self.model(param, training=True))[0]
+            prediction = tf.transpose(self.model(param, training=True))[0]
             prediction = tf.keras.layers.Activation('sigmoid')(prediction)
             truth = tf.convert_to_tensor(truth)
             loss = tf.keras.losses.BinaryCrossentropy(
                                 from_logits=False)(truth, prediction)
             return loss
 
-    #@tf.function(jit_compile=True)
+    @tf.function(jit_compile=True)
     def _train_step(self, params, truth):
 
             r"""
@@ -219,12 +217,7 @@ class nre():
             """
 
             with tf.GradientTape() as tape:
-                if self.compress:
-                    prediction = tf.transpose(self.model([
-                        params[:, :self.input_dimA],
-                        params[:, self.input_dimA:]], training=True))[0]
-                else:
-                    prediction = tf.transpose(self.model(params, 
+                prediction = tf.transpose(self.model(params, 
                                                          training=True))[0]
                 prediction = tf.keras.layers.Activation('sigmoid')(prediction)
                 truth = tf.convert_to_tensor(truth)

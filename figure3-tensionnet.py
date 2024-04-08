@@ -47,17 +47,18 @@ try:
 except:
     nrei = nre(lr=1e-4)
     nrei.build_model(len(exp2_freq) + len(exp1_freq),
-                        [100]*10, 'sigmoid')
+                        [50]*5, 'sigmoid')
     nrei.build_simulations(exp2, exp1, signal_prior, n=100000)
     model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
     nrei.save('figure3-nre.pkl')
 
-nrei.__call__(iters=5000)
+nrei.__call__(iters=1000)
 r = nrei.r_values
 mask = np.isfinite(r)
 sigr = tf.keras.layers.Activation('sigmoid')(r[mask])
 good_idx = sigr > 0.75
 r = r[good_idx]
+print('Surviving Simulations: ', len(r))
 
 temperatures = np.array([0.15, 0.2, 0.25])/0.2
 
