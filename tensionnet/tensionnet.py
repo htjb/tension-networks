@@ -287,9 +287,8 @@ class nre():
     
     @classmethod
     def load(cls, filename,
-             simulation_func_A, simulation_func_B,
-             prior_function_A, prior_function_B,
-             shared_prior):
+             simulation_func_A, simulation_func_B, shared_prior,
+             prior_function_A=None, prior_function_B=None):
 
         """
         Load the network and associated data from a pickle file. Gets a
