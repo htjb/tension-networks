@@ -15,7 +15,7 @@ plt.rc('text.latex', preamble=r'\usepackage{amsmath} \usepackage{amssymb}')
 
 
 def signal_func_gen(freqs):
-    def signal(_, parameters):
+    def signal(parameters):
         amp, nu_0, w = parameters
         return -amp * np.exp(-(freqs-nu_0)**2 / (2*w**2)) + \
             np.random.normal(0, 0.025, len(freqs))
@@ -28,15 +28,6 @@ def signal_prior(n):
     parameters[:, 2] = np.random.uniform(5.0, 40.0, n) #w
     return parameters
 
-def exp_prior(n):
-    """
-    The way tensionnet is set up it requires some
-    parameters that are unique to each experiment. Here I give an array of
-    zeros because the experimetns are just signal plus noise. Doesn't have
-    any impact on the results.
-    """
-    return np.zeros((n, 2))
-
 exp1_freq = np.linspace(60, 90, 100)
 exp2_freq = np.linspace(80, 120, 100)
 
@@ -46,17 +37,17 @@ exp1 = signal_func_gen(exp1_freq)
 from tensionnet.tensionnet import nre
 
 try:
-    nrei = nre.load('test_model.pkl',
-                exp2, exp1, exp_prior,
-                exp_prior, signal_prior)
+    nrei = nre.load('figure3-nre.pkl',
+                exp2, exp1, signal_prior)
 except:
     nrei = nre(lr=1e-4)
     nrei.build_model(len(exp2_freq) + len(exp1_freq), 1, 
                         [100]*10, 'sigmoid')
-    nrei.build_simulations(exp2, exp1, exp_prior, exp_prior, signal_prior, n=100000)
+    nrei.build_simulations(exp2, exp1, signal_prior, n=100000)
     model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
-    nrei.save('test_model.pkl')
+    nrei.save('figure3-nre.pkl')
 
+sys.exit(1)
 nrei.__call__(iters=5000)
 r = nrei.r_values
 mask = np.isfinite(r)
@@ -74,8 +65,9 @@ mask = np.isfinite(r)
 
 
 temperatures = np.array([0.15, 0.2, 0.25])/0.2
-Rs =[-12.40474379,    9.77660272,  -17.25641865,] 
-sigma_Rs = [0.20684563, 0.21888224, 0.21734393]
+
+Rs =[-13.9550691, 11.05100207, -15.82802511]
+sigma_Rs = [0.18735065, 0.19460283, 0.19532124]
 
 y_pos = [100]*len(temperatures)
 
@@ -184,6 +176,6 @@ for i in range(2):
 axes[0, 1].set_xticks([0, 1, 2], ['Correct', 'Wrong', 'Confused'])
 axes[0, 1].set_yticks([0, 1], ['In tension', 'Not In Tension'])
 plt.tight_layout()
-plt.savefig('toy_example.pdf', bbox_inches='tight', dpi=300)
+plt.savefig('figures/figure3.pdf', bbox_inches='tight', dpi=300)
 plt.show()
 
