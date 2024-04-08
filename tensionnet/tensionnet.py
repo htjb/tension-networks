@@ -7,9 +7,6 @@ from keras import layers
 import pickle
 import tqdm
 
-"""import os
-os.environ['TF_USE_LEGACY_KERAS']='True'"""
-
 
 class nre():
     def __init__(self, lr=1e-4):
@@ -34,12 +31,12 @@ class nre():
         a0 = self.Inputs(shape=(self.input_dim,))
         inputs = a0
         for layer_size in self.layer_sizes:
-            outputs = self.Dense(layer_size, activation=self.activation,
-                kernel_initializer=tf.keras.initializers.GlorotNormal())(a0)
+            outputs = self.Dense(layer_size, 
+                                 activation=self.activation,
+                                 use_bias=False)(a0)
             outputs = self.batch_norm()(outputs)
             a0 = outputs
-        outputs = self.Dense(1, activation='linear',
-            kernel_initializer=tf.keras.initializers.GlorotNormal())(a0)
+        outputs = self.Dense(1, activation='linear')(a0)
         self.model = self.Model(inputs, outputs)
     
     def build_simulations(self, simulation_func_A, simulation_func_B,
