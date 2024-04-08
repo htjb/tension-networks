@@ -41,13 +41,12 @@ try:
                 exp2, exp1, signal_prior)
 except:
     nrei = nre(lr=1e-4)
-    nrei.build_model(len(exp2_freq) + len(exp1_freq), 1, 
+    nrei.build_model(len(exp2_freq) + len(exp1_freq),
                         [100]*10, 'sigmoid')
-    nrei.build_simulations(exp2, exp1, signal_prior, n=100000)
+    nrei.build_simulations(exp2, exp1, signal_prior, n=100)
     model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
     nrei.save('figure3-nre.pkl')
 
-sys.exit(1)
 nrei.__call__(iters=5000)
 r = nrei.r_values
 mask = np.isfinite(r)
@@ -62,7 +61,6 @@ for i in range(len(sigr)):
 
 r = r[good_idx]
 mask = np.isfinite(r)
-
 
 temperatures = np.array([0.15, 0.2, 0.25])/0.2
 

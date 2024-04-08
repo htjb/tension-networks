@@ -21,10 +21,9 @@ class nre():
         self.optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=self.lr)
 
     def build_model(
-            self, input_dim, output_dim, layer_sizes, activation):
+            self, input_dim, layer_sizes, activation):
         
         self.input_dim = input_dim
-        self.output_dim = output_dim
         self.layer_sizes = layer_sizes
         self.activation = activation
         
@@ -36,7 +35,7 @@ class nre():
                 kernel_initializer=tf.keras.initializers.GlorotNormal())(a0)
             outputs = self.batch_norm()(outputs)
             a0 = outputs
-        outputs = self.Dense(self.output_dim, activation='linear',
+        outputs = self.Dense(1, activation='linear',
             kernel_initializer=tf.keras.initializers.GlorotNormal())(a0)
         self.model = self.Model(inputs, outputs)
     
@@ -276,7 +275,6 @@ class nre():
         with open(filename, 'wb') as f:
             pickle.dump([w,
                          self.input_dim,
-                         self.output_dim,
                          self.layer_sizes,
                          self.activation,
                          self.loss_history,
@@ -298,13 +296,13 @@ class nre():
         with open(filename, 'rb') as f:
             data = pickle.load(f)
 
-            weights, input_dim, output_dim, layer_sizes, \
+            weights, input_dim, layer_sizes, \
                 activation, \
                 loss_history, test_loss_history, \
                      data_test, labels_test = data
             
             inst = cls()
-            inst.build_model(input_dim, output_dim, 
+            inst.build_model(input_dim, 
                                  layer_sizes, activation)
             
             # initiallise all the important variables
