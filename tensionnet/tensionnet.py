@@ -257,11 +257,7 @@ class nre():
         for i in range(len(data)):
             params = tf.convert_to_tensor(np.array(
                 [[*data[i]]]).astype('float32'))
-            if self.compress:
-                logr = self.model([params[:, :self.input_dimA],
-                                params[:, self.input_dimA:]]).numpy()[0]
-            else:
-                logr = self.model(params).numpy()[0]
+            logr = self.model(params).numpy()[0]
             r_values.append(logr)
 
         self.r_values = np.array(r_values).T[0]
@@ -309,15 +305,7 @@ class nre():
                      data_test, labels_test = data
             
             inst = cls()
-            # build the model whether compress or not
-            if not isinstance(input_dim, int):
-                inst.build_compress_model(input_dim[0], input_dim[1], 
-                                       output_dim, 
-                                       layer_sizes[0], layer_sizes[1],
-                                       layer_sizes[2],
-                                       activation)
-            else:
-                inst.build_model(input_dim, output_dim, 
+            inst.build_model(input_dim, output_dim, 
                                  layer_sizes, activation)
             
             # initiallise all the important variables
