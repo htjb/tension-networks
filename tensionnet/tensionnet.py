@@ -40,83 +40,6 @@ class nre():
             kernel_initializer=tf.keras.initializers.GlorotNormal())(a0)
         self.model = self.Model(inputs, outputs)
     
-    def build_compress_model(
-            self, input_dimA, input_dimB, output_dim, layer_sizesA,
-            layer_sizesB, layer_sizesC, activation):
-        
-        """
-        Builds a more complicated feedforward neural network with the given
-        architecture. We basically compress the data (Pcal, PNS, PL, various s11s
-        and the frequency) into a few nodes before mixing them in with the
-        temperature.
-
-        You will get much better performance with this network!
-
-        input_dimA: int
-            The number of inputs in the data vector (e.g. Ps and nu).
-        
-        input_dimB: int
-            The number of inputs in the temperature vector (e.g. T).
-        
-        output_dim: int
-            The number of output features from the network.
-        
-        layer_sizesA: list
-            A list of integers, each integer is the number of neurons in
-            that layer of the network that compressess the data.
-        
-        layer_sizesB: list
-            A list of integers, each integer is the number of neurons in
-            that layer of the network that combines the temperature and compressed
-            data and outputs the probability.
-        
-        activation: str
-            The activation function to use in the hidden layers. Best left to
-            'sigmoid'.
-
-        """
-        
-        self.input_dimA = input_dimA
-        self.input_dimB = input_dimB
-        self.output_dim = output_dim
-        self.layer_sizesA = layer_sizesA
-        self.layer_sizesB = layer_sizesB
-        self.layer_sizesC = layer_sizesC
-        self.activation = activation
-        self.output_activation='sigmoid'
-        self.compress = True
-
-        # build the network that compresses the data
-        a0 = self.Inputs(shape=(self.input_dimA,))
-        inputsA = a0
-        a0 = self.batch_norm()(a0)
-        for layer_sizeA in self.layer_sizesA:
-            outputs = self.Dense(layer_sizeA, activation=self.activation)(a0)
-            outputs = self.batch_norm()(outputs)
-            a0 = outputs
-
-        # build the network that compresses the data
-        a1 = self.Inputs(shape=(self.input_dimB,))
-        inputsB = a1
-        a1 = self.batch_norm()(a1)
-        for layer_sizeB in self.layer_sizesB:
-            outputs = self.Dense(layer_sizeB, activation=self.activation)(a1)
-            outputs = self.batch_norm()(outputs)
-            a1 = outputs
-
-        # combine the two networks
-        a = tf.keras.layers.Concatenate()([a0, a1])
-        for layer_sizeC in self.layer_sizesC:
-            outputs = self.Dense(layer_sizeC, activation=self.activation)(a)
-            outputs = self.batch_norm()(outputs)
-            a = outputs
-        outputs = self.Dense(self.output_dim, activation=self.output_activation)(a)
-        
-        self.model = self.Model(inputs=[inputsA, inputsB], outputs=outputs)
-
-        self.input_dim = [self.input_dimA, self.input_dimB]
-        self.layer_sizes = [self.layer_sizesA, self.layer_sizesB, self.layer_sizesC]
-    
     def build_simulations(self, simulation_func_A, simulation_func_B,
                            prior_function_A, prior_function_B,
                             shared_prior, n=10000, call_type='train'):
@@ -242,7 +165,7 @@ class nre():
                         return minimum_model, self.data_test, self.labels_test
         return self.model, self.data_test, self.labels_test
 
-    @tf.function(jit_compile=True)
+    #@tf.function(jit_compile=True)
     def _test_step(self, param, truth):
             
             r"""
@@ -261,7 +184,7 @@ class nre():
             loss = tf.keras.losses.BinaryCrossentropy(from_logits=False)(truth, prediction)
             return loss
 
-    @tf.function(jit_compile=True)
+    #@tf.function(jit_compile=True)
     def _train_step(self, params, truth):
 
             r"""
