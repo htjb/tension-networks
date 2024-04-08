@@ -101,6 +101,16 @@ class nre():
             labels = data[:, -1]
 
         if call_type == 'eval':
+            # need to normalise the data
+            dataA = input_data[:, :len(simsA[0])]
+            dataB = input_data[:, len(simsA[0]):]
+            data_trainA = self.data_train[:, :len(simsA[0])]
+            data_trainB = self.data_train[:, len(simsA[0]):]
+            dataA = (dataA - data_trainA.mean(axis=0)) / \
+                data_trainA.std(axis=0)
+            dataB = (dataB - data_trainB.mean(axis=0)) / \
+                data_trainB.std(axis=0)
+            input_data = np.hstack([dataA, dataB])
             return input_data, labels
         elif call_type == 'train':
             self.data = input_data
@@ -120,10 +130,14 @@ class nre():
         data_testA = data_test[:, :len(simsA[0])]
         data_testB = data_test[:, len(simsA[0]):]
 
-        data_testA = (data_testA - data_trainA.mean(axis=0)) / data_trainA.std(axis=0)
-        data_testB = (data_testB - data_trainB.mean(axis=0)) / data_trainB.std(axis=0)
-        data_trainA = (data_trainA - data_trainA.mean(axis=0)) / data_trainA.std(axis=0)
-        data_trainB = (data_trainB - data_trainB.mean(axis=0)) / data_trainB.std(axis=0)
+        data_testA = (data_testA - data_trainA.mean(axis=0)) / \
+            data_trainA.std(axis=0)
+        data_testB = (data_testB - data_trainB.mean(axis=0)) / \
+            data_trainB.std(axis=0)
+        data_trainA = (data_trainA - data_trainA.mean(axis=0)) / \
+            data_trainA.std(axis=0)
+        data_trainB = (data_trainB - data_trainB.mean(axis=0)) / \
+            data_trainB.std(axis=0)
 
         self.data_train = np.hstack([data_trainA, data_trainB])
         self.data_test = np.hstack([data_testA, data_testB])
@@ -133,7 +147,8 @@ class nre():
     def training(self, epochs, early_stop=True, batch_size=32):
         
         train_dataset = np.hstack([self.data_train, 
-                                   self.labels_train[:, np.newaxis]]).astype(np.float32)
+                                   self.labels_train[:, np.newaxis]]
+                                   ).astype(np.float32)
         train_dataset = tf.data.Dataset.from_tensor_slices(train_dataset)
         train_dataset = train_dataset.batch(batch_size)
 
@@ -144,7 +159,8 @@ class nre():
 
             epoch_loss_avg = tf.keras.metrics.Mean()
 
-            loss = [self._train_step(x[:, :-1], x[:, -1]) for x in  train_dataset]
+            loss = [self._train_step(x[:, :-1], x[:, -1]) 
+                    for x in  train_dataset]
             epoch_loss_avg.update_state(loss)
             self.loss_history.append(epoch_loss_avg.result())
 
@@ -180,13 +196,15 @@ class nre():
             """
     
             if self.compress:
-                prediction = tf.transpose(self.model([param[:, :self.input_dimA],
-                                                    param[:, self.input_dimA:]], training=True))[0]
+                prediction = tf.transpose(self.model([
+                                param[:, :self.input_dimA],
+                                param[:, self.input_dimA:]], training=True))[0]
             else:
                 prediction = tf.transpose(self.model(param, training=True))[0]
             prediction = tf.keras.layers.Activation('sigmoid')(prediction)
             truth = tf.convert_to_tensor(truth)
-            loss = tf.keras.losses.BinaryCrossentropy(from_logits=False)(truth, prediction)
+            loss = tf.keras.losses.BinaryCrossentropy(
+                                from_logits=False)(truth, prediction)
             return loss
 
     #@tf.function(jit_compile=True)
@@ -200,14 +218,18 @@ class nre():
 
             with tf.GradientTape() as tape:
                 if self.compress:
-                    prediction = tf.transpose(self.model([params[:, :self.input_dimA],
-                                                          params[:, self.input_dimA:]], training=True))[0]
+                    prediction = tf.transpose(self.model([
+                        params[:, :self.input_dimA],
+                        params[:, self.input_dimA:]], training=True))[0]
                 else:
-                    prediction = tf.transpose(self.model(params, training=True))[0]
+                    prediction = tf.transpose(self.model(params, 
+                                                         training=True))[0]
                 prediction = tf.keras.layers.Activation('sigmoid')(prediction)
                 truth = tf.convert_to_tensor(truth)
-                loss = tf.keras.losses.BinaryCrossentropy(from_logits=False)(truth, prediction)
-                gradients = tape.gradient(loss, self.model.trainable_variables)
+                loss = tf.keras.losses.BinaryCrossentropy(
+                    from_logits=False)(truth, prediction)
+                gradients = tape.gradient(loss, 
+                                          self.model.trainable_variables)
                 self.optimizer.apply_gradients(
                     zip(gradients,
                         self.model.trainable_variables))
@@ -224,14 +246,17 @@ class nre():
 
         if isinstance(iters, int):
             data, labels = self.build_simulations(self.simulation_func_A, 
-                            self.simulation_func_B,
-                            self.prior_function_A, self.prior_function_B,
-                            self.shared_prior, n=iters, call_type='eval')
+                            self.simulation_func_B, self.shared_prior,
+                            prior_function_A=self.prior_function_A, 
+                            prior_function_B=self.prior_function_B,
+                            n=iters, call_type='eval')
         else:
             data = iters.copy()
+        
         r_values = []
         for i in range(len(data)):
-            params = tf.convert_to_tensor(np.array([[*data[i]]]).astype('float32'))
+            params = tf.convert_to_tensor(np.array(
+                [[*data[i]]]).astype('float32'))
             if self.compress:
                 logr = self.model([params[:, :self.input_dimA],
                                 params[:, self.input_dimA:]]).numpy()[0]
