@@ -42,7 +42,8 @@ exp1 = signal_func_gen(exp1_freq)
 base = 'parameter-sweep/'
 
 lr = [1e-3, 1e-4]
-architecture = [[25]*5, [25]*10, [50]*5, [50]*10, [100]*10]
+architecture = [[5]*5, [5]*10, [10]*5, [10]*25, [25]*5, 
+                [25]*10, [50]*5, [50]*10, [100]*10]
 connections = []
 for i in range(len(architecture)):
     arch = [len(exp2_freq) + len(exp1_freq), *architecture[i], 1]
@@ -56,7 +57,7 @@ print(len(iters))
 print(iters)
 
 nsamp = 5000
-
+testing_data = None
 accuracy = []
 for i, (lr, arch, act) in enumerate(iters):
     try:
@@ -71,7 +72,10 @@ for i, (lr, arch, act) in enumerate(iters):
                                                         batch_size=5000)
         nrei.save(base + f'lr_{lr}_arch_{arch}_act_{act}.pkl')
 
-    nrei.__call__(iters=nsamp)
+    if testing_data is None:
+        testing_data = nrei.__call__(iters=nsamp)
+    else:
+        nrei.__call__(iters=testing_data)
     r = nrei.r_values
     mask = np.isfinite(r)
     sigr = tf.keras.layers.Activation('sigmoid')(r[mask])
