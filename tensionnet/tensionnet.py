@@ -253,6 +253,8 @@ class nre():
             r_values.append(logr)
 
         self.r_values = np.array(r_values).T[0]
+        
+        return data
 
     def save(self, filename):
 
