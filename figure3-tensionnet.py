@@ -47,12 +47,13 @@ try:
 except:
     nrei = nre(lr=1e-4)
     nrei.build_model(len(exp2_freq) + len(exp1_freq),
-                        [50]*5, 'sigmoid')
+                        [5]*10, 'tanh')
     nrei.build_simulations(exp2, exp1, signal_prior, n=100000)
-    model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
+    model, data_test, labels_test = nrei.training(epochs=1000, 
+                                                  batch_size=2000)
     nrei.save('figure3-nre.pkl')
 
-nrei.__call__(iters=1000)
+nrei.__call__(iters=5000)
 r = nrei.r_values
 mask = np.isfinite(r)
 sigr = tf.keras.layers.Activation('sigmoid')(r[mask])
@@ -65,7 +66,7 @@ temperatures = np.array([0.15, 0.2, 0.25])/0.2
 Rss = np.loadtxt(base + 'Rs.txt')
 Rs, sigma_Rs = Rss[:, 0], Rss[:, 1]
 
-y_pos = [100]*len(temperatures)
+y_pos = [200]*len(temperatures)
 
 fig, axes = plt.subplots(2, 2, figsize=(6.3, 6.3))
 
@@ -81,6 +82,7 @@ axes[0, 0].legend(fontsize=8)
 axes[0, 0].set_xlabel('Frequency [MHz]')
 axes[0, 0].set_ylabel(r'$\delta T_b$ [K]')
 
+axes[1, 0].set_title(f'N = {len(r)}')
 axes[1, 0].hist(r, bins=25, color='C0')
 axes[1, 0].set_yticks([])
 for i,t in enumerate(temperatures):
@@ -129,7 +131,7 @@ for i,t in enumerate(temperatures):
                     alpha=0.1, 
                     color='r')
             axes[1, 1].annotate(r'$A_2 = 1.0 A_1$', 
-                    (Rs[i], c.cdf.evaluate(Rs[i])), ha='center', va='center',
+                    (Rs[1]/2, c.cdf.evaluate(Rs[i])), ha='center', va='center',
                     bbox=dict(color='w', ec='k'), fontsize=8)
     
 axes[1, 1].axhline(c.cdf.evaluate(Rs[0]), ls='--',
@@ -139,7 +141,7 @@ axes[1, 1].axhspan(c.cdf.evaluate(Rs[0] - sigma_Rs[i]),
         alpha=0.1, 
         color='r')
 axes[1, 1].annotate(r'In Tension. $A_2 \neq A_1$', 
-                    (Rs[1], 0.), ha='center', va='center',
+                    (Rs[1]/2, 0.), ha='center', va='center',
             bbox=dict(color='w', ec='k'), fontsize=8)
 axes[1, 1].set_xlabel(r'$\log R$')
 axes[1, 1].set_ylabel(r'$P(\log R < \log R_\mathrm{obs})$')
