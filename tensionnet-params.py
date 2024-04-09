@@ -48,7 +48,10 @@ connections = []
 for i in range(len(architecture)):
     arch = [len(exp2_freq) + len(exp1_freq), *architecture[i], 1]
     connections.append(np.prod(arch))
-activation = ['sigmoid', 'tanh', 'relu']
+argsort = np.argsort(connections)
+architecture = [architecture[i] for i in argsort]
+connections = [connections[i] for i in argsort]
+activation = ['sigmoid', 'tanh', 'relu', 'softplus']
 
 import itertools
 iters = list(itertools.product(lr, architecture, activation))
@@ -56,7 +59,7 @@ iters = list(map(list, iters))
 print(len(iters))
 print(iters)
 
-nsamp = 5000
+nsamp = 1000
 testing_data = None
 accuracy = []
 for i, (lr, arch, act) in enumerate(iters):
@@ -82,11 +85,11 @@ for i, (lr, arch, act) in enumerate(iters):
     good_idx = sigr > 0.75
     r = r[good_idx]
     print('Surviving Simulations: ', len(r)/nsamp*100, '%')
-    accuracy.append(len(r)/nsamp)
+    accuracy.append(len(r)/nsamp*100)
 accuracy = np.array(accuracy)
 
 
-fig, axes = plt.subplots(1, 2)
+fig, axes = plt.subplots(1, 2, figsize=(6.3, 3), sharey=True)
 ax = axes.flatten()
 iters_lre3 = iters[:len(iters)//2]
 iters_lre4 = iters[len(iters)//2:]
@@ -95,25 +98,24 @@ ae3 = np.reshape(accuracy[:len(accuracy)//2], (len(architecture),
 ae4 = np.reshape(accuracy[len(accuracy)//2:], (len(architecture),
                                                         len(activation)))
 
-cb = ax[0].imshow(ae3, cmap='viridis')
-plt.colorbar(cb, ax=ax[0])
-ax[0].set_xticks(range(len(activation)), activation)
+cb = ax[0].imshow(ae3, cmap='viridis', aspect='auto', vmin=0, vmax=100)
+ax[0].set_xticks(range(len(activation)), activation, rotation=45)
 ax[0].set_yticks(range(len(connections)), 
                  ['{:.2f}'.format(np.log10(i)) for i in connections])
 ax[0].set_xlabel('Activation Function')
 ax[0].set_ylabel(r'$\log_{10}($' + 'No. Weights' + r'$)$')
-ax[0].set_title('Learning Rate: 1e-3')
+ax[0].set_title('Learning Rate = 0.001')
 
-cb = ax[1].imshow(ae4, cmap='viridis')
-plt.colorbar(cb, ax=ax[1])
-ax[1].set_xticks(range(len(activation)), activation)
+cb = ax[1].imshow(ae4, cmap='viridis', aspect='auto', vmin=0, vmax=100)
+plt.colorbar(cb, ax=ax[1], label='Percentage of correctly\nlabelled simulations')
+ax[1].set_xticks(range(len(activation)), activation, rotation=45)
 ax[1].set_yticks(range(len(connections)), 
                  ['{:.2f}'.format(np.log10(i)) for i in connections])
 ax[1].set_xlabel('Activation Function')
-ax[1].set_ylabel(r'$\log_{10}($' + 'No. Weights' + r'$)$')
-ax[1].set_title('Learning Rate: 1e-4')
-
-plt.savefig('parameter-sweep-accuracy.png')
+#ax[1].set_ylabel(r'$\log_{10}($' + 'No. Weights' + r'$)$')
+ax[1].set_title('Learning Rate = 0.0001')
+plt.tight_layout()
+plt.savefig('parameter-sweep-accuracy.png', dpi=300, bbox_inches='tight')
 plt.show()
 
 
