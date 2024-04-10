@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import norm
+import matplotlib.pyplot as plt 
 
 def calcualte_stats(Rs, sigma_Rs, c):
     """
@@ -28,3 +29,26 @@ def calcualte_stats(Rs, sigma_Rs, c):
     return sigmaD, sigma_D_upper, sigma_D_lower, \
         sigmaA, sigma_A_upper, sigma_A_lower, \
             sigmaR, sigmaR_upper, sigmaR_lower
+
+def coverage_test(simsA, simsB, nre):
+
+    import tensorflow as tf
+    fs = []
+    for i in range(len(simsA)):
+        
+        f = np.mean([1 if nre.model(tf.convert_to_tensor(np.array(
+                [[*simsA[j], *simsB[i]]]).astype('float32'))).numpy()[0] < 
+                     nre.model(tf.convert_to_tensor(np.array(
+                [[*simsA[j], *simsB[j]]]).astype('float32'))).numpy()[0] 
+                     else 0 for j in range(len(simsB))])
+        fs.append(f)
+    fs = np.array(fs)
+
+    ecp = []
+    alpha=np.linspace(0, 1, 20)
+    for j in range(len(alpha)):
+        e = np.mean([1 if fs[i] < (1 - alpha[j]) else 0 
+                     for i in range(len(simsA))])
+        ecp.append(e)
+    ecp = np.array(ecp)
+    return alpha, ecp
