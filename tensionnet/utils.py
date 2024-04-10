@@ -30,17 +30,21 @@ def calcualte_stats(Rs, sigma_Rs, c):
         sigmaA, sigma_A_upper, sigma_A_lower, \
             sigmaR, sigmaR_upper, sigmaR_lower
 
-def coverage_test(simsA, simsB, nre):
+def coverage_test(logR):
 
     import tensorflow as tf
+    from scipy.stats import gaussian_kde
+
+    kde = gaussian_kde(logR)
+    samples = kde.resample(1000)[0]
+
+    logR = logR[:100]
+
     fs = []
-    for i in range(len(simsA)):
-        
-        f = np.mean([1 if nre.model(tf.convert_to_tensor(np.array(
-                [[*simsA[j], *simsB[i]]]).astype('float32'))).numpy()[0] < 
-                     nre.model(tf.convert_to_tensor(np.array(
-                [[*simsA[j], *simsB[j]]]).astype('float32'))).numpy()[0] 
-                     else 0 for j in range(len(simsB))])
+    for i in range(len(logR)):
+        f = np.mean([1 if kde.pdf(logR[i])[0] <
+                kde.pdf(samples[j])[0]
+                     else 0 for j in range(len(samples))])
         fs.append(f)
     fs = np.array(fs)
 
@@ -48,7 +52,7 @@ def coverage_test(simsA, simsB, nre):
     alpha=np.linspace(0, 1, 20)
     for j in range(len(alpha)):
         e = np.mean([1 if fs[i] < (1 - alpha[j]) else 0 
-                     for i in range(len(simsA))])
+                     for i in range(len(fs))])
         ecp.append(e)
     ecp = np.array(ecp)
     return alpha, ecp
