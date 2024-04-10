@@ -64,7 +64,7 @@ def simulation_process(simsA, simsB):
 # theta = mu +/- sqrt(Sigma)
 
 base_dir = 'validation/'
-label = '_test'
+label = '_test_median_diff'
 if not os.path.exists(base_dir):
     os.mkdir(base_dir)
 
@@ -72,7 +72,7 @@ if not os.path.exists(base_dir):
 n = 3
 mu = np.random.rand(n)
 Sigmas = [0.01, 1, 100]
-fig, axes = plt.subplots(2, 2, figsize=(10, 10))
+fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 ax = axes.flatten()
 for i, Sigma in enumerate(Sigmas):
     print('Iteration ', i, ' Sigma = ', Sigma)
@@ -80,14 +80,14 @@ for i, Sigma in enumerate(Sigmas):
     theta_true = multivariate_normal(mu, Sigma).rvs()
 
     # Data A
-    d = 20
+    d = 100
     M = np.random.rand(d, n)
     m = np.random.rand(d)
     C = 0.01
     model_A = LinearModel(M=M, m=m, C=C, mu=mu, Sigma=Sigma)
 
     # Data B
-    d = 20
+    d =  100
     M = np.random.rand(d, n)
     m = np.random.rand(d)
     C = 0.01
@@ -115,9 +115,9 @@ for i, Sigma in enumerate(Sigmas):
     A_sim = AB_sim[:, :model_A.d]
     B_sim = AB_sim[:, model_A.d:]
 
-    nrei = nre(lr=1e-3)
+    nrei = nre(lr=1e-4)
     nrei.build_model(len(A_obs) + len(B_obs),
-                        [20]*10, 'tanh')
+                        [20]*5, 'tanh')
     norm_data_train, norm_data_test, data_train, data_test, labels_train, labels_test = \
         simulation_process(A_sim, B_sim)
     nrei.data_test = norm_data_test
@@ -147,16 +147,14 @@ for i, Sigma in enumerate(Sigmas):
     nrei.__call__(iters=data_test)
     r = nrei.r_values
 
-    alpha, cov = coverage_test(A_sim[:100, :], B_sim[:100, :], nrei)
+    """alpha, cov = coverage_test(r, A_sim[:100, :], B_sim[:100, :], nrei)
 
     ax[i+1].plot(1 - alpha, cov, label='ECP')
     ax[i+1].plot(1-alpha, 1-alpha, label='Expected')
     ax[i+1].set_xlabel(r'$1 - \alpha$')
     ax[i+1].set_ylabel('ECP')
     ax[i+1].legend()
-    ax[i+1].set_title(r'$\sigma = $' + str(Sigma))
-    
-
+    ax[i+1].set_title(r'$\sigma = $' + str(Sigma))"""
 
     hist, bins = np.histogram(logr, bins=50)
     ax[0].hist(logr, bins=50, histtype='step', ls='-', 
@@ -165,6 +163,13 @@ for i, Sigma in enumerate(Sigmas):
     print('Surviving Simulations: ', len(r))
     ax[0].hist(r, bins=50, histtype='step', ls='--', 
              label=r'Predicted, $\sigma = $' + str(Sigma), color='C' + str(i))
+    
+    if i ==0:
+        ax[1].scatter(Sigma, np.median(r), color='C' + str(i), marker='o', label='Predicted')
+        ax[1].scatter(Sigma, np.median(logr), color='C' + str(i), ls='--', marker='*', label='True')
+    else:
+        ax[1].scatter(Sigma, np.median(r), color='C' + str(i), marker='o')
+        ax[1].scatter(Sigma, np.median(logr), color='C' + str(i), ls='--', marker='*')
 
 from scipy.special import expit
 
@@ -173,8 +178,11 @@ ax[0].plot(x, expit(x)*hist.max(), label='Sigmoid')
 #axes.axvline(0.75, ls='--', c='k', label='Threshold for\ncorrectly classified')
 
 plt.legend()
-plt.xlabel(r'$\log(R)$')
-plt.ylabel('Counts')
+ax[0].set_xlabel(r'$\log(R)$')
+ax[0].set_ylabel('Counts')
+ax[1].set_xscale('log')
+ax[1].set_xlabel(r'$\sigma$')
+ax[1].set_ylabel(r'$\log(R_\mathrm{median})$')
 plt.savefig(base_dir + 'validation' + label + '.png', dpi=300, bbox_inches='tight')
 plt.savefig(base_dir + 'validation' + label + '.pdf')
 plt.show()
