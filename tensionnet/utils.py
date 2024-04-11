@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt 
+from pypolychord.priors import UniformPrior, LogUniformPrior
 
 def calcualte_stats(Rs, sigma_Rs, c):
     """
@@ -56,3 +57,46 @@ def coverage_test(logR):
         ecp.append(e)
     ecp = np.array(ecp)
     return alpha, ecp
+
+def twentyone_example(exp1_data, exp2_data, exp1_freq, exp2_freq):
+    def signal_func_gen(freqs):
+        def signal(parameters):
+            amp, nu_0, w = parameters
+            return -amp * np.exp(-(freqs-nu_0)**2 / (2*w**2))
+        return signal
+
+    def signal_poly_prior(cube):
+        theta = np.zeros(4)
+        theta[0] = UniformPrior(0, 4)(cube[0]) #amp
+        theta[1] = UniformPrior(60, 90)(cube[1]) #nu_0
+        theta[2] = UniformPrior(5, 40)(cube[2]) #w
+        theta[3] = LogUniformPrior(0.001, 0.1)(cube[3]) #sigma
+        return theta
+
+    def joint_prior(cube):
+        theta = np.zeros(5)
+        theta[0] = UniformPrior(0, 4)(cube[0]) #amp
+        theta[1] = UniformPrior(60, 90)(cube[1]) #nu_0
+        theta[2] = UniformPrior(5, 40)(cube[2]) #w
+        theta[3] = LogUniformPrior(0.001, 0.1)(cube[3]) #sigma1
+        theta[4] = LogUniformPrior(0.001, 0.1)(cube[4]) #sigma2
+        return theta
+
+    def exp1likelihood(theta):
+        # gaussian log-likelihood
+        return (-0.5 * np.log(2*np.pi*theta[-1]**2) \
+            - 0.5 * (exp1_data - signal_func_gen(exp1_freq)(theta[:-1]))**2\
+                /theta[-1]**2).sum(),[]
+
+    def exp2likelihood(theta):
+        # gaussian log-likelihood
+        return (-0.5 * np.log(2*np.pi*theta[-1]**2) \
+            - 0.5 * (exp2_data - signal_func_gen(exp2_freq)(theta[:-1]))**2/\
+                theta[-1]**2).sum(),[]
+
+    def jointlikelihood(theta):
+        return exp1likelihood(theta[:-1])[0] + \
+            exp2likelihood([*theta[:-2], theta[-1]])[0], []
+    
+    return signal_poly_prior, \
+        joint_prior, exp1likelihood, exp2likelihood, jointlikelihood
