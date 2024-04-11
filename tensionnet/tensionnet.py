@@ -33,7 +33,8 @@ class nre():
         for layer_size in self.layer_sizes:
             outputs = self.Dense(layer_size, 
                                  activation=self.activation,
-                                 use_bias=False)(a0)
+                                 use_bias=False
+                                 )(a0)
             outputs = self.batch_norm()(outputs)
             a0 = outputs
         outputs = self.Dense(1, activation='linear')(a0)
