@@ -33,7 +33,8 @@ class nre():
         for layer_size in self.layer_sizes:
             outputs = self.Dense(layer_size, 
                                  activation=self.activation,
-                                 use_bias=False
+                                 use_bias=False,
+
                                  )(a0)
             outputs = self.batch_norm()(outputs)
             a0 = outputs
@@ -202,7 +203,7 @@ class nre():
             prediction = tf.keras.layers.Activation('sigmoid')(prediction)
             truth = tf.convert_to_tensor(truth)
             loss = tf.keras.losses.BinaryCrossentropy(
-                                from_logits=False)(truth, prediction)
+                                from_logits=True)(truth, prediction)
             return loss
 
     @tf.function(jit_compile=True)
@@ -220,7 +221,7 @@ class nre():
                 prediction = tf.keras.layers.Activation('sigmoid')(prediction)
                 truth = tf.convert_to_tensor(truth)
                 loss = tf.keras.losses.BinaryCrossentropy(
-                    from_logits=False)(truth, prediction)
+                    from_logits=True)(truth, prediction)
                 gradients = tape.gradient(loss, 
                                           self.model.trainable_variables)
                 self.optimizer.apply_gradients(
