@@ -64,7 +64,7 @@ def simulation_process(simsA, simsB):
 # theta = mu +/- sqrt(Sigma)
 
 base_dir = 'validation/'
-label = ''
+label = '_20dpts_kernel_regularization_l1_100x5_sigmoid_no_bias_on_output'
 if not os.path.exists(base_dir):
     os.mkdir(base_dir)
 
@@ -85,14 +85,14 @@ for i, Sigma in enumerate(Sigmas):
     theta_true = multivariate_normal(mu, Sigma).rvs()
 
     # Data A
-    d = 20
+    d = 10
     M = np.random.rand(d, n)
     m = np.random.rand(d)
     C = 0.01
     model_A = LinearModel(M=M, m=m, C=C, mu=mu, Sigma=Sigma)
 
     # Data B
-    d =  20
+    d =  10
     M = np.random.rand(d, n)
     m = np.random.rand(d)
     C = 0.01
@@ -122,7 +122,7 @@ for i, Sigma in enumerate(Sigmas):
 
     nrei = nre(lr=1e-4)
     nrei.build_model(len(A_obs) + len(B_obs),
-                        [25]*5, 'tanh')
+                        [100]*5, 'sigmoid')
     norm_data_train, norm_data_test, data_train, data_test, labels_train, labels_test = \
         simulation_process(A_sim, B_sim)
     nrei.data_test = norm_data_test

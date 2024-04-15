@@ -48,8 +48,8 @@ if not os.path.exists(base):
 RESUME_POLY = True
 
 lr = [1e-3, 1e-4]
-architecture = [[5]*5, [5]*10, [10]*5, [10]*25, [25]*5, 
-                [25]*10, [50]*5, [50]*10, [100]*10]
+architecture = [[5]*5, [5]*10, [10]*5]#, [10]*25, [25]*5, 
+                #[25]*10, [50]*5, [50]*10, [100]*10]
 connections = []
 for i in range(len(architecture)):
     arch = [len(exp2_freq) + len(exp1_freq), *architecture[i], 1]
@@ -57,7 +57,7 @@ for i in range(len(architecture)):
 argsort = np.argsort(connections)
 architecture = [architecture[i] for i in argsort]
 connections = [connections[i] for i in argsort]
-activation = ['sigmoid', 'tanh', 'relu', 'softplus']
+activation = ['sigmoid']#, 'tanh', 'relu', 'softplus']
 
 import itertools
 iters = list(itertools.product(lr, architecture, activation))
@@ -89,15 +89,17 @@ for i, (lr, arch, act) in enumerate(iters):
     testing_data = testing_data[mask]
     print('Surviving Simulations: ', len(r)/nsamp*100, '%')
 
-    median_arg = np.argsort(r)[len(r)//2]
-    median_data = testing_data[median_arg]
-    median_exp2 = median_data[:len(exp2_freq)]*nrei.data_train.std(axis=0)[:len(exp2_freq)] \
+    #q95_arg = np.argsort(r)[len(r)//2]
+    q95_arg = np.argmin(np.abs(r - np.quantile(r, 0.95)))
+
+    q95_data = testing_data[q95_arg]
+    q95_exp2 = q95_data[:len(exp2_freq)]*nrei.data_train.std(axis=0)[:len(exp2_freq)] \
         + nrei.data_train.mean(axis=0)[:len(exp2_freq)]
-    median_exp1 = median_data[len(exp2_freq):]*nrei.data_train.std(axis=0)[len(exp2_freq):] \
+    q95_exp1 = q95_data[len(exp2_freq):]*nrei.data_train.std(axis=0)[len(exp2_freq):] \
         + nrei.data_train.mean(axis=0)[len(exp2_freq):]
 
-    """plt.plot(exp2_freq, median_exp2, label='Exp2')
-    plt.plot(exp1_freq, median_exp1, label='Exp1')
+    """plt.plot(exp2_freq, q95_exp2, label='Exp2')
+    plt.plot(exp1_freq, q95_exp1, label='Exp1')
 
     plt.legend()
     plt.show()
@@ -105,31 +107,31 @@ for i, (lr, arch, act) in enumerate(iters):
 
     signal_poly_prior, \
         joint_prior, exp1likelihood, exp2likelihood, jointlikelihood = \
-        twentyone_example(median_exp1, median_exp2, exp1_freq, exp2_freq)
+        twentyone_example(q95_exp1, q95_exp2, exp1_freq, exp2_freq)
     
     run_poly(signal_poly_prior, exp1likelihood, base + 
-             f'exp1_median_lr_{lr}_arch_{arch}_act_{act}', 
+             f'exp1_q95_lr_{lr}_arch_{arch}_act_{act}', 
          nlive=100, RESUME=RESUME_POLY, nDims=4)
     
     run_poly(joint_prior, jointlikelihood, 
-             base + f'joint_median_lr_{lr}_arch_{arch}_act_{act}', 
+             base + f'joint_q95_lr_{lr}_arch_{arch}_act_{act}', 
              nlive=125, RESUME=RESUME_POLY, nDims=5)
     run_poly(signal_poly_prior, exp2likelihood, 
-             base + f'exp2_median_lr_{lr}_arch_{arch}_act_{act}', 
+             base + f'exp2_q95_lr_{lr}_arch_{arch}_act_{act}', 
              nlive=100, RESUME=RESUME_POLY, nDims=4)
 
     exp1_samples = read_chains(base + 
-                    f'exp1_median_lr_{lr}_arch_{arch}_act_{act}/test')
+                    f'exp1_q95_lr_{lr}_arch_{arch}_act_{act}/test')
     exp2_samples = read_chains(base + 
-                    f'exp2_median_lr_{lr}_arch_{arch}_act_{act}/test')
+                    f'exp2_q95_lr_{lr}_arch_{arch}_act_{act}/test')
     joint_samples = read_chains(base + 
-                    f'joint_median_lr_{lr}_arch_{arch}_act_{act}/test')
+                    f'joint_q95_lr_{lr}_arch_{arch}_act_{act}/test')
     
     Rs = joint_samples.logZ(1000) - \
         exp1_samples.logZ(1000) - exp2_samples.logZ(1000)
 
-    accuracy.append(np.abs(r[median_arg] - Rs.mean())/(r[median_arg] + Rs.mean())*2)
-    print('Accuracy: ', accuracy[-1], 'R: ', r[median_arg], 'Rs: ', Rs.mean())
+    accuracy.append(np.abs(r[q95_arg] - Rs.mean())/(r[q95_arg] + Rs.mean())*2)
+    print('Accuracy: ', accuracy[-1], 'R: ', r[q95_arg], 'Rs: ', Rs.mean())
 accuracy = np.array(accuracy)
 
 

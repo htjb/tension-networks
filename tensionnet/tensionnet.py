@@ -16,8 +16,13 @@ class nre():
         self.Dropout = tf.keras.layers.Dropout
         self.batch_norm = tf.keras.layers.BatchNormalization
         self.lr = lr
-        self.compress = False
 
+        # example scheduler
+        #ExponentialDecay(
+        #            initial_learning_rate=initial_learning_rate,
+        #            decay_steps=decay_steps,
+        #            decay_rate=decay_rate,
+        #        )
         self.optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=self.lr)
 
     def build_model(
@@ -33,12 +38,13 @@ class nre():
         for layer_size in self.layer_sizes:
             outputs = self.Dense(layer_size, 
                                  activation=self.activation,
+                                 kernel_regularizer='l1',
                                  use_bias=False,
-
                                  )(a0)
             outputs = self.batch_norm()(outputs)
             a0 = outputs
-        outputs = self.Dense(1, activation='linear')(a0)
+        outputs = self.Dense(1, activation='linear',
+                            use_bias=False)(a0)
         self.model = self.Model(inputs, outputs)
     
     def build_simulations(self, simulation_func_A, simulation_func_B,
@@ -200,10 +206,12 @@ class nre():
             """
     
             prediction = tf.transpose(self.model(param, training=True))[0]
-            prediction = tf.keras.layers.Activation('sigmoid')(prediction)
+            prediction = tf.keras.layers.Activation('sigmoid')(prediction)#*100
             truth = tf.convert_to_tensor(truth)
             loss = tf.keras.losses.BinaryCrossentropy(
-                                from_logits=True)(truth, prediction)
+                                from_logits=False,
+                                #reduction='sum'
+                                )(truth, prediction)
             return loss
 
     @tf.function(jit_compile=True)
@@ -218,10 +226,11 @@ class nre():
             with tf.GradientTape() as tape:
                 prediction = tf.transpose(self.model(params, 
                                                          training=True))[0]
-                prediction = tf.keras.layers.Activation('sigmoid')(prediction)
+                prediction = tf.keras.layers.Activation('sigmoid')(prediction)#*100
                 truth = tf.convert_to_tensor(truth)
                 loss = tf.keras.losses.BinaryCrossentropy(
-                    from_logits=True)(truth, prediction)
+                    from_logits=False, #reduction='sum'
+                    )(truth, prediction)
                 gradients = tape.gradient(loss, 
                                           self.model.trainable_variables)
                 self.optimizer.apply_gradients(
