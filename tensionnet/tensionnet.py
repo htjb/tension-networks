@@ -35,12 +35,15 @@ class nre():
         # build the model
         a0 = self.Inputs(shape=(self.input_dim,))
         inputs = a0
-        for layer_size in self.layer_sizes:
+        for i, layer_size in enumerate(self.layer_sizes):
             outputs = self.Dense(layer_size, 
                                  activation=self.activation,
                                  kernel_regularizer='l1',
                                  use_bias=False,
                                  )(a0)
+            if i % 2 == 0 and i > 2:
+                outputs = self.batch_norm()(outputs)
+                outputs = tf.keras.layers.add([outputs, a0])
             outputs = self.batch_norm()(outputs)
             a0 = outputs
         outputs = self.Dense(1, activation='linear',
@@ -154,13 +157,16 @@ class nre():
 
         print('Data split and normalized.')
         
-    def training(self, epochs, early_stop=True, batch_size=32):
+    def training(self, epochs, early_stop=True, batch_size=32, patience=None):
         
         train_dataset = np.hstack([self.data_train, 
                                    self.labels_train[:, np.newaxis]]
                                    ).astype(np.float32)
         train_dataset = tf.data.Dataset.from_tensor_slices(train_dataset)
         train_dataset = train_dataset.batch(batch_size)
+
+        if patience is None:
+            patience = round((epochs/100)*2)
 
         self.loss_history = []
         self.test_loss_history = []
@@ -190,7 +196,7 @@ class nre():
                         minimum_model = self.model
                         c = 0
                 if minimum_model:
-                    if c == round((epochs/100)*2):
+                    if c == patience:
                         print('Early stopped. Epochs used = ' + str(i) +
                                 '. Minimum at epoch = ' + str(minimum_epoch))
                         return minimum_model, self.data_test, self.labels_test
@@ -210,7 +216,7 @@ class nre():
             truth = tf.convert_to_tensor(truth)
             loss = tf.keras.losses.BinaryCrossentropy(
                                 from_logits=False,
-                                #reduction='sum'
+                                reduction='sum'
                                 )(truth, prediction)
             return loss
 
@@ -229,7 +235,7 @@ class nre():
                 prediction = tf.keras.layers.Activation('sigmoid')(prediction)#*100
                 truth = tf.convert_to_tensor(truth)
                 loss = tf.keras.losses.BinaryCrossentropy(
-                    from_logits=False, #reduction='sum'
+                    from_logits=False, reduction='sum'
                     )(truth, prediction)
                 gradients = tape.gradient(loss, 
                                           self.model.trainable_variables)

@@ -5,6 +5,7 @@ from sklearn.model_selection import train_test_split
 from tensionnet.tensionnet import nre
 from tensionnet.utils import coverage_test
 import tensorflow as tf
+from tensorflow.keras.optimizers.schedules import ExponentialDecay
 import numpy as np
 from random import shuffle
 from tqdm import tqdm
@@ -64,7 +65,7 @@ def simulation_process(simsA, simsB):
 # theta = mu +/- sqrt(Sigma)
 
 base_dir = 'validation/'
-label = '_20dpts_kernel_regularization_l1_100x5_sigmoid_no_bias_on_output'
+label = '_20dpts_batch_norm_skip_layers'
 if not os.path.exists(base_dir):
     os.mkdir(base_dir)
 
@@ -119,10 +120,16 @@ for i, Sigma in enumerate(Sigmas):
     AB_sim = model_AB.evidence().rvs(N_sim)
     A_sim = AB_sim[:, :model_A.d]
     B_sim = AB_sim[:, model_A.d:]
+    
+    """lr = ExponentialDecay(
+                    initial_learning_rate=1e-4,
+                   decay_steps=1000,
+                    decay_rate=0.9,
+                )"""
 
     nrei = nre(lr=1e-4)
     nrei.build_model(len(A_obs) + len(B_obs),
-                        [100]*5, 'sigmoid')
+                        [25]*5, 'sigmoid')
     norm_data_train, norm_data_test, data_train, data_test, labels_train, labels_test = \
         simulation_process(A_sim, B_sim)
     nrei.data_test = norm_data_test
@@ -133,7 +140,7 @@ for i, Sigma in enumerate(Sigmas):
     nrei.simulation_func_B = None
 
 
-    model, data_test, labels_test = nrei.training(epochs=1000, 
+    model, data_test, labels_test = nrei.training(epochs=1000, #patience=50,
                                                     batch_size=1000)
 
     N_test_sim = 1000
