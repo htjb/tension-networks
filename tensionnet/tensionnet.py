@@ -41,7 +41,47 @@ class nre():
                                  kernel_regularizer='l1',
                                  use_bias=False,
                                  )(a0)
-            if i % 2 == 0 and i > 2:
+            if i % 2 == 0 and i != 0:
+                outputs = self.batch_norm()(outputs)
+                outputs = tf.keras.layers.add([outputs, a0])
+            outputs = self.batch_norm()(outputs)
+            a0 = outputs
+        outputs = self.Dense(1, activation='linear',
+                            use_bias=False)(a0)
+        self.model = self.Model(inputs, outputs)
+
+    def build_compress_model(
+            self, input_dimA, input_dimB, compress_layer_sizes, layer_sizes, activation):
+        
+        self.input_dim = input_dimA + input_dimB
+        self.layer_sizes = layer_sizes
+        self.activation = activation
+        
+        # build the model
+        all_inputs = self.Inputs(shape=(self.input_dim,))
+        inputs = all_inputs
+        a0 = all_inputs[:, :input_dimA]
+        for i, layer_size in enumerate(compress_layer_sizes):
+            outputs = self.Dense(layer_size, 
+                                 activation=self.activation,
+                                 )(a0)
+            outputs = self.batch_norm()(outputs)
+            a0 = outputs
+        a1 = all_inputs[:, input_dimA:]
+        for i, layer_size in enumerate(compress_layer_sizes):
+            outputs = self.Dense(layer_size, 
+                                 activation=self.activation,
+                                 )(a1)
+            outputs = self.batch_norm()(outputs)
+            a1 = outputs
+        a0 = tf.keras.layers.concatenate([a0, a1])
+        for i, layer_size in enumerate(self.layer_sizes):
+            outputs = self.Dense(layer_size, 
+                                 activation=self.activation,
+                                 kernel_regularizer='l1',
+                                 use_bias=False,
+                                 )(a0)
+            if i % 2 == 0 and i != 0:
                 outputs = self.batch_norm()(outputs)
                 outputs = tf.keras.layers.add([outputs, a0])
             outputs = self.batch_norm()(outputs)
@@ -212,7 +252,7 @@ class nre():
             """
     
             prediction = tf.transpose(self.model(param, training=True))[0]
-            prediction = tf.keras.layers.Activation('sigmoid')(prediction)#*100
+            prediction = tf.keras.layers.Activation('sigmoid')(prediction)
             truth = tf.convert_to_tensor(truth)
             loss = tf.keras.losses.BinaryCrossentropy(
                                 from_logits=False,
@@ -232,7 +272,7 @@ class nre():
             with tf.GradientTape() as tape:
                 prediction = tf.transpose(self.model(params, 
                                                          training=True))[0]
-                prediction = tf.keras.layers.Activation('sigmoid')(prediction)#*100
+                prediction = tf.keras.layers.Activation('sigmoid')(prediction)
                 truth = tf.convert_to_tensor(truth)
                 loss = tf.keras.losses.BinaryCrossentropy(
                     from_logits=False, reduction='sum'
