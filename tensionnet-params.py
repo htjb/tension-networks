@@ -45,16 +45,16 @@ exp2_freq = np.linspace(80, 120, 100)
 exp1 = signal_func_gen(exp1_freq)
 exp2 = signal_func_gen(exp2_freq)
 
-base = 'parameter-sweep_with_kernel_regualrization/'
+base = 'parameter-sweep_with_kernel_regualrization_with_skip_connections/'
 if not os.path.exists(base):
     os.mkdir(base)
 RESUME_POLY = True
 
 learning_rate = [1e-4]
-architecture = [[5]*5, [5]*10, [10]*5, [10]*10, [25]*5, 
-                [25]*10, [50]*5]#, [50]*10, [100]*10]
-arch_str = ['5x5', '5x10', '10x5', '10x10', '25x5',
-            '25x10', '50x5']#, '50x10', '100x10']
+architecture = [[5]*5, [5]*10, [10]*5, [10]*10, [25]*5]#, 
+                #[25]*10, [50]*5]#, [50]*10, [100]*10]
+arch_str = ['5x5', '5x10', '10x5', '10x10', '25x5']#,
+            #'25x10', '50x5', '50x10', '100x10']
 connections = []
 for i in range(len(architecture)):
     arch = [len(exp2_freq) + len(exp1_freq), *architecture[i], 1]
@@ -120,8 +120,9 @@ for i, (lr, arch, act) in enumerate(iters):
     testing_data = testing_data[mask]
     print('Surviving Simulations: ', len(r)/nsamp*100, '%')
 
-    #q95_arg = np.argsort(r)[len(r)//2]
-    q95_arg = np.argmin(np.abs(r - np.quantile(r, 0.95)))
+    
+    #q95_arg = np.argmin(np.abs(r - np.quantile(r, 0.95)))
+    q95_arg = np.argmin(np.abs(r - np.median(r)))
 
     q95_data = testing_data[q95_arg]
     q95_exp2 = q95_data[:len(exp2_freq)]*nrei.data_train.std(axis=0)[:len(exp2_freq)] \
@@ -162,7 +163,7 @@ for i, (lr, arch, act) in enumerate(iters):
         exp1_samples.logZ(1000) - exp2_samples.logZ(1000)
     RS95 = np.quantile(Rs.values, 0.95)
 
-    accuracy.append(np.abs(r[q95_arg] - RS95)/(r[q95_arg] + RS95)*2)
+    accuracy.append(np.abs(r[q95_arg] - RS95)/RS95)
     print('Architecture: ', arch, 'Activation: ', act, 'LR: ', lr)
     print('Accuracy: ', accuracy[-1], 'R: ', r[q95_arg], 'Rs: ', RS95)
 accuracy = np.array(accuracy)
@@ -203,23 +204,35 @@ if len(learning_rate) > 1:
     plt.savefig('parameter-sweep-accuracy.png', dpi=300, bbox_inches='tight')
     plt.show()
 elif len(learning_rate) == 1:
-    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    fig, ax = plt.subplots(1, 2, figsize=(6.3, 4))
     ae4 = np.reshape(accuracy, (len(architecture), len(activation)))
 
-    cb = ax.imshow(ae4, cmap='viridis_r', aspect='auto', 
+    cb = ax[0].imshow(ae4, cmap='viridis_r', aspect='auto', 
                     vmin=0, vmax=np.max([np.max(ae4), np.max(ae4)]))
-    plt.colorbar(cb, ax=ax,
+    plt.colorbar(cb, ax=ax[0],
         label=r'$\frac{2 |\log R^{95} - \log R_{obs}^{95}|}{\log R^{95} + \log R_{obs}^{95}}$')
-    ax.set_xticks(range(len(activation)), activation, rotation=45)
+    ax[0].set_xticks(range(len(activation)), activation, rotation=45)
     print(np.argsort(connections))
-    ax.set_yticks(range(len(connections)), 
+    ax[0].set_yticks(range(len(connections)), 
                   [arch_str[a] for a in np.argsort(connections)])
-    ax.set_xlabel('Activation Function')
-    ax.set_ylabel(r'$\log_{10}($' + 'No. Weights' + r'$)$')
-    ax.set_title('Learning Rate = 0.0001')
+    ax[0].set_xlabel('Activation Function')
+    ax[0].set_ylabel(r'$\log_{10}($' + 'No. Weights' + r'$)$')
+    ax[0].set_title('Learning Rate = 0.0001')
     
+
+    accuracy = np.reshape(accuracy, (len(architecture), len(activation)))
+    for i in range(len(activation)):
+        ax[1].plot(np.arange(len(connections)), accuracy[:, i], marker='o', ls='-', 
+                label=activation[i])
+    ax[1].set_xticks(range(len(connections)), 
+                  [arch_str[a] for a in np.argsort(connections)])
+    ax[1].set_xlabel('Architecture')
+    ax[1].set_ylabel(r'$\frac{|\log R^{95} - \log R_{obs}^{95}|}{\log R_{obs}^{95}}$')
+    ax[1].set_title('Learning Rate = 0.0001')
+    plt.legend()
     plt.tight_layout()
     plt.savefig('parameter-sweep-accuracy.png', dpi=300, bbox_inches='tight')
     plt.show()
+
 
 

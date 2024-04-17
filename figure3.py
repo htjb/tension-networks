@@ -65,7 +65,7 @@ def simulation_process(simsA, simsB):
 # theta = mu +/- sqrt(Sigma)
 
 base_dir = 'validation/'
-label = '_20dpts_batch_norm_skip_layers'
+label = '_50dpts_no_compress_l2'
 if not os.path.exists(base_dir):
     os.mkdir(base_dir)
 
@@ -86,14 +86,14 @@ for i, Sigma in enumerate(Sigmas):
     theta_true = multivariate_normal(mu, Sigma).rvs()
 
     # Data A
-    d = 10
+    d = 50
     M = np.random.rand(d, n)
     m = np.random.rand(d)
     C = 0.01
     model_A = LinearModel(M=M, m=m, C=C, mu=mu, Sigma=Sigma)
 
     # Data B
-    d =  10
+    d =  50
     M = np.random.rand(d, n)
     m = np.random.rand(d)
     C = 0.01
@@ -130,6 +130,9 @@ for i, Sigma in enumerate(Sigmas):
     nrei = nre(lr=1e-4)
     nrei.build_model(len(A_obs) + len(B_obs),
                         [25]*5, 'sigmoid')
+    #nrei.build_compress_model(len(A_obs), len(B_obs),
+    #                    [(len(A_obs) + len(B_obs))//2,
+    #                     20, 20, 10], [25]*5, 'sigmoid')
     norm_data_train, norm_data_test, data_train, data_test, labels_train, labels_test = \
         simulation_process(A_sim, B_sim)
     nrei.data_test = norm_data_test
@@ -140,8 +143,8 @@ for i, Sigma in enumerate(Sigmas):
     nrei.simulation_func_B = None
 
 
-    model, data_test, labels_test = nrei.training(epochs=1000, #patience=50,
-                                                    batch_size=1000)
+    model, data_test, labels_test = nrei.training(epochs=300, patience=20,
+                                                  batch_size=128)
 
     N_test_sim = 1000
     AB_sim = model_AB.evidence().rvs(N_test_sim)
@@ -177,9 +180,9 @@ for i, Sigma in enumerate(Sigmas):
     ax[0].hist(r, bins=50, histtype='step', ls='--', 
              label=r'Predicted, $\sigma = $' + str(Sigma), color='C' + str(i))
 
-    average_idx = np.argsort(np.abs(logr - np.median(logr)))[0]
-    quantile5_idx = np.argsort(np.abs(logr - np.quantile(logr, 0.05)))[0]
-    quantile95_idx = np.argsort(np.abs(logr - np.quantile(logr, 0.95)))[0]
+    average_idx = np.argsort(np.abs(r - np.median(r)))[0]
+    quantile5_idx = np.argsort(np.abs(r - np.quantile(r, 0.05)))[0]
+    quantile95_idx = np.argsort(np.abs(r - np.quantile(r, 0.95)))[0]
     ax[i+1].scatter(logr[average_idx], r[average_idx], color='k', 
                     marker='*')
     ax[i+1].scatter(logr[quantile5_idx], r[quantile5_idx],
