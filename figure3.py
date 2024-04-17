@@ -65,7 +65,7 @@ def simulation_process(simsA, simsB):
 # theta = mu +/- sqrt(Sigma)
 
 base_dir = 'validation/'
-label = '_50dpts_no_compress_l2'
+label = '_100dpts_triple_examples'
 if not os.path.exists(base_dir):
     os.mkdir(base_dir)
 
@@ -90,14 +90,16 @@ for i, Sigma in enumerate(Sigmas):
     M = np.random.rand(d, n)
     m = np.random.rand(d)
     C = 0.01
-    model_A = LinearModel(M=M, m=m, C=C, mu=mu, Sigma=Sigma)
+    model_A = LinearModel(M=M, m=m, C=C, 
+                          mu=mu, Sigma=Sigma)
 
     # Data B
     d =  50
     M = np.random.rand(d, n)
     m = np.random.rand(d)
     C = 0.01
-    model_B = LinearModel(M=M, m=m, C=C, mu=mu, Sigma=Sigma)
+    model_B = LinearModel(M=M, m=m, C=C, 
+                          mu=mu, Sigma=Sigma)
 
     # Data AB
     d = model_A.d + model_B.d
@@ -115,24 +117,18 @@ for i, Sigma in enumerate(Sigmas):
         return model_AB.evidence().logpdf(np.hstack([A, B])) - \
             model_A.evidence().logpdf(A) - model_B.evidence().logpdf(B)
 
-    N_sim = 100000
+    N_sim = 300000
 
     AB_sim = model_AB.evidence().rvs(N_sim)
     A_sim = AB_sim[:, :model_A.d]
     B_sim = AB_sim[:, model_A.d:]
-    
-    """lr = ExponentialDecay(
-                    initial_learning_rate=1e-4,
-                   decay_steps=1000,
-                    decay_rate=0.9,
-                )"""
 
     nrei = nre(lr=1e-4)
     nrei.build_model(len(A_obs) + len(B_obs),
                         [25]*5, 'sigmoid')
     #nrei.build_compress_model(len(A_obs), len(B_obs),
     #                    [(len(A_obs) + len(B_obs))//2,
-    #                     20, 20, 10], [25]*5, 'sigmoid')
+    #                     20, 20, 10], [25]*5, 'relu')
     norm_data_train, norm_data_test, data_train, data_test, labels_train, labels_test = \
         simulation_process(A_sim, B_sim)
     nrei.data_test = norm_data_test
