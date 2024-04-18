@@ -45,7 +45,7 @@ exp2_freq = np.linspace(80, 120, 100)
 exp1 = signal_func_gen(exp1_freq)
 exp2 = signal_func_gen(exp2_freq)
 
-base = 'parameter-sweep_with_kernel_regualrization_with_skip_connections/'
+base = 'parameter-sweep_nsims500000/'
 if not os.path.exists(base):
     os.mkdir(base)
 RESUME_POLY = True
@@ -90,7 +90,7 @@ for i, (lr, arch, act) in enumerate(iters):
         nrei.build_model(len(exp2_freq) + len(exp1_freq),
                             arch, act)
         if data_train is None:
-            nrei.build_simulations(exp2, exp1, signal_prior, n=100000)
+            nrei.build_simulations(exp2, exp1, signal_prior, n=500000)
             data_train = nrei.data_train
             data_test = nrei.data_test
             labels_train = nrei.labels_train
