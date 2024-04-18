@@ -33,10 +33,10 @@ def signal_func_gen(freqs):
 
 def signal_prior(n):
     parameters = np.ones((n, 4))
-    parameters[:, 0] = np.random.uniform(0.0, 4.0, n) #amp
-    parameters[:, 1] = np.random.uniform(60.0, 90.0, n) #nu_0
-    parameters[:, 2] = np.random.uniform(5.0, 40.0, n) #w
-    parameters[:, 3] = np.random.uniform(0.001, 0.1, n) #sigma
+    parameters[:, 0] = np.random.uniform(0.0, 1.0, n) #amp
+    parameters[:, 1] = np.random.uniform(70.0, 85.0, n) #nu_0
+    parameters[:, 2] = np.random.uniform(5.0, 15.0, n) #w
+    parameters[:, 3] = np.random.uniform(0.01, 0.1, n) #sigma
     return parameters
 
 exp1_freq = np.linspace(60, 90, 100)
