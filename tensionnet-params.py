@@ -33,10 +33,10 @@ def signal_func_gen(freqs):
 
 def signal_prior(n):
     parameters = np.ones((n, 4))
-    parameters[:, 0] = np.random.uniform(0.0, 4.0, n) #amp
-    parameters[:, 1] = np.random.uniform(60.0, 90.0, n) #nu_0
-    parameters[:, 2] = np.random.uniform(5.0, 40.0, n) #w
-    parameters[:, 3] = np.random.uniform(0.001, 0.1, n) #sigma
+    parameters[:, 0] = np.random.uniform(0.0, 1.0, n) #amp
+    parameters[:, 1] = np.random.uniform(70.0, 85.0, n) #nu_0
+    parameters[:, 2] = np.random.uniform(5.0, 15.0, n) #w
+    parameters[:, 3] = np.random.uniform(0.01, 0.1, n) #sigma
     return parameters
 
 exp1_freq = np.linspace(60, 90, 100)
@@ -45,7 +45,7 @@ exp2_freq = np.linspace(80, 120, 100)
 exp1 = signal_func_gen(exp1_freq)
 exp2 = signal_func_gen(exp2_freq)
 
-base = 'parameter-sweep_with_kernel_regualrization_with_skip_connections/'
+base = 'parameter-sweep_nsims500000/'
 if not os.path.exists(base):
     os.mkdir(base)
 RESUME_POLY = True
@@ -90,7 +90,7 @@ for i, (lr, arch, act) in enumerate(iters):
         nrei.build_model(len(exp2_freq) + len(exp1_freq),
                             arch, act)
         if data_train is None:
-            nrei.build_simulations(exp2, exp1, signal_prior, n=100000)
+            nrei.build_simulations(exp2, exp1, signal_prior, n=500000)
             data_train = nrei.data_train
             data_test = nrei.data_test
             labels_train = nrei.labels_train
