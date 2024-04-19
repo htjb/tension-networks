@@ -65,7 +65,7 @@ def simulation_process(simsA, simsB):
 # theta = mu +/- sqrt(Sigma)
 
 base_dir = 'validation/'
-label = '_100dpts_triple_examples'
+label = '_100dpts_sigmoid'
 if not os.path.exists(base_dir):
     os.mkdir(base_dir)
 
@@ -117,7 +117,7 @@ for i, Sigma in enumerate(Sigmas):
         return model_AB.evidence().logpdf(np.hstack([A, B])) - \
             model_A.evidence().logpdf(A) - model_B.evidence().logpdf(B)
 
-    N_sim = 300000
+    N_sim = 500000
 
     AB_sim = model_AB.evidence().rvs(N_sim)
     A_sim = AB_sim[:, :model_A.d]
@@ -139,8 +139,8 @@ for i, Sigma in enumerate(Sigmas):
     nrei.simulation_func_B = None
 
 
-    model, data_test, labels_test = nrei.training(epochs=300, patience=20,
-                                                  batch_size=128)
+    model, data_test, labels_test = nrei.training(epochs=1000,# patience=20,
+                                                  batch_size=1000)
 
     N_test_sim = 1000
     AB_sim = model_AB.evidence().rvs(N_test_sim)
