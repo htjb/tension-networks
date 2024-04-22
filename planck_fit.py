@@ -21,7 +21,7 @@ cmbs = CMB(parameters=parameters, prior_mins=prior_mins,
 likelihood = cmbs.get_likelihood(p, l, noise=planck_noise)
 prior = cmbs.prior
 
-file = 'Planck_fit_no_tau/'
+file = 'chains/planck_fit_camb/'
 RESUME = True
 
 settings = PolyChordSettings(nDims, 0) #settings is an object
@@ -44,7 +44,7 @@ def signal():
 
 fig, axes = plt.subplots(1)
 
-samples = read_chains('Planck_fit_no_tau/test')
+samples = read_chains('chains/planck_fit_camb/test')
 samples = samples.compress(1000)
 
 names = ['p' + str(i) for i in range(6)]
@@ -56,5 +56,5 @@ plt.xlabel(r'$l$')
 plt.ylabel(r'$C_l$')
 plt.legend()
 plt.tight_layout()
-plt.savefig('planck_fit_no_tau.png', dpi=300)
+plt.savefig('chains/planck_fit_camb/fit.png', dpi=300)
 plt.show()
