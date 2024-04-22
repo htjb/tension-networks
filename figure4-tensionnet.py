@@ -140,7 +140,7 @@ axes[2].annotate(r'In Tension. $A_B \neq A_A$',
                     (Rs[1]/2, 0.), ha='center', va='center',
             bbox=dict(color='w', ec='k'), fontsize=8)
 axes[2].set_xlabel(r'$\log R$')
-axes[2].set_ylabel(r'$P(\log R < \log R_\mathrm{obs})$')
+axes[2].set_ylabel(r'$P(\log R < \log R^\prime)$')
 
 plt.tight_layout()
 plt.savefig('figures/figure4.pdf', bbox_inches='tight', dpi=300)

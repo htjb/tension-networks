@@ -94,8 +94,8 @@ exp2_sf_nre = nre_signal_func_gen(exp2_freq)
 true_params = np.array([0.2, 78.0, 10.0])
 
 wide_prior_bounds = np.array([[0.0, 4.0], [60.0, 90.0], [5.0, 40.0], [0.01, 0.5]])
-conservative_prior_bounds = np.array([[0.0, 1.0], [73.0, 82.0], [5.0, 15.0], [0.01, 0.1]])
-narrow_prior_bounds = np.array([[0.0, 0.3], [76.0, 80.0], [8.0, 12.0], [0.01, 0.05]])
+conservative_prior_bounds = np.array([[0.0, 2.0], [70.0, 85.0], [5.0, 20.0], [0.01, 0.1]])
+narrow_prior_bounds = np.array([[0., 1.0], [75.0, 83.0], [5.0, 15.0], [0.01, 0.05]])
 
 prior_sets = [wide_prior_bounds, 
               conservative_prior_bounds,
@@ -171,7 +171,8 @@ for i, ps in enumerate(prior_sets):
     axes[i, 0].axvspan(Robs - errorRs, Robs + errorRs, alpha=0.1, color='r')
 
     if i > 0:
-        axes[i, 0].set_xlim(0, axes[0, 0].get_xlim()[1])
+        axes[i, 0].set_xlim(axes[0, 0].get_xlim()[0], 
+                            axes[0, 0].get_xlim()[1])
 
     r  = np.sort(r[mask])
     c = ecdf(r)
@@ -214,15 +215,15 @@ for i, ps in enumerate(prior_sets):
     if i == 0:
         prior_label = 'Wide'
         axes[i, 0].set_ylabel('Wide Prior\nDensity')
-        axes[i, 1].set_ylabel(r'$P(\log R < \log R_{obs})$')
+        axes[i, 1].set_ylabel(r'$P(\log R < \log R^\prime)$')
     elif i == 1:
         prior_label = 'Conservative'
         axes[i, 0].set_ylabel('Conservative Prior\nDensity')
-        axes[i, 1].set_ylabel(r'$P(\log R < \log R_{obs})$')
+        axes[i, 1].set_ylabel(r'$P(\log R < \log R^\prime)$')
     else:
         prior_label = 'Narrow'
         axes[i, 0].set_ylabel('Narrow Prior\nDensity')
-        axes[i, 1].set_ylabel(r'$P(\log R < \log R_{obs})$')
+        axes[i, 1].set_ylabel(r'$P(\log R < \log R^\prime)$')
         axes[i, 0].set_xlabel(r'$\log R$')
         axes[i, 1].set_xlabel(r'$\log R$')
 
