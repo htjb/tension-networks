@@ -14,7 +14,13 @@ from tensionnet.bao import BAO
 p, l = get_data(base_dir='cosmology-data/').get_planck()
 pnoise = planck_noise(l).calculate_noise()
 
-cmbs = CMB()
+parameters = ['As', 'omegabh2', 'thetaMC', 'omegach2', 'ns']
+prior_mins = [2.6, 0.01, 0.97, 0.08, 0.8]
+prior_maxs = [3.8, 0.085, 1.5, 0.21, 1.2]
+
+cmbs = CMB(parameters=parameters, prior_mins=prior_mins, 
+           prior_maxs=prior_maxs)
+
 planck_likelihood = cmbs.get_likelihood(p, l, noise=pnoise)
 prior = cmbs.prior
 
@@ -26,14 +32,14 @@ def likelihood(theta):
 
 pars = camb.CAMBparams()
 
-file = 'Planck_bao_fit/'
+file = 'chains/planck_bao_fit/'
 RESUME = True
-nDims=6
+nDims=5
 
 settings = PolyChordSettings(nDims, 0) #settings is an object
 settings.read_resume = RESUME
 settings.base_dir = file + '/'
-settings.nlive = 200*6
+settings.nlive = 25*5
 
 output = pypolychord.run_polychord(likelihood, nDims, 0, settings, prior)
 paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(nDims)]
@@ -41,9 +47,9 @@ output.make_paramnames_files(paramnames)
 
 from anesthetic import read_chains
 
-joint = read_chains('Planck_bao_fit/test')
-planck = read_chains('Planck_fit/test')
-bao = read_chains('bao_fit/test')
+joint = read_chains('chains/planck_bao_fit/test')
+planck = read_chains('chains/planck_fit_camb/test')
+bao = read_chains('chains/bao_fit/test')
 
 R = joint.logZ(10000) - planck.logZ(10000) - bao.logZ(10000)
 R = R.values
