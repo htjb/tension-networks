@@ -206,7 +206,7 @@ for i, ps in enumerate(prior_sets):
                 r'$(-$' + f'{np.abs(sigma_D_lower - sigmaD):.3f}' + r'$)$' + '\n' +
                 r'$\sigma_A=$' + f'{sigmaA:.3f}' + 
                 r'$+$' + f'{np.abs(sigmaA - sigma_A_upper):.3f}' +
-                r'$(-$' + f'{np.abs(sigma_A_lower - sigmaA):.3f}' + r'$)$' + '\n')
+                r'$(-$' + f'{np.abs(sigma_A_lower - sigmaA):.3f}' + r'$)$')
     axes[i, 1].axhspan(c.cdf.evaluate(Robs - errorRs), 
             c.cdf.evaluate(Robs + errorRs), 
             alpha=0.1, 
