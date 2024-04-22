@@ -34,14 +34,14 @@ class BAO():
         theta[0] = UniformPrior(0.01, 0.085)(cube[0]) # omegabh2
         theta[1] = UniformPrior(0.08, 0.21)(cube[1]) # omegach2
         theta[2] = UniformPrior(0.97, 1.5)(cube[2]) # 100*thetaMC
-        theta[3] = UniformPrior(0.01, 0.16)(cube[3]) # tau
+        #theta[3] = UniformPrior(0.01, 0.16)(cube[3]) # tau
         theta[4] = UniformPrior(0.8, 1.2)(cube[4]) # ns
         theta[5] = UniformPrior(2.6, 3.8)(cube[5]) # log(10^10*As)
         return theta
     
     def get_camb_model(self, theta):
         self.pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
-                            tau=theta[3], cosmomc_theta=theta[2]/100,
+                            tau=0.055, cosmomc_theta=theta[2]/100,
                             theta_H0_range=[5, 1000])
         self.pars.InitPower.set_params(As=np.exp(theta[5])/10**10, ns=theta[4])
         self.pars.set_for_lmax(2500, lens_potential_accuracy=0)
