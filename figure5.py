@@ -7,10 +7,12 @@ from tensionnet.robs import run_poly
 from pypolychord.priors import UniformPrior, LogUniformPrior
 import os
 from tensionnet.tensionnet import nre
+from tensionnet.utils import calcualte_stats
 import tensorflow as tf
 from scipy.stats import ecdf
 import matplotlib as mpl
 from matplotlib import rc
+from scipy.stats import norm
 
 mpl.rcParams['axes.prop_cycle'] = mpl.cycler('color',
     ['ff7f00', '984ea3', '999999', '377eb8', '4daf4a','f781bf', 'a65628', 'e41a1c', 'dede00'])
@@ -22,32 +24,31 @@ rc('savefig', pad_inches=0.05)
 plt.rc('text.latex', preamble=r'\usepackage{amsmath} \usepackage{amssymb}')
 
 def signal_func_gen(freqs):
-    def signal(_, parameters):
+    def signal(parameters):
         amp, nu_0, w = parameters
         return -amp * np.exp(-(freqs-nu_0)**2 / (2*w**2))
     return signal
 
 def nre_signal_func_gen(freqs):
-    def signal(_, parameters):
-        amp, nu_0, w = parameters
+    def signal(parameters):
+        amp, nu_0, w, sigma = parameters
         return -amp * np.exp(-(freqs-nu_0)**2 / (2*w**2)) + \
-            np.random.normal(0, 0.025, len(freqs))
+            np.random.normal(0, sigma, len(freqs))
     return signal
 
 def exp1likelihood(theta):
     # gaussian log-likelihood
-    return (-0.5 * np.log(2*np.pi*theta[3]**2) \
-        - 0.5 * (exp1_data - exp1_sf([None], theta[:3]))**2/theta[3]**2).sum(),[]
+    return (-0.5 * np.log(2*np.pi*theta[-1]**2) \
+        - 0.5 * (exp1_data - exp1_sf(theta[:-1]))**2/theta[-1]**2).sum(),[]
 
 def exp2likelihood(theta):
     # gaussian log-likelihood
-    return (-0.5 * np.log(2*np.pi*theta[3]**2) \
-        - 0.5 * (exp2_data - exp2_sf([None], theta[:3]))**2/theta[3]**2).sum(),[]
+    return (-0.5 * np.log(2*np.pi*theta[-1]**2) \
+        - 0.5 * (exp2_data - exp2_sf(theta[:-1]))**2/theta[-1]**2).sum(),[]
 
 def jointlikelihood(theta):
-    exp1theta = theta[:4]
-    exp2theta = np.concatenate((theta[:3], theta[4:]))
-    return exp1likelihood(exp1theta)[0] + exp2likelihood(exp2theta)[0], []
+    return exp1likelihood([*theta[:-2], theta[-2]])[0] + \
+        exp2likelihood([*theta[:-2], theta[-1]])[0], []
 
 def build_priors(prior_bounds):
     def signal_prior(cube):
@@ -55,7 +56,7 @@ def build_priors(prior_bounds):
         theta[0] = UniformPrior(prior_bounds[0][0], prior_bounds[0][1])(cube[0]) #amp
         theta[1] = UniformPrior(prior_bounds[1][0], prior_bounds[1][1])(cube[1]) #nu_0
         theta[2] = UniformPrior(prior_bounds[2][0], prior_bounds[2][1])(cube[2]) #w
-        theta[3] = LogUniformPrior(0.001, 0.1)(cube[3]) #noise
+        theta[3] = LogUniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[3])
         return theta
 
     def joint_prior(cube):
@@ -63,31 +64,22 @@ def build_priors(prior_bounds):
         theta[0] = UniformPrior(prior_bounds[0][0], prior_bounds[0][1])(cube[0]) #amp
         theta[1] = UniformPrior(prior_bounds[1][0], prior_bounds[1][1])(cube[1]) #nu_0
         theta[2] = UniformPrior(prior_bounds[2][0], prior_bounds[2][1])(cube[2]) #w
-        theta[3] = LogUniformPrior(0.001, 0.1)(cube[3]) #exp1 noise
-        theta[4] = LogUniformPrior(0.001, 0.1)(cube[4]) #exp2 noise
+        theta[3] = LogUniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[3])
+        theta[4] = LogUniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[4])
         return theta
     return signal_prior, joint_prior
 
 def build_nre_priors(prior_bounds):
     def signal_prior(n):
-        parameters = np.ones((n, 3))
+        parameters = np.ones((n, 4))
         parameters[:, 0] = np.random.uniform(prior_bounds[0][0], prior_bounds[0][1], n) #amp
         parameters[:, 1] = np.random.uniform(prior_bounds[1][0], prior_bounds[1][1], n) #nu_0
         parameters[:, 2] = np.random.uniform(prior_bounds[2][0], prior_bounds[2][1], n) #w
+        parameters[:, 3] = np.random.uniform(prior_bounds[3][0], prior_bounds[3][1], n) #sigma
         return parameters
     return signal_prior
 
-def exp_prior(n):
-    """
-    The way tensionnet is set up it requires some
-    parameters that are unique to each experiment. Here I give an array of
-    zeros because the experimetns are just signal plus noise. Doesn't have
-    any impact on the results.
-    """
-    return np.zeros((n, 2))
-
-
-base = 'toy_chains_priors_nlive5000/'
+base = 'chains/21cm_different_priors/'
 if not os.path.exists(base):
     os.mkdir(base)
 RESUME = True
@@ -101,9 +93,9 @@ exp2_sf_nre = nre_signal_func_gen(exp2_freq)
 
 true_params = np.array([0.2, 78.0, 10.0])
 
-wide_prior_bounds = np.array([[0.0, 4.0], [60.0, 90.0], [5.0, 40.0]])
-conservative_prior_bounds = np.array([[0.0, 1.0], [70.0, 80.0], [5.0, 15.0]])
-narrow_prior_bounds = np.array([[0.0, 0.3], [76.0, 80.0], [8.0, 12.0]])
+wide_prior_bounds = np.array([[0.0, 4.0], [60.0, 90.0], [5.0, 40.0], [0.01, 0.5]])
+conservative_prior_bounds = np.array([[0.0, 1.0], [73.0, 82.0], [5.0, 15.0], [0.01, 0.1]])
+narrow_prior_bounds = np.array([[0.0, 0.3], [76.0, 80.0], [8.0, 12.0], [0.01, 0.05]])
 
 prior_sets = [wide_prior_bounds, 
               conservative_prior_bounds,
@@ -124,25 +116,25 @@ for i, ps in enumerate(prior_sets):
     try:
         exp1_data = np.loadtxt(sbase + 'exp1_data.txt')
     except:
-        exp1_data = exp1_sf([None], true_params) \
+        exp1_data = exp1_sf(true_params) \
             + np.random.normal(0, 0.025, 100)
         np.savetxt(sbase + 'exp1_data.txt', exp1_data)
 
     run_poly(signal_prior, exp1likelihood, sbase + f'exp1',
-             nlive=5000, RESUME=RESUME)
+             nlive=100, RESUME=RESUME, nDims=4)
     exp1_samples = read_chains(sbase + f'exp1/test')
 
     try:
         exp2_data = np.loadtxt(sbase + f'exp2_data.txt')
     except:
-        exp2_data = exp2_sf([None], true_params) \
+        exp2_data = exp2_sf(true_params) \
             + np.random.normal(0, 0.025, 100)
         np.savetxt(sbase + f'exp2_data.txt', exp2_data)
 
     run_poly(joint_prior, jointlikelihood, sbase + f'joint',
-             nlive=5000, RESUME=RESUME, nDims=5)
+             nlive=125, RESUME=RESUME, nDims=5)
     run_poly(signal_prior, exp2likelihood, sbase + f'exp2',
-             nlive=5000, RESUME=RESUME)
+             nlive=100, RESUME=RESUME, nDims=4)
 
     exp2_samples = read_chains(sbase + f'exp2/test')
     joint_samples = read_chains(sbase + f'joint/test')
@@ -155,32 +147,18 @@ for i, ps in enumerate(prior_sets):
 
     try:
         nrei = nre.load(sbase + 'model.pkl',
-                exp2_sf_nre, exp1_sf_nre, exp_prior,
-                exp_prior, nre_signal_prior)
+                exp2_sf_nre, exp1_sf_nre, nre_signal_prior)
     except:
         nrei = nre(lr=1e-4)
-        nrei.build_model(len(exp2_freq) + len(exp1_freq), 1, 
-                            [100]*10, 'sigmoid')
+        nrei.build_model(len(exp2_freq) + len(exp1_freq), 
+                            [25]*5, 'sigmoid')
         nrei.build_simulations(exp2_sf_nre, exp1_sf_nre, 
-                               exp_prior, exp_prior, nre_signal_prior, n=100000)
-        model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
+                               nre_signal_prior, n=250000)
+        model, data_test, labels_test = nrei.training(epochs=1000, batch_size=1000)
         nrei.save(sbase + 'model.pkl')
 
     nrei.__call__(iters=5000)
     r = nrei.r_values
-    mask = np.isfinite(r)
-    sigr = tf.keras.layers.Activation('sigmoid')(r[mask])
-    c = 0
-    good_idx = []
-    for j in range(len(sigr)):
-        if sigr[j] < 0.75:
-            c += 1
-        else:
-            good_idx.append(j)
-
-    print((len(sigr) -c)/len(sigr))
-
-    r = r[good_idx]
     mask = np.isfinite(r)
 
     Robs = Rs[-1].mean()
@@ -188,8 +166,7 @@ for i, ps in enumerate(prior_sets):
 
     axes[i, 0].hist(r[mask], bins=50, density=True)
     axes[i, 0].axvline(Robs, color='r', ls='--')
-    axes[i, 0].set_title('No. Sig. ' + r'$=$ ' + str(len(r[mask])) + '\n' +
-                         r'$R_{obs}=$' + str(np.round(Robs, 2)) + r'$\pm$' +
+    axes[i, 0].set_title(r'$\log R_{obs}=$' + str(np.round(Robs, 2)) + r'$\pm$' +
                             str(np.round(errorRs, 2)))
     axes[i, 0].axvspan(Robs - errorRs, Robs + errorRs, alpha=0.1, color='r')
 
@@ -198,12 +175,37 @@ for i, ps in enumerate(prior_sets):
 
     r  = np.sort(r[mask])
     c = ecdf(r)
+
+    sigmaD, sigma_D_upper, sigma_D_lower, \
+            sigmaA, sigma_A_upper, sigma_A_lower, \
+                sigmaR, sigmaR_upper, sigmaR_lower = \
+                    calcualte_stats(Robs, errorRs, c)
+    print('Prior Set:', prior_sets_names[i])
+    print(f'Rs: {Robs}, Rs_upper: {Robs + errorRs},' + 
+            f'Rs_lower: {Robs - errorRs}')
+    print(f'sigmaD: {sigmaD}, sigma_D_upper: ' + 
+            f'{np.abs(sigmaD - sigma_D_upper)}, ' +
+            f'sigma_D_lower: {np.abs(sigma_D_lower - sigmaD)}')
+    print(f'sigmaA: {sigmaA}, sigma_A_upper: ' +
+            f'{np.abs(sigmaA - sigma_A_upper)}, ' +
+            f'sigma_A_lower: {np.abs(sigma_A_lower - sigmaA)}')
+    print(f'sigmaR: {sigmaR}, sigmaR_upper: ' + 
+            f'{np.abs(sigmaR - sigmaR_upper)}, ' +
+            f'sigmaR_lower: {np.abs(sigmaR_lower - sigmaR)}')
+    np.savetxt(sbase + f'tension_stats.txt',
+                np.hstack([sigmaD, sigma_D_upper, sigma_D_lower,
+                            sigmaA, sigma_A_upper, sigma_A_lower,
+                            sigmaR, sigmaR_upper, sigmaR_lower]).T)
+    
     axes[i, 1].plot(r, c.cdf.evaluate(r))
     axes[i, 1].axhline(c.cdf.evaluate(Robs), ls='--',
                 color='r')
-    axes[i, 1].set_title(r'$P=$' + str(np.round(c.cdf.evaluate(Robs), 3)) +
-                r'$+$' + str(np.round(c.cdf.evaluate(Robs + errorRs) - c.cdf.evaluate(Robs), 3)) +
-                r'$(-$' + str(np.round(c.cdf.evaluate(Robs) - c.cdf.evaluate(Robs - errorRs),3)) + r'$)$')
+    axes[i, 1].set_title(r'$\sigma_D =$' + f'{sigmaD:.3f}' + 
+                         r'$+$' + f'{np.abs(sigmaD - sigma_D_upper):.3f}' +
+                r'$(-$' + f'{np.abs(sigma_D_lower - sigmaD):.3f}' + r'$)$' + '\n' +
+                r'$\sigma_A=$' + f'{sigmaA:.3f}' + 
+                r'$+$' + f'{np.abs(sigmaA - sigma_A_upper):.3f}' +
+                r'$(-$' + f'{np.abs(sigma_A_lower - sigmaA):.3f}' + r'$)$' + '\n')
     axes[i, 1].axhspan(c.cdf.evaluate(Robs - errorRs), 
             c.cdf.evaluate(Robs + errorRs), 
             alpha=0.1, 
@@ -228,14 +230,15 @@ for i, ps in enumerate(prior_sets):
     axes[i, 2].axis('off')
     axes[i, 2].table(cellText=[[str(ps[0, 0]) + ' - ' + str(ps[0, 1])],
                                 [str(ps[1, 0]) + ' - ' + str(ps[1, 1])], 
-                                [str(ps[2, 0]) + ' - ' + str(ps[2, 1])]],
+                                [str(ps[2, 0]) + ' - ' + str(ps[2, 1])],
+                                [str(ps[3, 0]) + ' - ' + str(ps[3, 1])]],
                      colLabels=[prior_label],
-                     rowLabels=[r'$A$', r'$\nu_0$', r'$w$'],
+                     rowLabels=[r'$A$', r'$\nu_0$', r'$w$', r'$\sigma$'],
                      cellLoc='center',
                      loc='center',
                      fontsize=15)
 
 plt.tight_layout()
-plt.savefig('toy_example_different_priors.pdf', bbox_inches='tight')
+plt.savefig('figures/figure5.pdf', bbox_inches='tight')
 plt.close()
 
