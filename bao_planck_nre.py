@@ -70,7 +70,7 @@ def bao_func():
     return bao
 
 def signal_prior(n):
-    theta = np.ones((n, 6))
+    theta = np.ones((n, 5))
     theta[:, 0] = np.random.uniform(0.01, 0.085, n) # omegabh2
     theta[:, 1] = np.random.uniform(0.08, 0.21, n) # omegach2
     theta[:, 2] = np.random.uniform(0.97, 1.5, n) # 100*thetaMC
