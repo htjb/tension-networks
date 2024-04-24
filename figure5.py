@@ -56,7 +56,7 @@ def build_priors(prior_bounds):
         theta[0] = UniformPrior(prior_bounds[0][0], prior_bounds[0][1])(cube[0]) #amp
         theta[1] = UniformPrior(prior_bounds[1][0], prior_bounds[1][1])(cube[1]) #nu_0
         theta[2] = UniformPrior(prior_bounds[2][0], prior_bounds[2][1])(cube[2]) #w
-        theta[3] = LogUniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[3])
+        theta[3] = UniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[3])
         return theta
 
     def joint_prior(cube):
@@ -64,8 +64,8 @@ def build_priors(prior_bounds):
         theta[0] = UniformPrior(prior_bounds[0][0], prior_bounds[0][1])(cube[0]) #amp
         theta[1] = UniformPrior(prior_bounds[1][0], prior_bounds[1][1])(cube[1]) #nu_0
         theta[2] = UniformPrior(prior_bounds[2][0], prior_bounds[2][1])(cube[2]) #w
-        theta[3] = LogUniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[3])
-        theta[4] = LogUniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[4])
+        theta[3] = UniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[3])
+        theta[4] = UniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[4])
         return theta
     return signal_prior, joint_prior
 
@@ -82,20 +82,24 @@ def build_nre_priors(prior_bounds):
 base = 'chains/21cm_different_priors/'
 if not os.path.exists(base):
     os.mkdir(base)
-RESUME = True
+RESUME = False
+RETRAIN = True
 
-exp1_freq = np.linspace(60, 90, 100)
-exp2_freq = np.linspace(80, 120, 100)
+exp1_freq = np.linspace(60, 90, 50)
+exp2_freq = np.linspace(70, 120, 50)
 exp1_sf = signal_func_gen(exp1_freq)
 exp2_sf = signal_func_gen(exp2_freq)
 exp1_sf_nre = nre_signal_func_gen(exp1_freq)
 exp2_sf_nre = nre_signal_func_gen(exp2_freq)
 
-true_params = np.array([0.2, 78.0, 10.0])
+true_params = np.array([0.25, 75.0, 10.0])
 
-wide_prior_bounds = np.array([[0.0, 4.0], [60.0, 90.0], [5.0, 40.0], [0.01, 0.5]])
-conservative_prior_bounds = np.array([[0.0, 2.0], [70.0, 85.0], [5.0, 20.0], [0.01, 0.1]])
-narrow_prior_bounds = np.array([[0., 1.0], [75.0, 83.0], [5.0, 15.0], [0.01, 0.05]])
+#wide_prior_bounds = np.array([[0., 8.0], [40.0, 100.0], [1.0, 50.0], [0.01, 1]])
+#conservative_prior_bounds = np.array([[0.0, 4.0], [60.0, 90.0], [5.0, 40.0], [0.01, 0.5]])
+#narrow_prior_bounds = np.array([[0.0, 2.0], [70.0, 85.0], [5.0, 20.0], [0.01, 0.1]])
+wide_prior_bounds = np.array([[0., 0.5], [50.0, 100.0], [1.0, 19.0], [0.001, 0.05]])
+conservative_prior_bounds = np.array([[0.1, 0.4], [60.0, 90.0], [3, 17.0], [0.01, 0.04]])
+narrow_prior_bounds = np.array([[0.15, 0.35], [70.0, 80.0], [5.0, 15.0], [0.015, 0.035]])
 
 prior_sets = [wide_prior_bounds, 
               conservative_prior_bounds,
@@ -106,6 +110,17 @@ prior_sets_names = ['wide',
                     'narrow'
                     ]
 Rs = []
+
+"""fig, axes = plt.subplots(3, 4, figsize=(6.3, 6.3), sharex='col')
+for i, ps in enumerate(prior_sets):
+    nre_signal_prior = build_nre_priors(ps)
+    samples = nre_signal_prior(1000)
+    ax = axes[i, :].flatten()
+    for j in range(samples.shape[-1]):
+        ax[j].hist(samples[:, j], bins=50, density=True)
+plt.show()
+sys.exit(1)"""
+
 fig, axes = plt.subplots(3, 3, figsize=(6.3, 6.3))
 for i, ps in enumerate(prior_sets):
     signal_prior, joint_prior = build_priors(ps)
@@ -113,28 +128,28 @@ for i, ps in enumerate(prior_sets):
     if not os.path.exists(sbase):
         os.mkdir(sbase)
 
-    try:
+    if RESUME:
         exp1_data = np.loadtxt(sbase + 'exp1_data.txt')
-    except:
+    else:
         exp1_data = exp1_sf(true_params) \
-            + np.random.normal(0, 0.025, 100)
+            + np.random.normal(0, 0.025, len(exp1_freq))
         np.savetxt(sbase + 'exp1_data.txt', exp1_data)
 
     run_poly(signal_prior, exp1likelihood, sbase + f'exp1',
-             nlive=100, RESUME=RESUME, nDims=4)
+             nlive=100*2, RESUME=RESUME, nDims=4)
     exp1_samples = read_chains(sbase + f'exp1/test')
 
-    try:
+    if RESUME:
         exp2_data = np.loadtxt(sbase + f'exp2_data.txt')
-    except:
+    else:
         exp2_data = exp2_sf(true_params) \
-            + np.random.normal(0, 0.025, 100)
+            + np.random.normal(0, 0.025, len(exp2_freq))
         np.savetxt(sbase + f'exp2_data.txt', exp2_data)
 
     run_poly(joint_prior, jointlikelihood, sbase + f'joint',
-             nlive=125, RESUME=RESUME, nDims=5)
+             nlive=125*2, RESUME=RESUME, nDims=5)
     run_poly(signal_prior, exp2likelihood, sbase + f'exp2',
-             nlive=100, RESUME=RESUME, nDims=4)
+             nlive=100*2, RESUME=RESUME, nDims=4)
 
     exp2_samples = read_chains(sbase + f'exp2/test')
     joint_samples = read_chains(sbase + f'joint/test')
@@ -145,19 +160,20 @@ for i, ps in enumerate(prior_sets):
     
     nre_signal_prior = build_nre_priors(ps)
 
-    try:
-        nrei = nre.load(sbase + 'model.pkl',
-                exp2_sf_nre, exp1_sf_nre, nre_signal_prior)
-    except:
+    if not RETRAIN:
+        nrei = nre.load(sbase + 'model_test.pkl',
+                exp1_sf_nre, exp2_sf_nre, nre_signal_prior)
+    else:
         nrei = nre(lr=1e-4)
-        nrei.build_model(len(exp2_freq) + len(exp1_freq), 
-                            [25]*5, 'sigmoid')
-        nrei.build_simulations(exp2_sf_nre, exp1_sf_nre, 
-                               nre_signal_prior, n=250000)
-        model, data_test, labels_test = nrei.training(epochs=1000, batch_size=1000)
-        nrei.save(sbase + 'model.pkl')
+        nrei.build_model(len(exp1_freq) + len(exp2_freq), 
+                            [25]*5, 'sigmoid')#, skip_layers=False)
+        nrei.build_simulations(exp1_sf_nre, exp2_sf_nre, 
+                               nre_signal_prior, n=100000)
+        model, data_test, labels_test = nrei.training(epochs=500, 
+                                                      batch_size=1000)
+        nrei.save(sbase + 'model_test.pkl')
 
-    nrei.__call__(iters=5000)
+    examples = nrei.__call__(iters=5000)
     r = nrei.r_values
     mask = np.isfinite(r)
 
@@ -170,12 +186,14 @@ for i, ps in enumerate(prior_sets):
                             str(np.round(errorRs, 2)))
     axes[i, 0].axvspan(Robs - errorRs, Robs + errorRs, alpha=0.1, color='r')
 
-    if i > 0:
-        axes[i, 0].set_xlim(axes[0, 0].get_xlim()[0], 
-                            axes[0, 0].get_xlim()[1])
+    #if i > 0:
+    #    axes[i, 0].set_xlim(axes[0, 0].get_xlim()[0], 
+    #                        axes[0, 0].get_xlim()[1])
+    axes[i, 0].set_xlim(3, 9)
 
     r  = np.sort(r[mask])
     c = ecdf(r)
+
 
     sigmaD, sigma_D_upper, sigma_D_lower, \
             sigmaA, sigma_A_upper, sigma_A_lower, \
