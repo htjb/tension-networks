@@ -26,7 +26,7 @@ class nre():
         self.optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=self.lr)
 
     def build_model(
-            self, input_dim, layer_sizes, activation):
+            self, input_dim, layer_sizes, activation, skip_layers=True):
         
         self.input_dim = input_dim
         self.layer_sizes = layer_sizes
@@ -41,9 +41,10 @@ class nre():
                                  kernel_regularizer='l1',
                                  use_bias=False,
                                  )(a0)
-            if i % 2 == 0 and i != 0:
-                outputs = self.batch_norm()(outputs)
-                outputs = tf.keras.layers.add([outputs, a0])
+            if skip_layers:
+                if i % 2 == 0 and i != 0:
+                    outputs = self.batch_norm()(outputs)
+                    outputs = tf.keras.layers.add([outputs, a0])
             outputs = self.batch_norm()(outputs)
             a0 = outputs
         outputs = self.Dense(1, activation='linear',
@@ -199,6 +200,7 @@ class nre():
         
     def training(self, epochs, early_stop=True, batch_size=32, patience=None):
         
+        
         train_dataset = np.hstack([self.data_train, 
                                    self.labels_train[:, np.newaxis]]
                                    ).astype(np.float32)
@@ -207,7 +209,7 @@ class nre():
 
         if patience is None:
             patience = round((epochs/100)*2)
-
+        
         self.loss_history = []
         self.test_loss_history = []
         c = 0
@@ -235,11 +237,10 @@ class nre():
                         minimum_epoch = i
                         minimum_model = self.model
                         c = 0
-                if minimum_model:
-                    if c == patience:
-                        print('Early stopped. Epochs used = ' + str(i) +
-                                '. Minimum at epoch = ' + str(minimum_epoch))
-                        return minimum_model, self.data_test, self.labels_test
+                if c == patience:
+                    print('Early stopped. Epochs used = ' + str(i) +
+                            '. Minimum at epoch = ' + str(minimum_epoch))
+                    return minimum_model, self.data_test, self.labels_test
         return self.model, self.data_test, self.labels_test
 
     @tf.function(jit_compile=True)
@@ -251,7 +252,7 @@ class nre():
             optimizer algorithm.
             """
     
-            prediction = tf.transpose(self.model(param, training=True))[0]
+            prediction = tf.transpose(self.model(param, training=False))[0]
             prediction = tf.keras.layers.Activation('sigmoid')(prediction)
             truth = tf.convert_to_tensor(truth)
             loss = tf.keras.losses.BinaryCrossentropy(
@@ -306,7 +307,7 @@ class nre():
         for i in range(len(data)):
             params = tf.convert_to_tensor(np.array(
                 [[*data[i]]]).astype('float32'))
-            logr = self.model(params).numpy()[0]
+            logr = self.model(params, training=False).numpy()[0]
             r_values.append(logr)
 
         self.r_values = np.array(r_values).T[0]

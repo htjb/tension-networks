@@ -18,7 +18,7 @@ def signal_poly_prior(cube):
     theta[0] = UniformPrior(0, 4)(cube[0]) #amp
     theta[1] = UniformPrior(60, 90)(cube[1]) #nu_0
     theta[2] = UniformPrior(5, 40)(cube[2]) #w
-    theta[3] = LogUniformPrior(0.001, 0.1)(cube[3]) #sigma
+    theta[3] = UniformPrior(0.001, 0.1)(cube[3]) #sigma
     return theta
 
 def joint_prior(cube):
@@ -26,8 +26,8 @@ def joint_prior(cube):
     theta[0] = UniformPrior(0, 4)(cube[0]) #amp
     theta[1] = UniformPrior(60, 90)(cube[1]) #nu_0
     theta[2] = UniformPrior(5, 40)(cube[2]) #w
-    theta[3] = LogUniformPrior(0.001, 0.1)(cube[3]) #sigma1
-    theta[4] = LogUniformPrior(0.001, 0.1)(cube[4]) #sigma2
+    theta[3] = UniformPrior(0.001, 0.1)(cube[3]) #sigma1
+    theta[4] = UniformPrior(0.001, 0.1)(cube[4]) #sigma2
     return theta
 
 def exp1likelihood(theta):
@@ -47,7 +47,7 @@ def jointlikelihood(theta):
 base = 'chains/21cm_temp_sweep/'
 if not os.path.exists(base):
     os.mkdir(base)
-RESUME = True
+RESUME = False
 
 exp1_freq = np.linspace(60, 90, 100)
 exp2_freq = np.linspace(80, 120, 100)

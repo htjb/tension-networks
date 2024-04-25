@@ -54,7 +54,7 @@ def build_priors(prior_bounds):
         theta[0] = UniformPrior(prior_bounds[0][0], prior_bounds[0][1])(cube[0]) #amp
         theta[1] = UniformPrior(prior_bounds[1][0], prior_bounds[1][1])(cube[1]) #nu_0
         theta[2] = UniformPrior(prior_bounds[2][0], prior_bounds[2][1])(cube[2]) #w
-        theta[3] = LogUniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[3])
+        theta[3] = UniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[3])
         return theta
 
     def joint_prior(cube):
@@ -62,8 +62,8 @@ def build_priors(prior_bounds):
         theta[0] = UniformPrior(prior_bounds[0][0], prior_bounds[0][1])(cube[0]) #amp
         theta[1] = UniformPrior(prior_bounds[1][0], prior_bounds[1][1])(cube[1]) #nu_0
         theta[2] = UniformPrior(prior_bounds[2][0], prior_bounds[2][1])(cube[2]) #w
-        theta[3] = LogUniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[3])
-        theta[4] = LogUniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[4])
+        theta[3] = UniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[3])
+        theta[4] = UniformPrior(prior_bounds[3][0], prior_bounds[3][1])(cube[4])
         return theta
     return signal_prior, joint_prior
 
@@ -81,7 +81,7 @@ def build_nre_priors(prior_bounds):
 base = 'chains/21cm_direct_prediction/'
 if not os.path.exists(base):
     os.mkdir(base)
-RESUME = True
+RESUME = False
 
 exp1_freq = np.linspace(60, 90, 100)
 exp2_freq = np.linspace(80, 120, 100)
@@ -92,7 +92,7 @@ exp2_sf_nre = nre_signal_func_gen(exp2_freq)
 
 true_params = np.array([0.2, 78.0, 10.0])
 
-prior_bounds = np.array([[0.0, 1.0], [73.0, 82.0], [5.0, 15.0], [0.01, 0.1]])
+prior_bounds = np.array([[0.0, 4.0], [60.0, 90.0], [5.0, 40.0], [0.001, 0.1]])
 
 fig, axes = plt.subplots(1, 3, figsize=(6.3, 3))
 signal_prior, joint_prior = build_priors(prior_bounds)
@@ -106,33 +106,34 @@ if not os.path.exists(base):
 try:
     exp1_data = np.loadtxt(base + 'exp1_data.txt')
 except:
-    exp1_data = exp1_sf([None], true_params) \
+    exp1_data = exp1_sf(true_params) \
         + np.random.normal(0, 0.025, 100) \
-        + (exp1_freq/78)**(-2.5)*0.035*np.sin(2*np.pi*exp1_freq/5 + 0.5)
+        + (exp1_freq/78)**(-2.5)*0.050*np.sin(2*np.pi*exp1_freq/5 + 0.5)
     np.savetxt(base + 'exp1_data.txt', exp1_data)
 
-axes[2].plot(exp1_freq, exp1_data - exp1_sf([None], true_params) 
-             - (exp1_freq/78)**(-2.5)*0.035*np.sin(2*np.pi*exp1_freq/5 + 0.5))
-axes[2].plot(exp1_freq, (exp1_freq/78)**(-2.5)*0.035*np.sin(2*np.pi*exp1_freq/5 + 0.5))
+axes[2].plot(exp1_freq, exp1_data - exp1_sf(true_params) 
+             - (exp1_freq/78)**(-2.5)*0.050*np.sin(2*np.pi*exp1_freq/5 + 0.5))
+axes[2].plot(exp1_freq, (exp1_freq/78)**(-2.5)*0.050*np.sin(2*np.pi*exp1_freq/5 + 0.5), 
+             color='C2')
 axes[2].set_title('Systematic')
 axes[2].set_xlabel('Frequency [MHz]')
 axes[2].set_ylabel(r'$\delta T_b$ [K]')
 
 run_poly(signal_prior, exp1likelihood, base + f'exp1',
-            nlive=100, RESUME=RESUME)
+            nlive=100, RESUME=RESUME, nDims=4)
 exp1_samples = read_chains(base + f'exp1/test')
 
 try:
     exp2_data = np.loadtxt(base + f'exp2_data.txt')
 except:
-    exp2_data = exp2_sf([None], true_params) \
+    exp2_data = exp2_sf(true_params) \
         + np.random.normal(0, 0.025, 100)
     np.savetxt(base + f'exp2_data.txt', exp2_data)
 
 run_poly(joint_prior, jointlikelihood, base + f'joint',
-            nlive=1250, RESUME=RESUME)
+            nlive=1250, RESUME=RESUME, nDims=5)
 run_poly(signal_prior, exp2likelihood, base + f'exp2',
-            nlive=100, RESUME=RESUME)
+            nlive=100, RESUME=RESUME, nDims=4)
 
 ######################################################################
 #################### Read chains and calcualte R #####################
@@ -148,8 +149,17 @@ Rs = (joint_samples.logZ(1000) -
 ######### Load NRE trained without systematics #######################
 ######################################################################
 nre_signal_prior = build_nre_priors(prior_bounds)
-nrei = nre.load('toy_chains_priors_nlive5000/wide/model.pkl',
-        exp2_sf_nre, exp1_sf_nre, nre_signal_prior)
+try:
+    nrei = nre.load('figure7-nre.pkl',
+                exp2_sf_nre, exp1_sf_nre, nre_signal_prior)
+except:
+    nrei = nre(lr=1e-4)
+    nrei.build_model(len(exp2_freq) + len(exp1_freq),
+                        [25]*5, 'sigmoid')
+    nrei.build_simulations(exp2_sf_nre, exp1_sf_nre, nre_signal_prior, n=200000)
+    model, data_test, labels_test = nrei.training(epochs=1000, 
+                                                  batch_size=1000)
+    nrei.save('figure7-nre.pkl')
 
 ######################################################################
 ######### NRE R distribution #########################################
@@ -162,9 +172,8 @@ Robs = Rs.mean()
 errorRs = np.std(Rs)
 
 axes[0].hist(r[mask], bins=50, density=True)
-axes[0].axvline(Robs, color='r', ls='--')
-axes[0].set_title('No. Sig. ' + r'$=$ ' + str(len(r[mask])) + '\n' +
-                        r'$\log R_{obs}=$' + str(np.round(Robs, 2)) + r'$\pm$' +
+axes[0].axvline(Robs, color='r', ls='--', label='Nested Sampling')
+axes[0].set_title(r'$\log R_{obs}=$' + str(np.round(Robs, 2)) + r'$\pm$' +
                         str(np.round(errorRs, 2)))
 axes[0].axvspan(Robs - errorRs, Robs + errorRs, alpha=0.1, color='r')
 
@@ -196,13 +205,13 @@ np.savetxt(base + f'tension_stats.txt',
                         sigmaA, sigma_A_upper, sigma_A_lower,
                         sigmaR, sigmaR_upper, sigmaR_lower]).T)
 
-axes[1].set_title(r'$\sigma_D =$' + f'{sigmaD:.3f}' + r'$+$' + 
+"""axes[1].set_title(r'$\sigma_D =$' + f'{sigmaD:.3f}' + r'$+$' + 
                   f'{np.abs(sigmaD - sigma_D_upper):.3f}' +
             r'$(-$' + f'{np.abs(sigma_D_lower - sigmaD):.3f}' + 
             r'$)$' + '\n' +
             r'$\sigma_A =$' + f'{sigmaA:.3f}' + r'$+$' +
             f'{np.abs(sigmaA - sigma_A_upper):.3f}' +
-            r'$(-$' + f'{np.abs(sigma_A_lower - sigmaA):.3f}')
+            r'$(-$' + f'{np.abs(sigma_A_lower - sigmaA):.3f}')"""
 axes[1].axhspan(c.cdf.evaluate(Robs - errorRs), 
         c.cdf.evaluate(Robs + errorRs), 
         alpha=0.1, 
@@ -227,13 +236,13 @@ print(f'sigmaD: {sigmaD}')
 print(f'sigmaA: {sigmaA}')
 print(f'sigmaR: {sigmaR}')
 
-axes[0].axvline(r, color='purple', ls='--')
+axes[0].axvline(r, color='purple', ls='--', label='Direct Prediction')
 axes[1].axhline(c.cdf.evaluate(r), ls='--',
             color='purple')
 
 
 axes[0].set_ylabel('Density')
-axes[1].set_ylabel(r'$P(\log R < \log R_{obs})$')
+axes[1].set_ylabel(r'$P(\log R < \log R^\prime)$')
 axes[0].set_xlabel(r'$\log R$')
 axes[1].set_xlabel(r'$\log R$')
 

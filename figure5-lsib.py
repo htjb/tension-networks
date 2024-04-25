@@ -8,9 +8,24 @@ import tensorflow as tf
 from tensorflow.keras.optimizers.schedules import ExponentialDecay
 import numpy as np
 from random import shuffle
-from scipy.stats import ecdf
+from scipy.stats import ecdf, norm
 from tqdm import tqdm
 import os
+import matplotlib as mpl
+from matplotlib import rc
+
+mpl.rcParams['axes.prop_cycle'] = mpl.cycler('color',
+    ['ff7f00', '984ea3', '999999', '377eb8', '4daf4a','f781bf', 'a65628', 'e41a1c', 'dede00'])
+mpl.rcParams['text.usetex'] = True
+rc('font', family='serif')
+rc('font', serif='cm')
+rc('savefig', pad_inches=0.05)
+
+plt.rc('text.latex', preamble=r'\usepackage{amsmath} \usepackage{amssymb}')
+
+def logR(A, B):
+        return model_AB.evidence().logpdf(np.hstack([A, B])) - \
+            model_A.evidence().logpdf(A) - model_B.evidence().logpdf(B)
 
 def simulation_process(simsA, simsB):
     # generate lots of simulations 
@@ -65,36 +80,43 @@ def simulation_process(simsA, simsB):
 # D = m + M theta +/- sqrt(C)
 # theta = mu +/- sqrt(Sigma)
 
-base_dir = 'chains/lsbi-different-priors/'
-if not os.path.exists(base_dir):
-    os.mkdir(base_dir)
 
 # Parameters & priors
 n = 3
+# Data B
+d =  50
+MB = np.random.rand(d, n)
+mB = np.random.rand(d)
+CB = 0.01
+# Data A
+MA = np.random.rand(d, n)
+mA = np.random.rand(d)
+CA = 0.01
+
 mu = np.random.rand(n)
-Sigmas = [0.01, 1, 100]
+
+theta_true = multivariate_normal(mu, 0.01).rvs()
+#theta_true = [0.70325735, 0.56504433, 0.43477517]
+print(theta_true)
+"""for i in range(theta_true.shape[0]):
+     plt.hist(theta_true[i, :], bins=50, density=True, histtype='step')
+plt.show()
+sys.exit(1)"""
+#theta_true = [0.8, 0.9, 0.95]
+
+Sigmas = [0.1, 1, 100]
+prior_label = [r'$\sigma =$' + f'{Sigmas[0]}', 
+               r'$\sigma =$' + f'{Sigmas[1]}', 
+               r'$\sigma =$' + f'{Sigmas[2]}']
 #fig, axes = plt.subplots(2, 2, figsize=(6.3, 6.3))
-fig, axes = plt.subplots(3, 3, figsize=(6.3, 6.3))
+fig, axes = plt.subplots(3, 3, figsize=(8, 6.3), sharex='col')
 
 for i, Sigma in enumerate(Sigmas):
     print('Iteration ', i, ' Sigma = ', Sigma)
 
-    theta_true = multivariate_normal(mu, Sigma).rvs()
-
-    # Data A
-    d = 50
-    M = np.random.rand(d, n)
-    m = np.random.rand(d)
-    C = 0.01
-    model_A = LinearModel(M=M, m=m, C=C, 
+    model_A = LinearModel(M=MA, m=mA, C=CA, 
                           mu=mu, Sigma=Sigma)
-
-    # Data B
-    d =  50
-    M = np.random.rand(d, n)
-    m = np.random.rand(d)
-    C = 0.01
-    model_B = LinearModel(M=M, m=m, C=C, 
+    model_B = LinearModel(M=MB, m=mB, C=CB, 
                           mu=mu, Sigma=Sigma)
 
     # Data AB
@@ -105,13 +127,9 @@ for i, Sigma in enumerate(Sigmas):
                         model_B.C * np.ones(model_B.d)])
     model_AB = LinearModel(M=M, m=m, C=C, mu=mu, Sigma=Sigma)
 
-
-    A_obs = model_A.likelihood(theta_true).rvs()
-    B_obs = model_B.likelihood(theta_true).rvs()
-
-    def logR(A, B):
-        return model_AB.evidence().logpdf(np.hstack([A, B])) - \
-            model_A.evidence().logpdf(A) - model_B.evidence().logpdf(B)
+    if i == 0:
+        A_obs = model_A.likelihood(theta_true).rvs()
+        B_obs = model_B.likelihood(theta_true).rvs()
 
     N_sim = 500000
 
@@ -122,8 +140,9 @@ for i, Sigma in enumerate(Sigmas):
     nrei = nre(lr=1e-4)
     nrei.build_model(len(A_obs) + len(B_obs),
                         [25]*5, 'sigmoid')
-    norm_data_train, norm_data_test, data_train, data_test, labels_train, labels_test = \
-        simulation_process(A_sim, B_sim)
+    norm_data_train, norm_data_test, data_train, data_test, \
+        labels_train, labels_test = \
+            simulation_process(A_sim, B_sim)
     nrei.data_test = norm_data_test
     nrei.labels_test = labels_test
     nrei.data_train = norm_data_train
@@ -132,14 +151,24 @@ for i, Sigma in enumerate(Sigmas):
     nrei.simulation_func_B = None
 
 
-    model, data_test, labels_test = nrei.training(epochs=1000,
-                                                  batch_size=1000)
-
     N_test_sim = 5000
     AB_sim = model_AB.evidence().rvs(N_test_sim)
     A_sim = AB_sim[:, :model_A.d]
     B_sim = AB_sim[:, model_A.d:]
-    logr = logR(A_sim, B_sim)
+    logr_true_dist = logR(A_sim, B_sim)
+
+    #if i ==0:
+    Robs = logR(A_obs, B_obs)
+
+    logr_true_dist = np.sort(logr_true_dist)
+    true_cdf = ecdf(logr_true_dist)
+    true_sigmaD = norm.isf(true_cdf.cdf.evaluate(Robs)/2)
+    true_sigmaA = norm.isf((1- true_cdf.cdf.evaluate(Robs))/2)
+    print(f'True sigmaD: {true_sigmaD}')
+    print(f'True sigmaA: {true_sigmaA}')
+
+    model, data_test, labels_test = nrei.training(epochs=1000,
+                                                  batch_size=1000)
 
     A_sim = (A_sim - data_train[:, :len(A_obs)].mean(axis=0)) / \
         data_train[:, :len(A_obs)].std(axis=0)
@@ -149,86 +178,54 @@ for i, Sigma in enumerate(Sigmas):
     data_test = np.hstack([A_sim, B_sim])
 
     nrei.__call__(iters=data_test)
-    r = nrei.r_values
+    predicted_r_dist = nrei.r_values
 
-    mask = np.isfinite(r)
+    mask = np.isfinite(predicted_r_dist)
 
-    Robs = logR(A_obs, B_obs)
+    axes[i, 0].hist(predicted_r_dist[mask], bins=50, density=True, 
+                    histtype='step', label='Prediction')
+    axes[i, 0].hist(logr_true_dist, bins=50, density=True,
+                    histtype='step', label='Truth')
 
-    axes[i, 0].hist(r[mask], bins=50, density=True)
     axes[i, 0].axvline(Robs, color='r', ls='--')
     axes[i, 0].set_title(r'$\log R_{obs}=$' + str(np.round(Robs, 2)))
 
-    if i > 0:
-        axes[i, 0].set_xlim(axes[0, 0].get_xlim()[0], 
-                            axes[0, 0].get_xlim()[1])
+    predicted_r_dist  = np.sort(predicted_r_dist[mask])
+    c = ecdf(predicted_r_dist)
 
-    r  = np.sort(r[mask])
-    c = ecdf(r)
+    sigmaD = norm.isf(c.cdf.evaluate(Robs)/2)
+    sigmaA = norm.isf((1- c.cdf.evaluate(Robs))/2)
+    print(f'Predicted sigmaD: {sigmaD}')
+    print(f'Predicted sigmaA: {sigmaA}')
 
-
-    sigmaD, sigma_D_upper, sigma_D_lower, \
-            sigmaA, sigma_A_upper, sigma_A_lower, \
-                sigmaR, sigmaR_upper, sigmaR_lower = \
-                    calcualte_stats(Robs, errorRs, c)
-    print('Prior Set:', prior_sets_names[i])
-    print(f'Rs: {Robs}, Rs_upper: {Robs + errorRs},' + 
-            f'Rs_lower: {Robs - errorRs}')
-    print(f'sigmaD: {sigmaD}, sigma_D_upper: ' + 
-            f'{np.abs(sigmaD - sigma_D_upper)}, ' +
-            f'sigma_D_lower: {np.abs(sigma_D_lower - sigmaD)}')
-    print(f'sigmaA: {sigmaA}, sigma_A_upper: ' +
-            f'{np.abs(sigmaA - sigma_A_upper)}, ' +
-            f'sigma_A_lower: {np.abs(sigma_A_lower - sigmaA)}')
-    print(f'sigmaR: {sigmaR}, sigmaR_upper: ' + 
-            f'{np.abs(sigmaR - sigmaR_upper)}, ' +
-            f'sigmaR_lower: {np.abs(sigmaR_lower - sigmaR)}')
-    np.savetxt(sbase + f'tension_stats.txt',
-                np.hstack([sigmaD, sigma_D_upper, sigma_D_lower,
-                            sigmaA, sigma_A_upper, sigma_A_lower,
-                            sigmaR, sigmaR_upper, sigmaR_lower]).T)
     
-    axes[i, 1].plot(r, c.cdf.evaluate(r))
+    axes[i, 1].plot(predicted_r_dist, c.cdf.evaluate(predicted_r_dist), label='Prediction')
+    axes[i, 1].plot(logr_true_dist, true_cdf.cdf.evaluate(logr_true_dist), label='Truth')
     axes[i, 1].axhline(c.cdf.evaluate(Robs), ls='--',
-                color='r')
-    axes[i, 1].set_title(r'$\sigma_D =$' + f'{sigmaD:.3f}' + 
-                         r'$+$' + f'{np.abs(sigmaD - sigma_D_upper):.3f}' +
-                r'$(-$' + f'{np.abs(sigma_D_lower - sigmaD):.3f}' + r'$)$' + '\n' +
-                r'$\sigma_A=$' + f'{sigmaA:.3f}' + 
-                r'$+$' + f'{np.abs(sigmaA - sigma_A_upper):.3f}' +
-                r'$(-$' + f'{np.abs(sigma_A_lower - sigmaA):.3f}' + r'$)$')
-    axes[i, 1].axhspan(c.cdf.evaluate(Robs - errorRs), 
-            c.cdf.evaluate(Robs + errorRs), 
-            alpha=0.1, 
-            color='r')
-
-    if i == 0:
-        prior_label = 'Wide'
-        axes[i, 0].set_ylabel('Wide Prior\nDensity')
-        axes[i, 1].set_ylabel(r'$P(\log R < \log R^\prime)$')
-    elif i == 1:
-        prior_label = 'Conservative'
-        axes[i, 0].set_ylabel('Conservative Prior\nDensity')
-        axes[i, 1].set_ylabel(r'$P(\log R < \log R^\prime)$')
-    else:
-        prior_label = 'Narrow'
-        axes[i, 0].set_ylabel('Narrow Prior\nDensity')
-        axes[i, 1].set_ylabel(r'$P(\log R < \log R^\prime)$')
-        axes[i, 0].set_xlabel(r'$\log R$')
-        axes[i, 1].set_xlabel(r'$\log R$')
-
+                color='C0')
+    axes[i, 1].axhline(true_cdf.cdf.evaluate(Robs), ls='--',
+                color='C1')
     
+    if i == 0:
+         axes[i, 0].legend(fontsize=8)
+         axes[i, 1].legend(fontsize=8)
+        
+    [axes[i, j].tick_params(labelbottom=True) for j in range(2)]
+
+    axes[i, 0].set_ylabel(prior_label[i])
+    axes[i, 1].set_ylabel(r'$P(\log R < \log R^\prime)$')
+
     axes[i, 2].axis('off')
-    axes[i, 2].table(cellText=[[str(ps[0, 0]) + ' - ' + str(ps[0, 1])],
-                                [str(ps[1, 0]) + ' - ' + str(ps[1, 1])], 
-                                [str(ps[2, 0]) + ' - ' + str(ps[2, 1])],
-                                [str(ps[3, 0]) + ' - ' + str(ps[3, 1])]],
-                     colLabels=[prior_label],
-                     rowLabels=[r'$A$', r'$\nu_0$', r'$w$', r'$\sigma$'],
+    axes[i, 2].table(cellText=[[f'{true_sigmaD:.3f}',
+                                f'{true_sigmaA:.3f}'],
+                                [f'{sigmaD:.3f}',
+                                 f'{sigmaA:.3f}']],
+                     colLabels=[r'$\sigma_D$', r'$\sigma_A$'],
+                     rowLabels=['Truth', 'Prediction'],
                      cellLoc='center',
                      loc='center',
                      fontsize=15)
 
 plt.tight_layout()
-plt.savefig('figures/figure5.pdf', bbox_inches='tight')
+plt.savefig('figures/figure5-lsbi.pdf', bbox_inches='tight')
 plt.close()

@@ -168,9 +168,9 @@ for i, ps in enumerate(prior_sets):
         nrei.build_model(len(exp1_freq) + len(exp2_freq), 
                             [25]*5, 'sigmoid')#, skip_layers=False)
         nrei.build_simulations(exp1_sf_nre, exp2_sf_nre, 
-                               nre_signal_prior, n=100000)
-        model, data_test, labels_test = nrei.training(epochs=500, 
-                                                      batch_size=1000)
+                               nre_signal_prior, n=250000)
+        model, data_test, labels_test = nrei.training(epochs=300, 
+                                                      batch_size=124)
         nrei.save(sbase + 'model_test.pkl')
 
     examples = nrei.__call__(iters=5000)
