@@ -11,6 +11,7 @@ from cmblike.data import get_data
 from cmblike.noise import planck_noise
 from cmblike.cmb import CMB
 from tensionnet.utils import calcualte_stats
+from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
 mpl.rcParams['axes.prop_cycle'] = mpl.cycler('color',
@@ -27,7 +28,7 @@ pars = camb.CAMBparams()
 def derived(parameters):
     H0, rs, omm = [], [], []
     for i in tqdm(range(len(parameters))):
-        pars.set_cosmology(H0=parameters[i][-1]*100, ombh2=parameters[i][0], 
+        pars.set_cosmology(H0=parameters[i][4]*100, ombh2=parameters[i][0], 
                                     omch2=parameters[i][1],
                                     tau=0.055,
                                     theta_H0_range=[5, 1000])
@@ -54,7 +55,7 @@ def derived(parameters):
             labels=[r'$\frac{H_0 r_s}{c}$', r'$\Omega_m$', r'$H_0$'])
     return samples
 
-p, l = get_data(base_dir='cosmology-data/').get_planck()
+_, l = get_data(base_dir='cosmology-data/').get_planck()
 planck_noise = planck_noise(l).calculate_noise()
 
 from tensionnet.bao import BAO
@@ -67,7 +68,7 @@ prior_maxs = [3.8, 0.085, 0.21, 1.2, 0.9]
 
 cmbs = CMB(parameters=parameters, prior_mins=prior_mins, 
            prior_maxs=prior_maxs, 
-           path_to_cp='/home/htjb2/rds/hpc-work/cosmopower')
+           path_to_cp='/Users/harrybevins/Documents/Software/cosmopower')
 
 def cl_func_gen():
     def cl_func(parameters):
@@ -77,7 +78,7 @@ def cl_func_gen():
 
 def bao_func():
     def bao(parameters):
-        datad12, datad16 = baos.get_camb_model(parameters)
+        datad12, datad16, _, _ = baos.get_sample(parameters)
         return np.concatenate((datad12, datad16))
     return bao
 
@@ -85,20 +86,17 @@ def signal_prior(n):
     theta = np.ones((n, 5))
     theta[:, 0] = np.random.uniform(0.01, 0.085, n) # omegabh2
     theta[:, 1] = np.random.uniform(0.08, 0.21, n) # omegach2
-    #theta[:, 2] = np.random.uniform(0.97, 1.5, n) # 100*thetaMC
-    #theta[:, 3] = np.random.uniform(0.01, 0.16, n) # tau
     theta[:, 2] = np.random.uniform(0.8, 1.2, n) # ns
     theta[:, 3] = np.random.uniform(2.6, 3.8, n) # log(10^10*As)
     theta[:, 4] = np.random.uniform(0.5, 0.9, n) # H0
     return theta
 
-planck_func = cl_func_gen()
-bao_func = bao_func()
+planck_sim_func = cl_func_gen()
+bao_sim_func = bao_func()
 
 from tensionnet.tensionnet import nre
 
-nsamples = 250000
-layers = [25]*5
+nsamples = 100000
 from anesthetic import read_chains
 
 joint = read_chains('chains/planck_bao_fit_cp/test')
@@ -109,33 +107,79 @@ R = joint.logZ(10000) - planck.logZ(10000) - bao.logZ(10000)
 R = R.values
 Rs, errorRs = np.mean(R), np.std(R)
 
+RETRAIN = True
+if RETRAIN:
+    import os
+    if os.path.exists('chains/planck_bao_fit_cp/bao_planck_model.pkl'):
+        os.remove('chains/planck_bao_fit_cp/bao_planck_model.pkl')
+
 try:
     nrei = nre.load('chains/planck_bao_fit_cp/bao_planck_model.pkl',
-                planck_func, bao_func, signal_prior)
+                planck_sim_func, bao_sim_func, signal_prior)
 except:
     nrei = nre(lr=1e-4)
     nrei.build_model(len(l) + len(z)*2, 
-                        layers, 'sigmoid')
+                        [50]*5, 'sigmoid')
+    #nrei.build_compress_model(len(l), len(z)*2,
+    #                          [25, 25, 25, 10, 10, 5], [25]*5, 'sigmoid')
     try:
-        wide_data = np.loadtxt('chains/planck_bao_fit_cp/planck_bao_nre_data.txt')
-        wide_labels = np.loadtxt('chains/planck_bao_fit_cp/planck_bao_nre_labels.txt')
+        wide_data = np.loadtxt('chains/planck_bao_fit_cp/planck_bao_data.txt')
+        wide_labels = np.loadtxt('chains/planck_bao_fit_cp/planck_bao_labels.txt')
         nrei.data = wide_data
         nrei.labels = wide_labels
-        nrei.simulation_func_A = planck_func
-        nrei.simulation_func_B = bao_func
+
+        data_train, data_test, labels_train, labels_test = \
+                train_test_split(wide_data, wide_labels, test_size=0.2)
+        
+        nrei.labels_test = labels_test
+        nrei.labels_train = labels_train
+
+        data_trainA = data_train[:, :len(l)]
+        data_trainB = data_train[:, len(l):]
+        data_testA = data_test[:, :len(l)]
+        data_testB = data_test[:, len(l):]
+
+        data_testA = (data_testA - data_trainA.mean(axis=0)) / \
+            data_trainA.std(axis=0)
+        data_testB = (data_testB - data_trainB.mean(axis=0)) / \
+            data_trainB.std(axis=0)
+        data_trainA = (data_trainA - data_trainA.mean(axis=0)) / \
+            data_trainA.std(axis=0)
+        data_trainB = (data_trainB - data_trainB.mean(axis=0)) / \
+            data_trainB.std(axis=0)
+
+        nrei.data_train = np.hstack([data_trainA, data_trainB])
+        nrei.data_test = np.hstack([data_testA, data_testB])
+
+        nrei.simulation_func_A = planck_sim_func
+        nrei.simulation_func_B = bao_sim_func
+        nrei.prior_function_A = None
+        nrei.prior_function_B = None
         nrei.shared_prior = signal_prior
     except:
-        nrei.build_simulations(planck_func, bao_func, signal_prior, n=nsamples)
+        nrei.build_simulations(planck_sim_func, bao_sim_func, 
+                               signal_prior, n=nsamples)
         np.savetxt('chains/planck_bao_fit_cp/planck_bao_data.txt', nrei.data)
         np.savetxt('chains/planck_bao_fit_cp/planck_bao_labels.txt', nrei.labels)
-    model, data_test, labels_test = nrei.training(epochs=1000, batch_size=1000)
+    model, data_test, labels_test = nrei.training(epochs=100, patience=10,
+                                                  batch_size=1000)
     nrei.save('chains/planck_bao_fit_cp/bao_planck_model.pkl')
 
-nrei.__call__(iters=5000)
+
+plt.plot(nrei.loss_history)
+plt.plot(nrei.test_loss_history)
+plt.show()
+
+nrei.__call__(iters=50)
 r = nrei.r_values
 mask = np.isfinite(r)
+plt.hist(r, histtype='step')
+plt.hist(r[mask], histtype='step')
+plt.show()
+sys.exit(1)
 
-fig, axes = plt.subplots(1, 3, figsize=(6.3, 6.3))
+
+fig, axes = plt.subplots(1, 3, figsize=(8, 4))
 axes[0].hist(r[mask], bins=25,density=True)
 axes[0].axvline(Rs, ls='--', c='r')
 axes[0].set_title(r'$R_{obs}=$' + str(np.round(Rs, 2)) + r'$\pm$' +
