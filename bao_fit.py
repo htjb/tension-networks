@@ -9,7 +9,7 @@ baos = BAO(data_location='cosmology-data/bao_data/')
 prior = baos.prior
 likelihood = baos.loglikelihood()
 
-file = 'chains/bao_fit/'
+file = 'chains/bao_fit_h0/'
 RESUME = True
 if RESUME is False:
     import os, shutil
@@ -20,7 +20,7 @@ run_poly(prior, likelihood, file, RESUME=RESUME, nDims=5, nlive=25*5)
 
 from anesthetic import read_chains
 
-samples = read_chains('chains/bao_fit/test')
+samples = read_chains('chains/bao_fit_h0/test')
 names = ['p'+str(i) for i in range(6)]
 
 z = baos.z
@@ -49,5 +49,5 @@ plt.xlabel(r'$z$')
 plt.ylabel(r'$D/r_s$')
 plt.legend()
 plt.tight_layout()
-plt.savefig('chains/bao_fit/bao_fit.png', dpi=300)
+plt.savefig('chains/bao_fit_h0/bao_fit.png', dpi=300)
 plt.show()

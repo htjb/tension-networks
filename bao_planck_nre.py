@@ -24,10 +24,12 @@ pars = camb.CAMBparams()
 def derived(parameters):
     H0, rs, omm = [], [], []
     for i in tqdm(range(len(parameters))):
-        pars.set_cosmology(ombh2=parameters[i][0], omch2=parameters[i][1],
-                                    tau=0.055, cosmomc_theta=parameters[i][2]/100,
+        pars.set_cosmology(H0=parameters[i][-1]*100, ombh2=parameters[i][0], 
+                                    omch2=parameters[i][1],
+                                    tau=0.055,
                                     theta_H0_range=[5, 1000])
-        pars.InitPower.set_params(As=np.exp(parameters[i][4])/10**10, ns=parameters[i][3])
+        pars.InitPower.set_params(As=np.exp(parameters[i][3])/10**10, 
+                            ns=parameters[i][2])
         pars.set_for_lmax(2500, lens_potential_accuracy=0)
         results = camb.get_background(pars) # computes evolution of background cosmology
 
@@ -45,7 +47,8 @@ def derived(parameters):
     data /= 3e5
     data = np.vstack((data, omm, H0)).T
 
-    samples = MCMCSamples(data=data, labels=[r'$\frac{H_0 r_s}{c}$', r'$\Omega_m$', r'$H_0$'])
+    samples = MCMCSamples(data=data, 
+            labels=[r'$\frac{H_0 r_s}{c}$', r'$\Omega_m$', r'$H_0$'])
     return samples
 
 p, l = get_data(base_dir='cosmology-data/').get_planck()
@@ -55,11 +58,17 @@ from tensionnet.bao import BAO
 baos = BAO(data_location='cosmology-data/bao_data/')
 z = baos.z
 
-cmbs = CMB()
+parameters = ['As', 'omegabh2', 'omegach2', 'ns', 'h']
+prior_mins = [2.6, 0.01, 0.08, 0.8, 0.5]
+prior_maxs = [3.8, 0.085, 0.21, 1.2, 0.9]
+
+cmbs = CMB(parameters=parameters, prior_mins=prior_mins, 
+           prior_maxs=prior_maxs, 
+           path_to_cp='/home/htjb2/rds/hpc-work/cosmopower')
 
 def cl_func_gen():
     def cl_func(parameters):
-        cl, sample = cmbs.get_samples(l, parameters, noise=planck_noise)
+        cl, sample = cmbs.get_samples(l, parameters, noise=planck_noise, cp=True)
         return sample
     return cl_func
 
@@ -73,10 +82,11 @@ def signal_prior(n):
     theta = np.ones((n, 5))
     theta[:, 0] = np.random.uniform(0.01, 0.085, n) # omegabh2
     theta[:, 1] = np.random.uniform(0.08, 0.21, n) # omegach2
-    theta[:, 2] = np.random.uniform(0.97, 1.5, n) # 100*thetaMC
+    #theta[:, 2] = np.random.uniform(0.97, 1.5, n) # 100*thetaMC
     #theta[:, 3] = np.random.uniform(0.01, 0.16, n) # tau
-    theta[:, 3] = np.random.uniform(0.8, 1.2, n) # ns
-    theta[:, 4] = np.random.uniform(2.6, 3.8, n) # log(10^10*As)
+    theta[:, 2] = np.random.uniform(0.8, 1.2, n) # ns
+    theta[:, 3] = np.random.uniform(2.6, 3.8, n) # log(10^10*As)
+    theta[:, 4] = np.random.uniform(0.5, 0.9, n) # H0
     return theta
 
 planck_func = cl_func_gen()
@@ -88,36 +98,35 @@ nsamples = 250000
 layers = [25]*5
 from anesthetic import read_chains
 
-joint = read_chains('chains/planck_bao_fit/test')
-planck = read_chains('chains/planck_fit_camb/test')
-bao = read_chains('chains/bao_fit/test')
+joint = read_chains('chains/planck_bao_fit_cp/test')
+planck = read_chains('chains/planck_fit_cp/test')
+bao = read_chains('chains/bao_fit_h0/test')
 
 R = joint.logZ(10000) - planck.logZ(10000) - bao.logZ(10000)
 R = R.values
 Rs, errorRs = np.mean(R), np.std(R)
 
 try:
-    nrei = nre.load('chains/planck_bao_fit/bao_planck_model.pkl',
+    nrei = nre.load('chains/planck_bao_fit_cp/bao_planck_model.pkl',
                 planck_func, bao_func, signal_prior)
 except:
     nrei = nre(lr=1e-4)
     nrei.build_model(len(l) + len(z)*2, 
                         layers, 'sigmoid')
     try:
-        wide_data = np.loadtxt('chains/planck_bao_fit/planck_bao_nre_data.txt')
-        wide_labels = np.loadtxt('chains/planck_bao_fit/planck_bao_nre_labels.txt')
+        wide_data = np.loadtxt('chains/planck_bao_fit_cp/planck_bao_nre_data.txt')
+        wide_labels = np.loadtxt('chains/planck_bao_fit_cp/planck_bao_nre_labels.txt')
         nrei.data = wide_data
         nrei.labels = wide_labels
         nrei.simulation_func_A = planck_func
         nrei.simulation_func_B = bao_func
         nrei.shared_prior = signal_prior
     except:
-        nrei.build_simulations(planck_func, bao_func, 
-                            exp_prior, exp_prior, signal_prior, n=nsamples)
-        np.savetxt('chains/planck_bao_fit/planck_bao_data.txt', nrei.data)
-        np.savetxt('chains/planck_bao_fit/planck_bao_labels.txt', nrei.labels)
+        nrei.build_simulations(planck_func, bao_func, signal_prior, n=nsamples)
+        np.savetxt('chains/planck_bao_fit_cp/planck_bao_data.txt', nrei.data)
+        np.savetxt('chains/planck_bao_fit_cp/planck_bao_labels.txt', nrei.labels)
     model, data_test, labels_test = nrei.training(epochs=1000, batch_size=1000)
-    nrei.save('chains/planck_bao_fit/bao_planck_model.pkl')
+    nrei.save('chains/planck_bao_fit_cp/bao_planck_model.pkl')
 
 nrei.__call__(iters=5000)
 r = nrei.r_values
@@ -151,7 +160,7 @@ print(f'sigmaA: {sigmaA}, sigma_A_upper: ' +
 print(f'sigmaR: {sigmaR}, sigmaR_upper: ' + 
         f'{np.abs(sigmaR - sigmaR_upper)}, ' +
         f'sigmaR_lower: {np.abs(sigmaR_lower - sigmaR)}')
-np.savetxt('chains/planck_bao_fit/tension_stats.txt',
+np.savetxt('chains/planck_bao_fit_cp/tension_stats.txt',
             np.hstack([sigmaD, sigma_D_upper, sigma_D_lower,
                         sigmaA, sigma_A_upper, sigma_A_lower,
                         sigmaR, sigmaR_upper, sigmaR_lower]).T)

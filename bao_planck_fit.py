@@ -14,14 +14,15 @@ from tensionnet.bao import BAO
 p, l = get_data(base_dir='cosmology-data/').get_planck()
 pnoise = planck_noise(l).calculate_noise()
 
-parameters = ['As', 'omegabh2', 'thetaMC', 'omegach2', 'ns']
-prior_mins = [2.6, 0.01, 0.97, 0.08, 0.8]
-prior_maxs = [3.8, 0.085, 1.5, 0.21, 1.2]
+parameters = ['As', 'omegabh2', 'omegach2', 'ns', 'h']
+prior_mins = [2.6, 0.01, 0.08, 0.8, 0.5]
+prior_maxs = [3.8, 0.085, 0.21, 1.2, 0.9]
 
 cmbs = CMB(parameters=parameters, prior_mins=prior_mins, 
-           prior_maxs=prior_maxs)
+           prior_maxs=prior_maxs,
+           path_to_cp='/home/htjb2/rds/hpc-work/cosmopower')
 
-planck_likelihood = cmbs.get_likelihood(p, l, noise=pnoise)
+planck_likelihood = cmbs.get_likelihood(p, l, noise=pnoise, cp=True)
 prior = cmbs.prior
 
 baos = BAO(data_location='cosmology-data/bao_data/')
@@ -32,7 +33,7 @@ def likelihood(theta):
 
 pars = camb.CAMBparams()
 
-file = 'chains/planck_bao_fit/'
+file = 'chains/planck_bao_fit_cp/'
 RESUME = True
 nDims=5
 
@@ -47,9 +48,9 @@ output.make_paramnames_files(paramnames)
 
 from anesthetic import read_chains
 
-joint = read_chains('chains/planck_bao_fit/test')
-planck = read_chains('chains/planck_fit_camb/test')
-bao = read_chains('chains/bao_fit/test')
+joint = read_chains('chains/planck_bao_fit_cp/test')
+planck = read_chains('chains/planck_fit_cp/test')
+bao = read_chains('chains/bao_fit_h0/test')
 
 R = joint.logZ(10000) - planck.logZ(10000) - bao.logZ(10000)
 R = R.values
