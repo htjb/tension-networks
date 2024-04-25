@@ -5,10 +5,13 @@ import camb
 import matplotlib as mpl
 from matplotlib import rc
 import scipy
+from anesthetic import MCMCSamples
 #from scipy.stats import ecdf
 from cmblike.data import get_data
 from cmblike.noise import planck_noise
 from cmblike.cmb import CMB
+from tensionnet.utils import calcualte_stats
+from tqdm import tqdm
 
 mpl.rcParams['axes.prop_cycle'] = mpl.cycler('color',
     ['ff7f00', '984ea3', '999999', '377eb8', '4daf4a','f781bf', 'a65628', 'e41a1c', 'dede00'])
@@ -147,10 +150,9 @@ c = scipy.stats.ecdf(rsort)
 sigmaD, sigma_D_upper, sigma_D_lower, \
     sigmaA, sigma_A_upper, sigma_A_lower, \
         sigmaR, sigmaR_upper, sigmaR_lower = \
-            calcualte_stats(Rs[i], sigma_Rs[i], c)
-print(f'Temp: {temperatures[i]}')
-print(f'Rs: {Rs[i]}, Rs_upper: {Rs[i] + sigma_Rs[i]},' + 
-        f'Rs_lower: {Rs[i] - sigma_Rs[i]}')
+            calcualte_stats(Rs, errorRs, c)
+print(f'Rs: {Rs}, Rs_upper: {Rs + errorRs},' + 
+        f'Rs_lower: {Rs - errorRs}')
 print(f'sigmaD: {sigmaD}, sigma_D_upper: ' + 
         f'{np.abs(sigmaD - sigma_D_upper)}, ' +
         f'sigma_D_lower: {np.abs(sigma_D_lower - sigmaD)}')
