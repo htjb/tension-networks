@@ -27,7 +27,7 @@ class nre():
     def build_model(
             self, input_dim, layer_sizes, activation, 
             skip_layers=True, kernel_regularizer='l1',
-            use_bias=False):
+            use_bias=False, dropout=0.0):
         
         self.input_dim = input_dim
         self.layer_sizes = layer_sizes
@@ -42,6 +42,7 @@ class nre():
                                  kernel_regularizer=kernel_regularizer,
                                  use_bias=use_bias,
                                  )(a0)
+            outputs = self.Dropout(dropout)(outputs)
             if skip_layers:
                 if i % 2 == 0 and i != 0:
                     outputs = self.batch_norm()(outputs)
@@ -57,7 +58,7 @@ class nre():
     def build_compress_model(
             self, input_dimA, input_dimB, compress_layer_sizes, 
             layer_sizes, activation, compress='both', skip_layers=True,
-            kernel_regularizer='l1', use_bias=False):
+            kernel_regularizer='l1', use_bias=False, dropout=0.0):
         
         self.input_dim = input_dimA + input_dimB
         self.layer_sizes = layer_sizes
@@ -74,6 +75,7 @@ class nre():
                                     kernel_regularizer=kernel_regularizer,
                                     use_bias=use_bias,
                                     )(a0)
+                outputs = self.Dropout(dropout)(outputs)
                 outputs = self.batch_norm()(outputs)
                 a0 = outputs
         else:
@@ -86,6 +88,7 @@ class nre():
                                     kernel_regularizer=kernel_regularizer,
                                     use_bias=use_bias,
                                     )(a1)
+                outputs = self.Dropout(dropout)(outputs)
                 outputs = self.batch_norm()(outputs)
                 a1 = outputs
         else:
@@ -97,6 +100,7 @@ class nre():
                                  kernel_regularizer=kernel_regularizer,
                                  use_bias=use_bias,
                                  )(a0)
+            outputs = self.Dropout(dropout)(outputs)
             if skip_layers:
                 if i % 2 == 0 and i != 0:
                     outputs = self.batch_norm()(outputs)
