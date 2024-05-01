@@ -6,27 +6,28 @@ import keras
 from keras import layers
 import pickle
 import tqdm
+import time
 
 
 class nre():
-    def __init__(self, lr=1e-4):
+    def __init__(self, lr=1e-4, reduction_method='sum',
+                 test_size=0.2):
         self.Model = tf.keras.models.Model
         self.Inputs = tf.keras.layers.Input
         self.Dense = tf.keras.layers.Dense
         self.Dropout = tf.keras.layers.Dropout
         self.batch_norm = tf.keras.layers.BatchNormalization
         self.lr = lr
+        self.reduction_method = reduction_method
+        self.test_size = test_size
 
-        # example scheduler
-        #ExponentialDecay(
-        #            initial_learning_rate=initial_learning_rate,
-        #            decay_steps=decay_steps,
-        #            decay_rate=decay_rate,
-        #        )
         self.optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=self.lr)
+        #self.optimizer = tf.keras.optimizers.legacy.Nadam(learning_rate=self.lr)
 
     def build_model(
-            self, input_dim, layer_sizes, activation, skip_layers=True):
+            self, input_dim, layer_sizes, activation, 
+            skip_layers=True, kernel_regularizer='l1',
+            use_bias=False):
         
         self.input_dim = input_dim
         self.layer_sizes = layer_sizes
@@ -38,21 +39,25 @@ class nre():
         for i, layer_size in enumerate(self.layer_sizes):
             outputs = self.Dense(layer_size, 
                                  activation=self.activation,
-                                 kernel_regularizer='l1',
-                                 use_bias=False,
+                                 kernel_regularizer=kernel_regularizer,
+                                 use_bias=use_bias,
                                  )(a0)
             if skip_layers:
                 if i % 2 == 0 and i != 0:
                     outputs = self.batch_norm()(outputs)
                     outputs = tf.keras.layers.add([outputs, a0])
+                    outputs = tf.keras.layers.Activation(self.activation)(outputs)
             outputs = self.batch_norm()(outputs)
             a0 = outputs
         outputs = self.Dense(1, activation='linear',
-                            use_bias=False)(a0)
+                            use_bias=use_bias,
+                            kernel_regularizer=kernel_regularizer)(a0)
         self.model = self.Model(inputs, outputs)
 
     def build_compress_model(
-            self, input_dimA, input_dimB, compress_layer_sizes, layer_sizes, activation):
+            self, input_dimA, input_dimB, compress_layer_sizes, 
+            layer_sizes, activation, compress='both', skip_layers=True,
+            kernel_regularizer='l1', use_bias=False):
         
         self.input_dim = input_dimA + input_dimB
         self.layer_sizes = layer_sizes
@@ -61,34 +66,47 @@ class nre():
         # build the model
         all_inputs = self.Inputs(shape=(self.input_dim,))
         inputs = all_inputs
-        a0 = all_inputs[:, :input_dimA]
-        for i, layer_size in enumerate(compress_layer_sizes):
-            outputs = self.Dense(layer_size, 
-                                 activation=self.activation,
-                                 )(a0)
-            outputs = self.batch_norm()(outputs)
-            a0 = outputs
-        a1 = all_inputs[:, input_dimA:]
-        for i, layer_size in enumerate(compress_layer_sizes):
-            outputs = self.Dense(layer_size, 
-                                 activation=self.activation,
-                                 )(a1)
-            outputs = self.batch_norm()(outputs)
-            a1 = outputs
+        if compress == 'A' or compress == 'both':
+            a0 = all_inputs[:, :input_dimA]
+            for i, layer_size in enumerate(compress_layer_sizes):
+                outputs = self.Dense(layer_size, 
+                                    activation=self.activation,
+                                    kernel_regularizer=kernel_regularizer,
+                                    use_bias=use_bias,
+                                    )(a0)
+                outputs = self.batch_norm()(outputs)
+                a0 = outputs
+        else:
+            a0 = all_inputs[:, :input_dimA]
+        if compress == 'B' or compress == 'both':
+            a1 = all_inputs[:, input_dimA:]
+            for i, layer_size in enumerate(compress_layer_sizes):
+                outputs = self.Dense(layer_size, 
+                                    activation=self.activation,
+                                    kernel_regularizer=kernel_regularizer,
+                                    use_bias=use_bias,
+                                    )(a1)
+                outputs = self.batch_norm()(outputs)
+                a1 = outputs
+        else:
+            a1 = all_inputs[:, input_dimA:]
         a0 = tf.keras.layers.concatenate([a0, a1])
         for i, layer_size in enumerate(self.layer_sizes):
             outputs = self.Dense(layer_size, 
                                  activation=self.activation,
-                                 kernel_regularizer='l1',
-                                 use_bias=False,
+                                 kernel_regularizer=kernel_regularizer,
+                                 use_bias=use_bias,
                                  )(a0)
-            if i % 2 == 0 and i != 0:
-                outputs = self.batch_norm()(outputs)
-                outputs = tf.keras.layers.add([outputs, a0])
+            if skip_layers:
+                if i % 2 == 0 and i != 0:
+                    outputs = self.batch_norm()(outputs)
+                    outputs = tf.keras.layers.add([outputs, a0])
+                    outputs = tf.keras.layers.Activation(self.activation)(outputs)
             outputs = self.batch_norm()(outputs)
             a0 = outputs
         outputs = self.Dense(1, activation='linear',
-                            use_bias=False)(a0)
+                            use_bias=use_bias,
+                            kernel_regularizer=kernel_regularizer)(a0)
         self.model = self.Model(inputs, outputs)
     
     def build_simulations(self, simulation_func_A, simulation_func_B,
@@ -174,7 +192,8 @@ class nre():
         print('Splitting data and normalizing...')
 
         data_train, data_test, labels_train, labels_test = \
-                train_test_split(self.data, self.labels, test_size=0.2)
+                train_test_split(self.data, self.labels, 
+                                 test_size=self.test_size)
         
         self.labels_test = labels_test
         self.labels_train = labels_train
@@ -207,23 +226,35 @@ class nre():
         train_dataset = tf.data.Dataset.from_tensor_slices(train_dataset)
         train_dataset = train_dataset.batch(batch_size)
 
+        test_dataset = np.hstack([self.data_test,
+                                    self.labels_test[:, np.newaxis]]
+                                    ).astype(np.float32)
+        test_dataset = tf.data.Dataset.from_tensor_slices(test_dataset)
+        test_dataset = test_dataset.batch(batch_size)
+
         if patience is None:
             patience = round((epochs/100)*2)
         
         self.loss_history = []
         self.test_loss_history = []
         c = 0
-        for i in tqdm.tqdm(range(epochs)):
+        #for i in tqdm.tqdm(range(epochs)):
+        for i in range(epochs):
 
             epoch_loss_avg = tf.keras.metrics.Mean()
 
+            s = time.time()
             loss = [self._train_step(x[:, :-1], x[:, -1]) 
                     for x in  train_dataset]
             epoch_loss_avg.update_state(loss)
             self.loss_history.append(epoch_loss_avg.result())
 
-            self.test_loss_history.append(self._test_step(self.data_test, 
-                                                          self.labels_test))
+            self.test_loss_history.append(np.mean([
+                self._test_step(x[:, :-1], x[:, -1]) 
+                    for x in  test_dataset]))
+            e = time.time()
+            print('Epoch: ' + str(i) + ' Loss: ' + str(self.loss_history[-1]) +
+                    ' Test Loss: ' + str(self.test_loss_history[-1]), ' Time: ' + str(e-s))
 
             if early_stop:
                 c += 1
@@ -257,7 +288,7 @@ class nre():
             truth = tf.convert_to_tensor(truth)
             loss = tf.keras.losses.BinaryCrossentropy(
                                 from_logits=False,
-                                reduction='sum'
+                                reduction=self.reduction_method
                                 )(truth, prediction)
             return loss
 
@@ -276,7 +307,7 @@ class nre():
                 prediction = tf.keras.layers.Activation('sigmoid')(prediction)
                 truth = tf.convert_to_tensor(truth)
                 loss = tf.keras.losses.BinaryCrossentropy(
-                    from_logits=False, reduction='sum'
+                    from_logits=False, reduction=self.reduction_method
                     )(truth, prediction)
                 gradients = tape.gradient(loss, 
                                           self.model.trainable_variables)
