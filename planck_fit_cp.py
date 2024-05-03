@@ -8,17 +8,17 @@ import numpy as np
 nDims = 5
 nDerived = 0
 
-PRETEND_DATA = True
+PRETEND_DATA = False
 RESUME = False
-BASE_DIR = 'cosmopower-stuff/'
-data_label = '_diff_samples'
+BASE_DIR = 'chains/'
+data_label = ''
 
 if PRETEND_DATA:
     file = 'pretend_planck_fit_with_cp_no_tau' + data_label + '/'
     p = np.load(BASE_DIR + 'random_planck_like_data' + data_label + '.npy')
     _, l = get_data(base_dir='cosmology-data/').get_planck()
 else:
-    file = 'planck_fit_with_cp_no_tau/'
+    file = 'planck_fit_cp/'
     p, l = get_data(base_dir='cosmology-data/').get_planck()
 planck_noise = planck_noise(l).calculate_noise()
 
@@ -28,7 +28,7 @@ prior_maxs = [0.04, 0.21, 1.2, 3.8, 0.9]
 
 cmbs = CMB(parameters=parameters, prior_mins=prior_mins, 
            prior_maxs=prior_maxs,
-           path_to_cp='/Users/harrybevins/Documents/Software/cosmopower')
+           path_to_cp='/home/htjb2/rds/hpc-work/cosmopower')
 
 likelihood = cmbs.get_likelihood(p, l, noise=planck_noise, cp=True)
 prior = cmbs.prior
@@ -41,7 +41,17 @@ output = pypolychord.run_polychord(likelihood, nDims, nDerived, settings, prior)
 paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(nDims)]
 output.make_paramnames_files(paramnames)
 
-from fgivenx import plot_contours, plot_lines
+from anesthetic import read_chains
+
+joint = read_chains('chains/planck_bao_fit_cp/test')
+planck = read_chains('chains/planck_fit_cp/test')
+bao = read_chains('chains/bao_fit_h0/test')
+
+R = joint.logZ(10000) - planck.logZ(10000) - bao.logZ(10000)
+R = R.values
+print(np.mean(R), np.std(R))
+
+"""from fgivenx import plot_contours, plot_lines
 import matplotlib.pyplot as plt
 from anesthetic import read_chains
 
@@ -66,4 +76,4 @@ plt.ylabel(r'$C_l$')
 plt.legend()
 plt.tight_layout()
 plt.savefig(BASE_DIR + file.split('/')[0] + '.png', dpi=300)
-plt.show()
+plt.show()"""
