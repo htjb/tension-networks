@@ -1,17 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from pypolychord.priors import UniformPrior
-import camb
-import healpy as hp
 from cmblike.data import get_data
 from cmblike.noise import planck_noise, wmap_noise
 from tqdm import tqdm
-from random import shuffle
 import matplotlib as mpl
 from matplotlib import rc
 import tensorflow as tf
 from tensionnet import wmapplanck
 from scipy.stats import ecdf
+import os
 
 mpl.rcParams['axes.prop_cycle'] = mpl.cycler('color',
     ['ff7f00', '984ea3', '999999', '377eb8', '4daf4a','f781bf', 'a65628', 'e41a1c', 'dede00'])
@@ -23,113 +20,109 @@ rc('savefig', pad_inches=0.05)
 plt.rc('text.latex', preamble=r'\usepackage{amsmath} \usepackage{amssymb}')
 
 wmapraw, lwmap = get_data(base_dir='cosmology-data/').get_wmap()
-praw, l = get_data(base_dir='cosmology-data/').get_planck()
+praw = np.loadtxt('cosmology-data/planck_binned_like_wmap.txt')
 
 nSamples = 50000
-joint = wmapplanck.jointClGenCP(path='/Users/harrybevins/Documents/Software/cosmopower')
+joint = wmapplanck.jointClGenCP(path='/Users/harry/Documents/Software/cosmopower')
 
 parameters = ['omegabh2', 'omegach2', 'ns', 'As', 'h']
 prior_mins = [0.005, 0.08, 0.8, 2.6, 0.5]
 prior_maxs = [0.04, 0.21, 1.2, 3.8, 0.9]
 
-BASE_DIR = 'cosmopower-stuff/'
+BASE_DIR = 'clean-wmap-planck-02052024/'
+if not os.path.exists(BASE_DIR):
+    os.makedirs(BASE_DIR)
 load_data = False
 
 def prior(N):
     return np.array([np.random.uniform(prior_mins[i], prior_maxs[i], N) 
                      for i in range(len(parameters))]).T
 
-def exp_prior(n):
-    """
-    The way tensionnet is set up it requires some
-    parameters that are unique to each experiment. Here I give an array of
-    zeros because the experimetns are just signal plus noise. Doesn't have
-    any impact on the results.
-    """
-    return np.zeros((n, 2))
-
 if load_data:
-    planckExamples = np.load(BASE_DIR + 'planckExamplesCPRNRE.npy')
-    wmapExamples = np.load(BASE_DIR + 'wmapExamplesCPRNRE.npy')
-    samples = np.load(BASE_DIR + 'samplesCPRNRE.npy')
+    planckExamples = np.load(BASE_DIR + 'planck-wmap-planck-examples-100000.npy')
+    wmapExamples = np.load(BASE_DIR + 'planck-wmap-wmap-examples-100000.npy')
 else:
-    pe, we, samps = [], [], []
-    for i in range(nSamples//100):
-        print(str(i) + '/' + str(nSamples//100))
+    wd = np.loadtxt('cosmology-data/wmap_binned.txt')
+    bins = np.array([wd[:, 1], wd[:, 2]]).T
+    pe, we= [], []
+    for i in tqdm(range(nSamples//100)):
         samples = prior(100)
-        planckExamples, wmapExamples = joint(samples)
-        pe.append(planckExamples)
-        we.append(wmapExamples)
-        samps.append(samples)
+        pobs, wobs, crossobs, cltheory = joint(samples, lwmap, bins)
+        # pobs  = (5, 45)
+        pe.append(pobs)
+        we.append(wobs)
     planckExamples = np.vstack(pe)
     wmapExamples = np.vstack(we)
-    samples = np.vstack(samps)
-    np.save(BASE_DIR + 'planckExamplesCPRNRE.npy', planckExamples)
-    np.save(BASE_DIR + 'wmapExamplesCPRNRE.npy', wmapExamples)
-    np.save(BASE_DIR + 'samplesCPRNRE.npy', samples)
+    print(planckExamples.shape, wmapExamples.shape)
+    np.save(BASE_DIR + 'planck-wmap-planck-examples-100000.npy', planckExamples)
+    np.save(BASE_DIR + 'planck-wmap-wmap-examples-100000.npy.npy', wmapExamples)
 
-sys.exit(1)
 from tensionnet.tensionnet import nre
 
-layers = [200]*4
-
-from anesthetic import read_chains
+"""from anesthetic import read_chains
 chains = read_chains('wmap_planck_fit/test')
 planck = read_chains('Planck_fit/test')
 wmap = read_chains('wmap_fit/test')
 
-Rsamples = chains.logZ(1000) - planck.logZ(1000) - wmap.logZ(1000)
-Rs = np.mean(Rsamples)
-errorRs = np.std(Rsamples)
+Rsamples = chains.logZ(1000) - planck.logZ(1000) - wmap.logZ(1000)"""
+Rs = None #np.mean(Rsamples)
+errorRs = None # np.std(Rsamples)
 
-nrei = nre(lr=1e-4)
-nrei.build_model(len(l) + len(lwmap), 1, 
-                    layers, 'sigmoid')
+RETRAIN = True
+if RETRAIN:
+    import os
+    if os.path.exists(BASE_DIR + 'wmap_planck_nre.pkl'):
+        os.remove(BASE_DIR + 'wmap_planck_nre.pkl')
+
 try:
-    nrei = nrei.load(BASE_DIR + 'wmap_planck_nre.pkl', prior_function_A = exp_prior,
-                     prior_function_B=exp_prior, shared_prior=prior,
+    nrei = nre.load(BASE_DIR + 'wmap_planck_nre.pkl', shared_prior=prior,
                      simulation_func_A=None, simulation_func_B=None)
 except FileNotFoundError:
 
+    nrei = nre(lr=1e-4)
+    nrei.build_model(len(lwmap) + len(lwmap) - 4, 
+                    [25]*5, 'sigmoid')
+
     splitIdx = np.arange(len(wmapExamples))
     np.random.shuffle(splitIdx)
-    trainIdx = splitIdx[:int(len(wmapExamples)*0.8)]
+    trainIdx = splitIdx[:int(len(wmapExamples)*0.75)]
+    validationIdx = splitIdx[int(len(wmapExamples)*0.75):int(len(wmapExamples)*0.8)]
     testIdx = splitIdx[int(len(wmapExamples)*0.8):]
 
     print('Splitting data...')
     trainWmap = wmapExamples[trainIdx]
     testWmap = wmapExamples[testIdx]
+    validationWmap = wmapExamples[validationIdx]
     trainPlanck = planckExamples[trainIdx]
     testPlanck = planckExamples[testIdx]
-    #trainParams = samples[trainIdx]
-    #testParams = samples[testIdx]
-
-    np.savetxt('cosmopower-stuff/train_wmap_RNRE.txt', trainWmap)
-    np.savetxt('cosmopower-stuff/test_wmap_RNRE.txt', testWmap)
-    np.savetxt('cosmopower-stuff/train_planck_RNRE.txt', trainPlanck)
-    np.savetxt('cosmopower-stuff/test_planck_RNRE.txt', testPlanck)
-    #np.savetxt('cosmopower-stuff/train_params_RNRE.txt', trainParams)
-    #np.savetxt('cosmopower-stuff/test_params_RNRE.txt', testParams)
-    np.savetxt('cosmopower-stuff/train_wmap_mean_RNRE.txt', np.mean(trainWmap, axis=0))
-    np.savetxt('cosmopower-stuff/train_wmap_std_RNRE.txt', np.std(trainWmap, axis=0))
-    np.savetxt('cosmopower-stuff/train_planck_mean_RNRE.txt', np.mean(trainPlanck, axis=0))
-    np.savetxt('cosmopower-stuff/train_planck_std_RNRE.txt', np.std(trainPlanck, axis=0))
-    #np.savetxt('cosmopower-stuff/train_params_mean_RNRE.txt', np.mean(trainParams, axis=0))
-    #np.savetxt('cosmopower-stuff/train_params_std_RNRE.txt', np.std(trainParams, axis=0))
+    validationPlanck = planckExamples[validationIdx]
 
     print('Normalising data...')
-    normtrainwmapExamples = (trainWmap -np.mean(trainWmap, axis=0))/np.std(trainWmap, axis=0)
-    normtestwmapExamples = (testWmap -np.mean(trainWmap, axis=0))/np.std(trainWmap, axis=0)
-    normtrainplanckExamples = (trainPlanck -np.mean(trainPlanck, axis=0))/np.std(trainPlanck, axis=0)
-    normtestplanckExamples = (testPlanck -np.mean(trainPlanck, axis=0))/np.std(trainPlanck, axis=0)
-    #normtrainParams = (trainParams -np.mean(trainParams, axis=0))/np.std(trainParams, axis=0)
-    #normtestParams = (testParams -np.mean(trainParams, axis=0))/np.std(trainParams, axis=0)
+    normtrainwmapExamples = (trainWmap -
+                             np.mean(trainWmap, axis=0))/ \
+                                np.std(trainWmap, axis=0)
+    normtestwmapExamples = (testWmap -
+                            np.mean(trainWmap, axis=0))/ \
+                                np.std(trainWmap, axis=0)
+    normtrainplanckExamples = (trainPlanck -
+                               np.mean(trainPlanck, axis=0))/ \
+                                np.std(trainPlanck, axis=0)
+    normtestplanckExamples = (testPlanck -
+                              np.mean(trainPlanck, axis=0))/ \
+                                np.std(trainPlanck, axis=0)
+    normvalidationPlanck = (validationPlanck -
+                            np.mean(trainPlanck, axis=0))/ \
+                                np.std(trainPlanck, axis=0)
+    normvalidationWmap = (validationWmap -
+                          np.mean(trainWmap, axis=0))/ \
+                                np.std(trainWmap, axis=0)
 
     print('Shuffling and stacking training and test data...')
     matchedtrainData = np.hstack([normtrainwmapExamples, normtrainplanckExamples])
     matchedtrainLabels = np.ones(len(matchedtrainData))
     matchedtestData = np.hstack([normtestwmapExamples, normtestplanckExamples])
     matchedtestLabels = np.ones(len(matchedtestData))
+    data_validation = np.hstack([normvalidationWmap, normvalidationPlanck])
 
     idx = np.arange(len(matchedtrainData))
     np.random.shuffle(idx)
@@ -164,8 +157,8 @@ except FileNotFoundError:
     nrei.labels_test = labels_test
     nrei.data_train = data_train
     nrei.labels_train = labels_train
-    nrei.prior_function_A = exp_prior
-    nrei.prior_function_B = exp_prior
+    nrei.prior_function_A = None
+    nrei.prior_function_B = None
     nrei.shared_prior = prior
 
     nrei.simulation_func_A = None
@@ -174,28 +167,18 @@ except FileNotFoundError:
     model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
     nrei.save(BASE_DIR + 'wmap_planck_nre.pkl')
 
-test_data =[]
-for i in tqdm(range(500)):
-    theta = wide_prior(np.random.rand(6))
-    pl, w = joint(None, theta)
-    test_data.append(np.concatenate((pl, w)))
-test_data = np.array(test_data)
+plt.plot(nrei.loss_history, label='Training Loss')
+plt.plot(nrei.val_loss_history, label='Validation Loss')
+plt.legend()
+plt.show()
 
-nrei.__call__(iters=test_data)
+nrei.__call__(iters=data_validation)
 r = nrei.r_values
 mask = np.isfinite(r)
-sigr = tf.keras.layers.Activation('sigmoid')(r[mask])
-c = 0
-good_idx = []
-for i in range(len(sigr)):
-    if sigr[i] < 0.75:
-        c += 1
-    else:
-        good_idx.append(i)
 
-r = r[good_idx]
-mask = np.isfinite(r)
-acc = c/len(sigr)*100
+plt.hist(r)
+plt.show()
+exit()
 
 fig, axes = plt.subplots(2, 2, figsize=(6.3, 6.3))
 axes[0, 0].hist(r[mask], bins=25,density=True)
