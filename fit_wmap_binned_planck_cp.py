@@ -36,7 +36,6 @@ output = pypolychord.run_polychord(likelihood, nDims, nDerived, settings, prior)
 paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(nDims)]
 output.make_paramnames_files(paramnames)
 
-
 from fgivenx import plot_contours, plot_lines
 import matplotlib.pyplot as plt
 from anesthetic import read_chains
