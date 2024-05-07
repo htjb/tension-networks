@@ -14,9 +14,11 @@ from tensionnet.bao import BAO
 p, l = get_data(base_dir='cosmology-data/').get_planck()
 pnoise = planck_noise(l).calculate_noise()
 
-parameters = ['As', 'omegabh2', 'omegach2', 'ns', 'h']
-prior_mins = [2.6, 0.01, 0.08, 0.8, 0.5]
-prior_maxs = [3.8, 0.085, 0.21, 1.2, 0.9]
+parameters = ['omegabh2', 'omegach2', 'ns', 'As', 'h']
+#prior_mins = [0.005, 0.08, 0.8, 2.6, 0.5]
+#prior_maxs = [0.04, 0.21, 1.2, 3.8, 0.9]
+prior_mins = [0.005, 0.001, 0.8, 1.61, 0.5]
+prior_maxs = [0.1, 0.99, 1.2, 3.91, 0.9]
 
 cmbs = CMB(parameters=parameters, prior_mins=prior_mins, 
            prior_maxs=prior_maxs,
@@ -33,7 +35,7 @@ def likelihood(theta):
 
 pars = camb.CAMBparams()
 
-file = 'chains/planck_bao_fit_cp/'
+file = 'chains/planck_bao_fit_cp_wide_prior/'
 RESUME = True
 nDims=5
 

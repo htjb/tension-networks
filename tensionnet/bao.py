@@ -11,6 +11,8 @@ class BAO():
         self.d12, self.d16, self.d12cov, self.d16cov = \
               self.get_data(data_location=self.data_location)
         self.z = np.hstack((self.d12[:, 0], self.d16[:, 0]))[::2]
+        self.prior_mins = kwargs.pop('prior_mins', [0.01, 0.08, 0.8, 2.6, 0.5])
+        self.prior_maxs = kwargs.pop('prior_maxs', [0.085, 0.21, 1.2, 3.8, 0.9])
 
     def prior(self, cube):
 
@@ -31,13 +33,16 @@ class BAO():
         """
 
         theta = np.zeros(len(cube))
-        theta[0] = UniformPrior(0.01, 0.085)(cube[0]) # omegabh2
-        theta[1] = UniformPrior(0.08, 0.21)(cube[1]) # omegach2
-        #theta[2] = UniformPrior(0.97, 1.5)(cube[2]) # 100*thetaMC
-        #theta[3] = UniformPrior(0.01, 0.16)(cube[3]) # tau
-        theta[2] = UniformPrior(0.8, 1.2)(cube[2]) # ns
-        theta[3] = UniformPrior(2.6, 3.8)(cube[3]) # log(10^10*As)
-        theta[4] = UniformPrior(0.5, 0.9)(cube[4]) # H0
+        theta[0] = UniformPrior(self.prior_mins[0], 
+                                self.prior_maxs[0])(cube[0]) # omegabh2
+        theta[1] = UniformPrior(self.prior_mins[1], 
+                                self.prior_maxs[1])(cube[1]) # omegach2
+        theta[2] = UniformPrior(self.prior_mins[2], 
+                                self.prior_maxs[2])(cube[2]) # ns
+        theta[3] = UniformPrior(self.prior_mins[3], 
+                                self.prior_maxs[3])(cube[3]) # log(10^10*As)
+        theta[4] = UniformPrior(self.prior_mins[4], 
+                                self.prior_maxs[4])(cube[4]) # H0
         return theta
     
     def get_camb_model(self, theta):

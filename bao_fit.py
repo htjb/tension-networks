@@ -5,11 +5,14 @@ from tensionnet.bao import BAO
 from pypolychord.priors import UniformPrior, LogUniformPrior
 import camb
 
-baos = BAO(data_location='cosmology-data/bao_data/')
+prior_mins = [0.005, 0.001, 0.8, 1.61, 0.5]
+prior_maxs = [0.1, 0.99, 1.2, 3.91, 0.9]
+baos = BAO(data_location='cosmology-data/bao_data/', 
+            prior_mins=prior_mins, prior_maxs=prior_maxs)
 prior = baos.prior
 likelihood = baos.loglikelihood()
 
-file = 'chains/bao_fit_h0/'
+file = 'chains/bao_fit_h0_wide_prior/'
 RESUME = True
 if RESUME is False:
     import os, shutil
