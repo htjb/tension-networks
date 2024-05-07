@@ -55,7 +55,7 @@ def jointClGenCP(path):
                         np.mean(signal[int(indices[i, 0]):int(indices[i, 1])]))
             return np.array(binned_signal)*(2*np.pi)/(lobs*(lobs+1))
     
-        planck_obs, wmap_obs, cross_obs = [], [], []
+        planck_obs, wmap_obs, cross_obs, binned_theory = [], [], [], []
         for i, cltheory in enumerate(cl):
             alm = hp.synalm(cltheory)
 
@@ -76,9 +76,11 @@ def jointClGenCP(path):
             planck_obs.append(pobs)
             wmap_obs.append(wobs)
             cross_obs.append(crossobs)
+            binned_theory.append(cltheory)
         pobs = np.array(planck_obs)
         wobs = np.array(wmap_obs)
         crossobs = np.array(cross_obs)
+        cl = np.array(binned_theory)
     
         return pobs, wobs, crossobs, cl
     return clf
