@@ -56,6 +56,16 @@ def derived(parameters):
             labels=[r'$\frac{H_0 r_s}{c}$', r'$\Omega_m$', r'$H_0$'])
     return samples
 
+def resample(data, l):
+    print(data.shape)
+    delta = [data[:, i].max() - data[:, i].min() for i in range(data.shape[1])]
+    p = delta/np.sum(delta)
+    cdf = np.cumsum(p)
+    #u = np.linspace(0, 1, len(l))
+    u = (l - l.min()) / (l.max() - l.min()) 
+    data = np.array([np.interp(u, cdf, data[i]) for i in range(data.shape[0])])
+    return data, u, cdf
+
 _, l = get_data(base_dir='cosmology-data/').get_planck()
 planck_noise = planck_noise(l).calculate_noise()
 
@@ -109,8 +119,12 @@ R = R.values
 Rs, errorRs = np.mean(R), np.std(R)
 
 PCA_planck = False
-minmax = True
-RETRAIN = True
+minmax = False
+logcl = True
+resampleCl = False
+if resampleCl:
+    logcl = False
+RETRAIN = False
 if RETRAIN:
     import os
     if os.path.exists('chains/planck_bao_fit_cp/bao_planck_model.pkl'):
@@ -128,10 +142,16 @@ except:
     #                    [100]*5, 'leaky_relu',
     #                    kernel_regularizer='l2')#, skip_layers=False)
                         #, kernel_regularizer=None)
+    inlayers = len(l)*(2/3)
     nrei.build_compress_model(len(l), len(z)*2,
-                              [100, 100, 100, 100, 100, 50, 
-                               50, 25, 25, 6, 6], [100]*10, 'swish',
-                              compress='A')
+                              [inlayers, inlayers,
+                               inlayers, inlayers,
+                               inlayers, inlayers, 6],
+                               [25]*10, 'sigmoid',
+                               compress='A',
+                               #compress_layer_sizesB=[4, 4, 4, 4, 2],
+                               #use_bias=True
+                               )
     try:
         wide_data = np.loadtxt('chains/planck_bao_fit_cp/planck_bao_data_250000.txt')
         wide_labels = np.loadtxt('chains/planck_bao_fit_cp/planck_bao_labels_250000.txt')
@@ -143,7 +163,10 @@ except:
         wide_labels4 = np.loadtxt('chains/planck_bao_fit_cp/planck_bao_labels_500000.txt')
 
         def dl_to_cl(sig, l):
-            return sig * l * (l + 1) / (2*np.pi)
+            if logcl:
+                return np.nan_to_num(np.log10(sig * l * (l + 1) / (2*np.pi)), -10)
+            else:
+                return sig * l * (l + 1) / (2*np.pi)
         
         wide_data = np.hstack([dl_to_cl(wide_data[:, :len(l)], l), wide_data[:, len(l):]])
         wide_data2 = np.hstack([dl_to_cl(wide_data2[:, :len(l)], l), wide_data2[:, len(l):]])
@@ -153,6 +176,10 @@ except:
         nrei.labels = np.hstack([wide_labels, wide_labels2, wide_labels3, wide_labels4])
         print(nrei.data.shape, nrei.labels.shape)
 
+        #idx = random.sample(range(len(nrei.data)), 250000)
+        #nrei.data = nrei.data[idx]
+        #nrei.labels = nrei.labels[idx]
+
         data_train, data_test, labels_train, labels_test = \
                 train_test_split(nrei.data, nrei.labels, test_size=0.3)
         
@@ -161,7 +188,7 @@ except:
         data_testA = data_test[:, :len(l)]
         data_testB = data_test[:, len(l):]
 
-        idx = random.sample(range(len(data_trainA)), 500)
+        idx = random.sample(range(len(data_trainA)), 5000)
         testingA = data_trainA[idx]
         testingB = data_trainB[idx]
 
@@ -171,12 +198,6 @@ except:
         
         nrei.labels_test = labels_test
         nrei.labels_train = labels_train
-
-        """L = np.linalg.inv(np.linalg.cholesky(np.cov(data_trainA, rowvar=False)))
-        
-        data_testA = L @ (data_testA - data_trainA.mean(axis=0)).T
-        testingA = L @ (testingA - data_trainA.mean(axis=0)).T
-        data_trainA = L @ (data_trainA - data_trainA.mean(axis=0)).T"""
         
         data_testB = np.hstack([data_testB[:, ::2], data_testB[:, 1::2]])
         testingB = np.hstack([testingB[:, ::2], testingB[:, 1::2]])
@@ -255,6 +276,30 @@ except:
                 data_trainA = (data_trainA - data_trainA.min(axis=0)) / \
                     (data_trainA.max(axis=0) - data_trainA.min(axis=0))
             else:
+                """L = np.linalg.inv(np.linalg.cholesky(np.cov(data_trainA, rowvar=False)))
+        
+                data_testA = L @ (data_testA - data_trainA.mean(axis=0)).T
+                testingA = L @ (testingA - data_trainA.mean(axis=0)).T
+                data_trainA = L @ (data_trainA - data_trainA.mean(axis=0)).T
+
+                data_testA = data_testA.T
+                testingA = testingA.T
+                data_trainA = data_trainA.T"""
+
+                if resampleCl:
+                    data_trainA, u, cdf = resample(data_trainA, l)
+                    data_testA = np.array([np.interp(u, cdf, data_testA[i]) 
+                                        for i in range(data_testA.shape[0])])
+                    testingA = np.array([np.interp(u, cdf, testingA[i])
+                                        for i in range(testingA.shape[0])])
+                    
+                    data_trainA = np.array([np.nan_to_num(np.log10(data_trainA[i]), -10)
+                                            for i in range(data_trainA.shape[0])])
+                    data_testA = np.array([np.nan_to_num(np.log10(data_testA[i]), -10)
+                                            for i in range(data_testA.shape[0])])
+                    testingA = np.array([np.nan_to_num(np.log10(testingA[i]), -10)
+                                        for i in range(testingA.shape[0])])
+
                 data_testA = (data_testA - data_trainA.mean(axis=0)) / \
                     data_trainA.std(axis=0)
                 testingA = (testingA - data_trainA.mean(axis=0)) / \
@@ -271,7 +316,7 @@ except:
         nrei.prior_function_A = None
         nrei.prior_function_B = None
         nrei.shared_prior = signal_prior
-    except:
+    except FileNotFoundError:
         nrei.build_simulations(planck_sim_func, bao_sim_func, 
                                signal_prior, n=nsamples)
         np.savetxt('chains/planck_bao_fit_cp/planck_bao_data_500000.txt', nrei.data)
@@ -367,4 +412,7 @@ axes[2].set_ylabel(r'$H_0$')
 plt.tight_layout()
 plt.savefig('figures/figure9.pdf', bbox_inches='tight')
 plt.show()
+
+hist, bins = np.histogram(r[mask], bins=50, density=True)
+print(hist, bins)
 
