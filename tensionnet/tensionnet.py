@@ -56,10 +56,13 @@ class nre():
         self.model = self.Model(inputs, outputs)
 
     def build_compress_model(
-            self, input_dimA, input_dimB, compress_layer_sizes, 
+            self, input_dimA, input_dimB, compress_layer_sizesA, 
             layer_sizes, activation, compress='both', skip_layers=True,
-            kernel_regularizer='l1', use_bias=False, dropout=0.0):
+            kernel_regularizer='l1', use_bias=False, dropout=0.0,
+            compress_layer_sizesB=None):
         
+        if compress_layer_sizesB is None:
+            compress_layer_sizesB = compress_layer_sizesA
         self.input_dim = input_dimA + input_dimB
         self.layer_sizes = layer_sizes
         self.activation = activation
@@ -69,7 +72,7 @@ class nre():
         inputs = all_inputs
         if compress == 'A' or compress == 'both':
             a0 = all_inputs[:, :input_dimA]
-            for i, layer_size in enumerate(compress_layer_sizes):
+            for i, layer_size in enumerate(compress_layer_sizesA):
                 outputs = self.Dense(layer_size, 
                                     activation=self.activation,
                                     kernel_regularizer=kernel_regularizer,
@@ -82,7 +85,7 @@ class nre():
             a0 = all_inputs[:, :input_dimA]
         if compress == 'B' or compress == 'both':
             a1 = all_inputs[:, input_dimA:]
-            for i, layer_size in enumerate(compress_layer_sizes):
+            for i, layer_size in enumerate(compress_layer_sizesB):
                 outputs = self.Dense(layer_size, 
                                     activation=self.activation,
                                     kernel_regularizer=kernel_regularizer,

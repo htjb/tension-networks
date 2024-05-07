@@ -65,10 +65,7 @@ def jointClGenCP(path):
             # calculate ClGG
             wobs = hp.alm2cl(alm+wnalm)
 
-            print(pobs)
             pobs = rebin(pobs*lgen*(lgen+1)/(2*np.pi), bins)
-            print(pobs)
-            exit()
             wobs = rebin(wobs*lgen*(lgen+1)/(2*np.pi), bins)
 
             # calculate ClFG
