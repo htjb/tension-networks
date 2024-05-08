@@ -1,54 +1,58 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.special import loggamma, hyp0f1
-from numpy.linalg import slogdet
-from tensionnet.wmapplanck import jointClGenCP, bin_planck
+from tensionnet.wmapplanck import jointClGenCP
 from cmblike.cmb import CMB
-from cmblike.data import get_data
 from cmblike.noise import planck_noise, wmap_noise
 
-porig, l = get_data(base_dir='cosmology-data/').get_planck()
-pwmap, lwmap = get_data(base_dir='cosmology-data/').get_wmap()
-p = np.interp(lwmap, l, porig) 
+def binning(signal, bins):
+    indices = bins - 2
+    binned_signal = []
+    for i in range(len(indices)):
+        if indices[i, 0] == indices[i, 1]:
+            binned_signal.append(signal[int(indices[i, 0])])
+        else:
+            binned_signal.append(
+                np.mean(signal[int(indices[i, 0]):int(indices[i, 1])+1]))
+    return np.array(binned_signal)*2*np.pi/(lwmap*(lwmap+1))
+
+generator = jointClGenCP('/Users/harrybevins/Documents/Software/cosmopower')
+wmap_data = np.loadtxt('cosmology-data/wmap_binned.txt')
+lwmap_raw, wmap_unbinned, _, _, _ = np.loadtxt('cosmology-data/wmap_unbinned.txt', unpack=True)
+lplanck, signal_planck, _, _ = np.loadtxt('cosmology-data/planck_unbinned.txt', unpack=True)
+
+
+bins = np.array([wmap_data[:, 1], wmap_data[:, 2]]).T
+lwmap = wmap_data[:, 0]
 
 pnoise = planck_noise(lwmap).calculate_noise()
 wnoise = wmap_noise(lwmap).calculate_noise()
 
-parameters = ['omegabh2', 'omegach2', 'ns', 'As', 'h']
-prior_mins = [0.005, 0.08, 0.8, 2.6, 0.5]
-prior_maxs = [0.04, 0.21, 1.2, 3.8, 0.9]
+planck_binned_like_wmap = binning(signal_planck, bins)
+wmap_binned_like_wmap = binning(wmap_unbinned, bins)
 
-cmbs = CMB(parameters=parameters, prior_mins=prior_mins, 
-           prior_maxs=prior_maxs,
-           path_to_cp='/Users/harry/Documents/Software/cosmopower')
-
-prior = cmbs.prior
-
-generator = jointClGenCP(cmbs.path_to_cp)
-wmap_data = np.loadtxt('cosmology-data/wmap_binned.txt')
-bins = np.array([wmap_data[:, 1], wmap_data[:, 2]]).T
-
-planck_binned_like_wmap = bin_planck(porig, bins)
-np.savetxt('cosmology-data/planck_binned_like_wmap.txt', planck_binned_like_wmap)
+#np.savetxt('cosmology-data/planck_binned_like_wmap.txt', planck_binned_like_wmap)
 
 #samples = prior(np.random.uniform(0, 1, 5))
-samples = [0.022, 0.12, 0.96, 3, 0.674]
-pobs, wobs, crossobs, cltheory = generator(samples, lwmap, bins)
-plt.plot(lwmap, pobs*lwmap*(lwmap+1)/(2*np.pi), marker='.', label='Planck-wmap bins')
-plt.plot(lwmap, wobs*lwmap*(lwmap+1)/(2*np.pi), label='wmap')
-plt.plot(lwmap, cltheory*lwmap*(lwmap+1)/(2*np.pi), label='Theory')
-plt.plot(lwmap, pnoise*lwmap*(lwmap+1)/(2*np.pi), label='Planck noise')
-plt.plot(lwmap, wnoise*lwmap*(lwmap+1)/(2*np.pi), label='wmap noise')
-plt.ylim([0, 10000])
-plt.legend()
-plt.show()
+samples = [0.022, 0.12, 0.96, 3.0448, 0.674]
+pobs, wobs, cltheory = generator(samples, lwmap, bins)
 
 from tensionnet.wmapplanck import loglikelihood
 
-print(loglikelihood(pobs, wobs, cltheory, pnoise, wnoise, lwmap))
+cltheory = cltheory[0]
+pobs = pobs[0]
+wobs = wobs[0]
 
-plt.plot(lwmap, planck_binned_like_wmap, label='Planck binned', marker='.')
-plt.plot(lwmap, pwmap*lwmap*(lwmap+1)/(2*np.pi), label='wmap', marker='.')
-plt.plot(l, porig*l*(l+1)/(2*np.pi), marker='.', label='Planck binned by planck')
+A = lwmap*(lwmap+1)/(2*np.pi)
+
+plt.plot(lwmap, cltheory*A, label='Theory')
+plt.plot(lwmap, pobs*A, label='Planck')
+plt.plot(lwmap, wobs*A, label='Wmap')
+plt.plot(lwmap, planck_binned_like_wmap*A, label='Planck Binned')
+plt.plot(lwmap, wmap_binned_like_wmap*A, label='Wmap Binned')
 plt.legend()
 plt.show()
+
+like1= loglikelihood(planck_binned_like_wmap + pnoise, wmap_binned_like_wmap + wnoise, 
+                    cltheory, pnoise, wnoise, lwmap)
+like2 = loglikelihood(pobs, wobs, cltheory, pnoise, wnoise, lwmap)
+print(like1, like2)

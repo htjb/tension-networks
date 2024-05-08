@@ -45,15 +45,15 @@ def jointClGenCP(path):
         wnalm = hp.synalm(wnoise)
 
         def rebin(signal, bins):
-            indices = bins - 1
+            indices = bins - 2
             binned_signal = []
             for i in range(len(indices)):
                 if indices[i, 0] == indices[i, 1]:
                     binned_signal.append(signal[int(indices[i, 0])])
                 else:
                     binned_signal.append(
-                        np.mean(signal[int(indices[i, 0]):int(indices[i, 1])]))
-            return np.array(binned_signal)*(2*np.pi)/(lobs*(lobs+1))
+                        np.mean(signal[int(indices[i, 0]):int(indices[i, 1])+1]))
+            return np.array(binned_signal)
     
         planck_obs, wmap_obs, cross_obs, binned_theory = [], [], [], []
         for i, cltheory in enumerate(cl):
@@ -61,28 +61,26 @@ def jointClGenCP(path):
 
             # calculate ClFF
             pobs = hp.alm2cl(alm+pnalm)
-
+            
             # calculate ClGG
             wobs = hp.alm2cl(alm+wnalm)
 
-            pobs = rebin(pobs*lgen*(lgen+1)/(2*np.pi), bins)
-            wobs = rebin(wobs*lgen*(lgen+1)/(2*np.pi), bins)
+            pobs = rebin(pobs, bins)
+            wobs = rebin(wobs, bins)
 
             # calculate ClFG
-            crossobs = hp.alm2cl(alm+pnalm, alm+wnalm)
-            crossobs = rebin(crossobs*lgen*(lgen+1)/(2*np.pi), bins)
-            cltheory = rebin(cltheory*lgen*(lgen+1)/(2*np.pi), bins)
+            cltheory = rebin(cltheory, bins)
+
 
             planck_obs.append(pobs)
             wmap_obs.append(wobs)
-            cross_obs.append(crossobs)
             binned_theory.append(cltheory)
         pobs = np.array(planck_obs)
         wobs = np.array(wmap_obs)
-        crossobs = np.array(cross_obs)
-        cl = np.array(binned_theory)
+        binned_theory = np.array(binned_theory)
+
     
-        return pobs, wobs, crossobs, cl
+        return pobs, wobs,binned_theory
     return clf
 
 def loghyp0f1(l, x):
@@ -99,19 +97,25 @@ def loghyp0f1(l, x):
 def loglikelihood(hatCF, hatCG, C, NF, NG, l):
     """ takes in the observed power spectra, theory, noise and relevant l"""
     D = ((C+NF)*(C+NG) - C**2)/(2*l+1)
-    B = loghyp0f1(l, np.sqrt(hatCF*hatCG)*C/2/D)
     logp = -2*loggamma((2*l+1)/2) - (2*l+1)/2*np.log(4*D/(2*l+1)) - \
-        ((C+NG)*hatCF + (C+NF)*hatCG)/(2*D) + (2*l-1)/2*np.log(hatCF*hatCG)
-    return np.nansum(logp + B)
+        ((C+NG)*hatCF + (C+NF)*hatCG)/(2*D) + \
+            (2*l-1)/2*np.log(hatCF*hatCG)
+    B = loghyp0f1(l, np.sqrt(hatCF*hatCG)*C/2/D)
+    A = np.log(hyp0f1((2*l+1)/2, C**2/(2*D)))
+    plt.plot(l, A)
+    plt.plot(l, B)
+    plt.show()
+    return np.sum(logp + B), np.sum(np.isfinite(logp + A))
 
 def bin_planck(bins, lobs):
     l, signal, _, _ = np.loadtxt('cosmology-data/planck_unbinned.txt', unpack=True)
-    indices = bins - 1
+    signal = signal*(2*np.pi)/(l*(l+1))
+    indices = bins - 2
     binned_signal = []
     for i in range(len(indices)):
         if indices[i, 0] == indices[i, 1]:
             binned_signal.append(signal[int(indices[i, 0])])
         else:
             binned_signal.append(
-                np.mean(signal[int(indices[i, 0]):int(indices[i, 1])]))
-    return np.array(binned_signal)*(2*np.pi)/(lobs*(lobs+1))
+                np.mean(signal[int(indices[i, 0]):int(indices[i, 1])+1]))
+    return np.array(binned_signal)#*(2*np.pi)/(lobs*(lobs+1))
