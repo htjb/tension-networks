@@ -94,16 +94,22 @@ def loghyp0f1(l, x):
     ans = np.where(np.isfinite(ans), ans, ans3)
     return ans
 
-def loglikelihood(hatCF, hatCG, C, NF, NG, l):
+def loglikelihood(hatCF, hatCG, C, NF, NG, l, axes):
     """ takes in the observed power spectra, theory, noise and relevant l"""
+    axes[0].plot(l, hatCF*l*(l+1)/2/np.pi, label='hatCF')
+    axes[0].plot(l, hatCG*l*(l+1)/2/np.pi, label='hatCG')
+    axes[0].plot(l, C*l*(l+1)/2/np.pi, label='Theory')
+    axes[0].plot(l, NF*l*(l+1)/2/np.pi, label='NoiseF')
+    axes[0].plot(l, NG*l*(l+1)/2/np.pi, label='NoiseG')
+    axes[0].legend()
     D = ((C+NF)*(C+NG) - C**2)/(2*l+1)
     logp = -2*loggamma((2*l+1)/2) - (2*l+1)/2*np.log(4*D/(2*l+1)) - \
         ((C+NG)*hatCF + (C+NF)*hatCG)/(2*D) + \
             (2*l-1)/2*np.log(hatCF*hatCG)
     B = loghyp0f1(l, np.sqrt(hatCF*hatCG)*C/2/D)
-    A = np.log(hyp0f1((2*l+1)/2, C**2/(2*D)))
-    plt.plot(l, A)
-    plt.plot(l, B)
+    A = np.log(hyp0f1((2*l+1)/2, hatCF*hatCG*C**2/4/D**2))
+    axes[3].plot(l, logp+A, marker='*', label='Scipy')
+    axes[3].plot(l, logp+B, marker='.', label='Will Approximation')
     plt.show()
     return np.sum(logp + B), np.sum(np.isfinite(logp + A))
 
