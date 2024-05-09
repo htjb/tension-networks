@@ -35,7 +35,7 @@ cmbs = CMB(parameters=parameters, prior_mins=prior_mins,
                    path_to_cp='/Users/harrybevins/Documents/Software/cosmopower')
 
 likelihood = cmbs.get_likelihood(wmap_binned_like_wmap, lwmap,
-                                noise=wmap_noise, cp=True, bins=bins)
+                                noise=wnoise, cp=True, bins=bins)
 prior = cmbs.prior
 
 settings = PolyChordSettings(nDims, 0) #settings is an object
