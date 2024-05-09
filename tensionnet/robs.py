@@ -18,6 +18,7 @@ def run_poly(prior, likelihood, file, RESUME = False, nDims=3,
     if nlive:
         settings.nlive = nlive
    
-    output = pypolychord.run_polychord(likelihood, nDims, nDerived, settings, prior)
+    output = pypolychord.run_polychord(likelihood, nDims, 
+                                       nDerived, settings, prior)
     paramnames = [('p%i' % i, r'\theta_%i' % i) for i in range(nDims)]
     output.make_paramnames_files(paramnames)
