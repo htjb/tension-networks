@@ -44,7 +44,7 @@ def loglikelihood(hatCF, hatCG, C, NF, NG, l):
     return np.sum(logp + B), np.sum(np.isfinite(logp + A))
 
 
-generator = jointClGenCP('/Users/harry/Documents/Software/cosmopower')
+generator = jointClGenCP('/Users/harrybevins/Documents/Software/cosmopower')
 wmap_data = np.loadtxt('cosmology-data/wmap_binned.txt')
 lwmap_raw, wmap_unbinned, _, _, _ = np.loadtxt('cosmology-data/wmap_unbinned.txt', unpack=True)
 lplanck, signal_planck, _, _ = np.loadtxt('cosmology-data/planck_unbinned.txt', unpack=True)
