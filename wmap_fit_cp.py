@@ -5,32 +5,55 @@ from cmblike.noise import wmap_noise
 from cmblike.cmb import CMB
 import numpy as np
 
+def rebin(signal, bins):
+    """
+    Function to rebin a signal given a set of bins. Assumes that the
+    signal starts at l=2 I think.
+    """
+    indices = bins - 2
+    binned_signal = []
+    for i in range(len(indices)):
+        if indices[i, 0] == indices[i, 1]:
+            binned_signal.append(signal[int(indices[i, 0])])
+        else:
+            binned_signal.append(
+                np.mean(signal[int(indices[i, 0]):int(indices[i, 1])+1]))
+    return np.array(binned_signal)
+
 nDims = 5
 nDerived = 0
 
-PRETEND_DATA = True
-RESUME = True
-BASE_DIR = 'cosmopower-stuff/'
-data_label = '_diff_samples'
+RESUME = False
+BASE_DIR = 'clean-wmap-planck-02052024/'
 
-if PRETEND_DATA:
-    file = 'pretend_wmap_fit_with_cp_no_tau' + data_label + '/'
-    p = np.load(BASE_DIR + 'random_wmap_like_data' + data_label + '.npy')
-    _, l = get_data(base_dir='cosmology-data/').get_wmap()
-else:
-    file = 'wmap_fit_with_cp_no_tau/'
-    p, l = get_data(base_dir='cosmology-data/').get_wmap()
-wmap_noise = wmap_noise(l).calculate_noise()
+file = 'wmap_fit_cp_wide_prior/'
+wmap_data = np.loadtxt('cosmology-data/wmap_binned.txt')
+lwmap_raw, wmap_unbinned, _, _, _ = np.loadtxt(
+    'cosmology-data/wmap_unbinned.txt', unpack=True)
+
+bins = np.array([wmap_data[:, 1], wmap_data[:, 2]]).T
+lwmap = wmap_data[:, 0]
+
+mask = lwmap > 0
+lwmap = lwmap[mask]
+bins = bins[mask]
+
+wnoise = wmap_noise(lwmap).calculate_noise()
+
+wmap_binned_like_wmap = rebin(wmap_unbinned, bins)*2*np.pi/(lwmap*(lwmap+1))
 
 parameters = ['omegabh2', 'omegach2', 'ns', 'As', 'h']
-prior_mins = [0.005, 0.08, 0.8, 2.6, 0.5]
-prior_maxs = [0.04, 0.21, 1.2, 3.8, 0.9]
+#prior_mins = [0.005, 0.08, 0.8, 2.6, 0.5]
+#prior_maxs = [0.04, 0.21, 1.2, 3.8, 0.9]
+prior_mins = [0.005, 0.001, 0.8, 1.61, 0.5]
+prior_maxs = [0.1, 0.99, 1.2, 3.91, 0.9]
 
 cmbs = CMB(parameters=parameters, prior_mins=prior_mins,
 		           prior_maxs=prior_maxs,
                    path_to_cp='/Users/harrybevins/Documents/Software/cosmopower')
 
-likelihood = cmbs.get_likelihood(p, l, noise=wmap_noise, cp=True)
+likelihood = cmbs.get_likelihood(wmap_binned_like_wmap, lwmap,
+                                noise=wmap_noise, cp=True, bins=bins)
 prior = cmbs.prior
 
 settings = PolyChordSettings(nDims, 0) #settings is an object
@@ -47,8 +70,9 @@ from anesthetic import read_chains
 
 def signal():
     def signal_func(_, parameters):
-        cl, sample = cmbs.get_samples(l, parameters, noise=wmap_noise, cp=True)
-        return sample*(l*(l+1))/(2*np.pi)
+        cl, sample = cmbs.get_samples(lwmap, parameters, 
+                noise=wmap_noise, cp=True, bins=bins)
+        return sample*(lwmap*(lwmap+1))/(2*np.pi)
     return signal_func
 
 fig, axes = plt.subplots(1)
@@ -58,14 +82,12 @@ samples = samples.compress()
 
 names = ['p' + str(i) for i in range(5)]
 samples = samples[names].values
-plot_lines(signal, l, samples, axes, color='r')
-plt.plot(l, p*(l*(l+1))/(2*np.pi), c='k', label='wmap')
+plot_lines(signal, lwmap, samples, axes, color='r')
+plt.plot(lwmap, wmap_binned_like_wmap*(lwmap*(lwmap+1))/(2*np.pi), 
+         c='k', label='wmap')
 plt.xlabel(r'$l$')
 plt.ylabel(r'$C_l$')
 plt.legend()
 plt.tight_layout()
-if PRETEND_DATA:
-    plt.savefig(BASE_DIR + 'pretend_wmap_fit_with_cp_no_tau' + data_label + '.png', dpi=300)
-else:
-    plt.savefig(BASE_DIR + 'wmap_fit_with_cp_no_tau.png', dpi=300)
+plt.savefig(BASE_DIR + 'wmap_fit_cp.png', dpi=300)
 plt.show()
