@@ -55,9 +55,20 @@ def loglikelihood(hatCF, hatCG, C, NF, NG, l, axes):
     l4 = (2*l-1)/2*np.log(hatCF*hatCG)
     logp = l1 + l2 + l3A + l3B + l4
     B, B1, B2, B3 = loghyp0f1(l, np.sqrt(hatCF*hatCG)*C/2/D)
-    A = np.log(hyp0f1((2*l+1)/2, hatCF*hatCG*C**2/4/D**2))
-    axes[2].plot(l, logp+A, marker='*', label='Scipy logL= {:.2f}'.format(np.sum(logp + A)))
-    axes[2].plot(l, logp+B, marker='.', label='Will Approximation\nlogL= {:.2f}'.format(np.sum(logp + B)))
+
+    flag = True
+    if flag:
+        delta = C.min()
+        logpenalty = -2.5
+        print(np.log(delta), logpenalty - np.log(delta))
+        emax = logp+B > logpenalty - np.log(delta)
+        logp = np.where(emax, logp+B, logpenalty - np.log(delta))
+        axes[2].axhline(logpenalty - np.log(delta), color='k', lw=0.5)
+    else:
+        logp = logp+B
+
+    #axes[2].plot(l, logp+A, marker='*', label='Scipy logL= {:.2f}'.format(np.sum(logp + A)))
+    axes[2].plot(l, logp, marker='.', label='Will Approximation\nlogL= {:.2f}'.format(np.sum(logp)))
     axes[2].set_ylabel('Log Likelihood')
     for i in range(len(axes)):
         axes[i].set_xlabel('l')
@@ -71,17 +82,16 @@ def loglikelihood(hatCF, hatCG, C, NF, NG, l, axes):
     axes[3].plot(l, l3B, label='l3B (hatCG)')
     axes[3].plot(l, l4, label='l4 (hatCF, hatCG)')
     axes[3].plot(l, B, label='Will Approximation\n(hatCF, hatCG)')
-    axes[3].plot(l, A, label='Scipy (hatCF, hatCG)')
     axes[3].plot(l, 1/D, label='1/D')
     axes[3].legend(fontsize=8)
 
     axes[4].plot(l, B+l3A+l3B, label='Will Approximation\n(hatCF, hatCG)\n+ l3A + l3B')
     axes[4].legend()
 
-    return np.sum(logp + B), np.sum(np.isfinite(logp + A))
+    return np.sum(logp)
 
 
-generator = jointClGenCP('/Users/harry/Documents/Software/cosmopower')
+generator = jointClGenCP('/Users/harrybevins/Documents/Software/cosmopower')
 wmap_data = np.loadtxt('cosmology-data/wmap_binned.txt')
 lwmap_raw, wmap_unbinned, _, _, _ = np.loadtxt('cosmology-data/wmap_unbinned.txt', unpack=True)
 lplanck, signal_planck, _, _ = np.loadtxt('cosmology-data/planck_unbinned.txt', unpack=True)
@@ -89,7 +99,7 @@ lplanck, signal_planck, _, _ = np.loadtxt('cosmology-data/planck_unbinned.txt', 
 bins = np.array([wmap_data[:, 1], wmap_data[:, 2]]).T
 lwmap = wmap_data[:, 0]
 
-mask = lwmap > 700
+mask = lwmap > 0
 lwmap = lwmap[mask]
 bins = bins[mask]
 
