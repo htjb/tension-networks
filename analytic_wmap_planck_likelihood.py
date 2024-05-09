@@ -58,11 +58,11 @@ def loglikelihood(hatCF, hatCG, C, NF, NG, l, axes):
 
     flag = True
     if flag:
-        delta = C.min()
+        delta = C.max()
         logpenalty = -2.5
         print(np.log(delta), logpenalty - np.log(delta))
-        emax = logp+B > logpenalty - np.log(delta)
-        logp = np.where(emax, logp+B, logpenalty - np.log(delta))
+        emax = logp+B + np.log(1-np.exp(logpenalty)) > logpenalty - np.log(delta)
+        logp = np.where(emax, logp+B + np.log(1-np.exp(logpenalty)), logpenalty - np.log(delta))
         axes[2].axhline(logpenalty - np.log(delta), color='k', lw=0.5)
     else:
         logp = logp+B
