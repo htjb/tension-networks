@@ -115,16 +115,3 @@ def loglikelihood(hatCF, hatCG, C, NF, NG, l, flag=None):
     else:
         logp = np.sum(logp + B)
     return logp
-
-def bin_planck(bins, lobs):
-    l, signal, _, _ = np.loadtxt('cosmology-data/planck_unbinned.txt', unpack=True)
-    signal = signal*(2*np.pi)/(l*(l+1))
-    indices = bins - 2
-    binned_signal = []
-    for i in range(len(indices)):
-        if indices[i, 0] == indices[i, 1]:
-            binned_signal.append(signal[int(indices[i, 0])])
-        else:
-            binned_signal.append(
-                np.mean(signal[int(indices[i, 0]):int(indices[i, 1])+1]))
-    return np.array(binned_signal)#*(2*np.pi)/(lobs*(lobs+1))
