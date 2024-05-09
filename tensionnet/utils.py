@@ -74,15 +74,20 @@ def twentyone_example(exp1_data, exp2_data, exp1_freq, exp2_freq):
     return signal_poly_prior, \
         joint_prior, exp1likelihood, exp2likelihood, jointlikelihood
 
-def rebin(signal, bins):
+def rebin(signal, bins, weights=None):
     indices = bins - 2
     binned_signal = []
     for i in range(len(indices)):
         if indices[i, 0] == indices[i, 1]:
             binned_signal.append(signal[int(indices[i, 0])])
         else:
-            binned_signal.append(
-                np.mean(signal[int(indices[i, 0]):int(indices[i, 1])+1]))
+            if weights is None:
+                binned_signal.append(
+                    np.mean(signal[int(indices[i, 0]):int(indices[i, 1])+1]))
+            else:
+                binned_signal.append(
+                    np.average(signal[int(indices[i, 0]):int(indices[i, 1])+1], 
+                    weights=weights[int(indices[i, 0]):int(indices[i, 1])+1]))
     return np.array(binned_signal)
 
 def cosmopower_prior():
