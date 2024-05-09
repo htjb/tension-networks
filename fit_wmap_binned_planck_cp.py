@@ -20,7 +20,7 @@ def rebin(signal, bins):
 nDims = 5
 nDerived = 0
 
-RESUME = False
+RESUME = True
 BASE_DIR = 'chains/'
 data_label = ''
 
@@ -69,7 +69,7 @@ from anesthetic import read_chains
 
 def signal():
     def signal_func(_, parameters):
-        cl, sample = cmbs.get_samples(lwmap, parameters, noise=pnoise)
+        cl, sample = cmbs.get_samples(lwmap, parameters, noise=pnoise, bins=bins)
         return sample*(lwmap*(lwmap+1))/(2*np.pi)
     return signal_func
 
