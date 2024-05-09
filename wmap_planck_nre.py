@@ -11,7 +11,8 @@ from scipy.stats import ecdf
 import os
 
 mpl.rcParams['axes.prop_cycle'] = mpl.cycler('color',
-    ['ff7f00', '984ea3', '999999', '377eb8', '4daf4a','f781bf', 'a65628', 'e41a1c', 'dede00'])
+    ['ff7f00', '984ea3', '999999', '377eb8', '4daf4a',
+    'f781bf', 'a65628', 'e41a1c', 'dede00'])
 mpl.rcParams['text.usetex'] = True
 rc('font', family='serif')
 rc('font', serif='cm')
@@ -23,24 +24,26 @@ wmapraw, lwmap = get_data(base_dir='cosmology-data/').get_wmap()
 praw = np.loadtxt('cosmology-data/planck_binned_like_wmap.txt')
 
 nSamples = 50000
-joint = wmapplanck.jointClGenCP(path='/Users/harry/Documents/Software/cosmopower')
+joint = wmapplanck.jointClGenCP(path='/Users/harrybevins/Documents/Software/cosmopower')
 
 parameters = ['omegabh2', 'omegach2', 'ns', 'As', 'h']
-prior_mins = [0.005, 0.08, 0.8, 2.6, 0.5]
-prior_maxs = [0.04, 0.21, 1.2, 3.8, 0.9]
+#prior_mins = [0.005, 0.08, 0.8, 2.6, 0.5]
+#prior_maxs = [0.04, 0.21, 1.2, 3.8, 0.9]
+prior_mins = [0.005, 0.001, 0.8, 1.61, 0.5]
+prior_maxs = [0.1, 0.99, 1.2, 3.91, 0.9]
 
 BASE_DIR = 'clean-wmap-planck-02052024/'
 if not os.path.exists(BASE_DIR):
     os.makedirs(BASE_DIR)
-load_data = False
+load_data = True
 
 def prior(N):
     return np.array([np.random.uniform(prior_mins[i], prior_maxs[i], N) 
                      for i in range(len(parameters))]).T
 
 if load_data:
-    planckExamples = np.load(BASE_DIR + 'planck-wmap-planck-examples-100000.npy')
-    wmapExamples = np.load(BASE_DIR + 'planck-wmap-wmap-examples-100000.npy')
+    planckExamples = np.load(BASE_DIR + 'planck-wmap-planck-examples-50000.npy')
+    wmapExamples = np.load(BASE_DIR + 'planck-wmap-wmap-examples-50000.npy')
 else:
     wd = np.loadtxt('cosmology-data/wmap_binned.txt')
     bins = np.array([wd[:, 1], wd[:, 2]]).T
@@ -54,8 +57,8 @@ else:
     planckExamples = np.vstack(pe)
     wmapExamples = np.vstack(we)
     print(planckExamples.shape, wmapExamples.shape)
-    np.save(BASE_DIR + 'planck-wmap-planck-examples-100000.npy', planckExamples)
-    np.save(BASE_DIR + 'planck-wmap-wmap-examples-100000.npy.npy', wmapExamples)
+    np.save(BASE_DIR + 'planck-wmap-planck-examples-50000.npy', planckExamples)
+    np.save(BASE_DIR + 'planck-wmap-wmap-examples-50000.npy', wmapExamples)
 
 from tensionnet.tensionnet import nre
 
@@ -80,7 +83,7 @@ try:
 except FileNotFoundError:
 
     nrei = nre(lr=1e-4)
-    nrei.build_model(len(lwmap) + len(lwmap) - 4, 
+    nrei.build_model(len(lwmap) + len(lwmap), 
                     [25]*5, 'sigmoid')
 
     splitIdx = np.arange(len(wmapExamples))
@@ -168,7 +171,7 @@ except FileNotFoundError:
     nrei.save(BASE_DIR + 'wmap_planck_nre.pkl')
 
 plt.plot(nrei.loss_history, label='Training Loss')
-plt.plot(nrei.val_loss_history, label='Validation Loss')
+plt.plot(nrei.test_loss_history, label='Validation Loss')
 plt.legend()
 plt.show()
 
