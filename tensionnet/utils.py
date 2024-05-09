@@ -31,33 +31,6 @@ def calcualte_stats(Rs, sigma_Rs, c):
         sigmaA, sigma_A_upper, sigma_A_lower, \
             sigmaR, sigmaR_upper, sigmaR_lower
 
-def coverage_test(logR):
-
-    import tensorflow as tf
-    from scipy.stats import gaussian_kde
-
-    kde = gaussian_kde(logR)
-    samples = kde.resample(1000)[0]
-
-    logR = logR[:100]
-
-    fs = []
-    for i in range(len(logR)):
-        f = np.mean([1 if kde.pdf(logR[i])[0] <
-                kde.pdf(samples[j])[0]
-                     else 0 for j in range(len(samples))])
-        fs.append(f)
-    fs = np.array(fs)
-
-    ecp = []
-    alpha=np.linspace(0, 1, 20)
-    for j in range(len(alpha)):
-        e = np.mean([1 if fs[i] < (1 - alpha[j]) else 0 
-                     for i in range(len(fs))])
-        ecp.append(e)
-    ecp = np.array(ecp)
-    return alpha, ecp
-
 def twentyone_example(exp1_data, exp2_data, exp1_freq, exp2_freq):
     def signal_func_gen(freqs):
         def signal(parameters):
@@ -100,3 +73,20 @@ def twentyone_example(exp1_data, exp2_data, exp1_freq, exp2_freq):
     
     return signal_poly_prior, \
         joint_prior, exp1likelihood, exp2likelihood, jointlikelihood
+
+def rebin(signal, bins):
+    indices = bins - 2
+    binned_signal = []
+    for i in range(len(indices)):
+        if indices[i, 0] == indices[i, 1]:
+            binned_signal.append(signal[int(indices[i, 0])])
+        else:
+            binned_signal.append(
+                np.mean(signal[int(indices[i, 0]):int(indices[i, 1])+1]))
+    return np.array(binned_signal)
+
+def cosmopower_prior():
+    parameters = ['omegabh2', 'omegach2', 'ns', 'As', 'h']
+    prior_mins = [0.005, 0.001, 0.7, 1.61, 0.2]
+    prior_maxs = [0.04, 0.99, 1.3, 5, 1.0]
+    return parameters, prior_mins, prior_maxs
