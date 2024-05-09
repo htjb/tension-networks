@@ -1,24 +1,13 @@
 from pypolychord.settings import PolyChordSettings
 from pypolychord.priors import UniformPrior
 import pypolychord
-from cmblike.data import get_data
 from cmblike.noise import wmap_noise, planck_noise
 from cmblike.cmb import CMB
 import numpy as np
-from tensionnet.wmapplanck import jointClGenCP, loglikelihood
+from tensionnet.wmapplanck import loglikelihood
+from tensionnet.utils import rebin, cosmopower_prior
 import matplotlib.pyplot as plt
 import cosmopower as cp
-
-def rebin(signal, bins):
-    indices = bins - 2
-    binned_signal = []
-    for i in range(len(indices)):
-        if indices[i, 0] == indices[i, 1]:
-            binned_signal.append(signal[int(indices[i, 0])])
-        else:
-            binned_signal.append(
-                np.mean(signal[int(indices[i, 0]):int(indices[i, 1])+1]))
-    return np.array(binned_signal)
 
 path = '/Users/harrybevins/Documents/Software/cosmopower'
 cp_nn = cp.cosmopower_NN(restore=True, 
@@ -73,11 +62,7 @@ wnoise = wmap_noise(lwmap).calculate_noise()
 planck_binned_like_wmap = rebin(signal_planck, bins)*2*np.pi/(lwmap*(lwmap+1))
 wmap_binned_like_wmap = rebin(wmap_unbinned, bins)*2*np.pi/(lwmap*(lwmap+1))
 
-parameters = ['omegabh2', 'omegach2', 'ns', 'As', 'h']
-#prior_mins = [0.005, 0.08, 0.8, 2.6, 0.5]
-#prior_maxs = [0.04, 0.21, 1.2, 3.8, 0.9]
-prior_mins = [0.005, 0.001, 0.8, 1.61, 0.5]
-prior_maxs = [0.1, 0.99, 1.2, 3.91, 0.9]
+parameters, prior_mins, prior_maxs = cosmopower_prior()
 
 def prior(cube):
     theta = np.zeros_like(cube)

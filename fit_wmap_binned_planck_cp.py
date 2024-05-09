@@ -11,10 +11,10 @@ nDims = 5
 nDerived = 0
 
 RESUME = False
-BASE_DIR = 'chains/'
+BASE_DIR = 'clean-wmap-planck-02052024/'
 data_label = ''
 
-file = 'fit_wmap_binned_planck_cp_wide_prior/'
+file = 'fit_wmap_binned_planck_cp_cp_prior/'
 wmap_data = np.loadtxt('cosmology-data/wmap_binned.txt')
 lplanck, signal_planck, _, _ = np.loadtxt(
     'cosmology-data/planck_unbinned.txt', unpack=True)
