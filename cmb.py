@@ -83,8 +83,13 @@ if config['mock_data']['params']:
     samples = config['mock_data']['params']
     pobs, wobs, cltheory = generator(samples, lwmap, bins)
 else:
-    print('Real data not implemented yet.')
-    exit()
+    lwmap_raw, wmap_unbinned, _, _, _ = np.loadtxt(
+        'cosmology-data/wmap_unbinned.txt', unpack=True)
+    lplanck, signal_planck, _, _ = np.loadtxt(
+        'cosmology-data/planck_unbinned.txt', unpack=True)
+
+    pobs = rebin(signal_planck, bins)*2*np.pi/(lwmap*(lwmap+1))
+    wobs = rebin(wmap_unbinned, bins)*2*np.pi/(lwmap*(lwmap+1))
 
 lcut = config['lcut']
 if lcut:
