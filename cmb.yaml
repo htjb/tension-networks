@@ -3,7 +3,7 @@ cosmopower_path: '/Users/harry/Documents/Software/cosmopower'
 lcut: 124 # integer minimum l to consider
 
 mock_data:
-  params: None
+  params: null
 
 prior:
   name: 'narrow_cosmopower_prior'
