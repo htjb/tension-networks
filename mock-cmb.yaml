@@ -1,6 +1,7 @@
 base_dir: 'CMB-Mock-Data/'
 cosmopower_path: '/Users/harry/Documents/Software/cosmopower'
-lcut: None # integer minimum l to consider
+lcut: 0 # integer minimum l to consider
+seed: 42
 
 mock_data:
   params: [0.022, 0.12, 0.96, 3.0448, 0.674]
@@ -21,5 +22,5 @@ nre:
   nsamples: 50000
   load_data: True # whether or not to use precalcualted data
   lr: 1e-4
-  nhidden: [25]*5
+  nhidden: [25, 25, 25, 25, 25]
   activation: 'sigmoid'

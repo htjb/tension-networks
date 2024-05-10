@@ -27,6 +27,9 @@ plotting_preamble()
 print('Setting Constants...')
 config = yaml.load(open('mock-cmb.yaml', 'r'), Loader=yaml.FullLoader)
 
+np.random.seed(config['seed'])
+tf.random.set_seed(config['seed'])
+
 ndims = config['polychord']['ndims']
 nderived = config['polychord']['nderived']
 RESUME = config['polychord']['resume']
@@ -81,17 +84,25 @@ lwmap = wmap_data[:, 0]
 pnoise = planck_noise(lwmap).calculate_noise()
 wnoise = wmap_noise(lwmap).calculate_noise()
 
-if config['mock_data']['params']:
-    samples = config['mock_data']['params']
-    pobs, wobs, cltheory = generator(samples, lwmap, bins)
+if config['polychord']['resume']:
+    pobs = np.load(BASE_DIR + 'pobs.npy')
+    wobs = np.load(BASE_DIR + 'wobs.npy')
 else:
-    lwmap_raw, wmap_unbinned, _, _, _ = np.loadtxt(
-        'cosmology-data/wmap_unbinned.txt', unpack=True)
-    lplanck, signal_planck, _, _ = np.loadtxt(
-        'cosmology-data/planck_unbinned.txt', unpack=True)
+    if config['mock_data']['params']:
+        samples = config['mock_data']['params']
+        pobs, wobs, cltheory = generator(samples, lwmap, bins)
+    else:
+        lwmap_raw, wmap_unbinned, _, _, _ = np.loadtxt(
+            'cosmology-data/wmap_unbinned.txt', unpack=True)
+        lplanck, signal_planck, _, _ = np.loadtxt(
+            'cosmology-data/planck_unbinned.txt', unpack=True)
 
-    pobs = rebin(signal_planck, bins)*2*np.pi/(lwmap*(lwmap+1))
-    wobs = rebin(wmap_unbinned, bins)*2*np.pi/(lwmap*(lwmap+1))
+        pobs = rebin(signal_planck, bins)*2*np.pi/(lwmap*(lwmap+1))
+        wobs = rebin(wmap_unbinned, bins)*2*np.pi/(lwmap*(lwmap+1))
+
+    np.save(BASE_DIR + 'pobs.npy', pobs)
+    np.save(BASE_DIR + 'wobs.npy', wobs)
+
 
 lcut = config['lcut']
 if lcut:
@@ -336,7 +347,8 @@ plt.legend()
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.savefig(BASE_DIR + 'loss_history_nre.png', dpi=300, bbox_inches='tight')
-plt.show()
+#plt.show()
+plt.close()
 
 nrei.__call__(iters=data_validation)
 r = nrei.r_values
@@ -374,5 +386,6 @@ axes[0, 1].axhspan(c.cdf.evaluate(R - errorR),
 
 plt.tight_layout()
 plt.savefig(BASE_DIR + 'wmap_planck.pdf', bbox_inches='tight')
-plt.show()
+#plt.show()
+plt.close()
 
