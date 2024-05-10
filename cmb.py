@@ -24,7 +24,7 @@ plotting_preamble()
 ##########################################################################
 ############################ Constants ###################################
 ##########################################################################
-
+print('Setting Constants...')
 config = yaml.load(open('mock-cmb.yaml', 'r'), Loader=yaml.FullLoader)
 
 ndims = config['polychord']['ndims']
@@ -42,6 +42,7 @@ if not os.path.exists(BASE_DIR):
 ################### for theoretical CMB power spectra ####################
 ##########################################################################
 
+print('Defining generator function...')
 path = config['cosmopower_path']
 cp_nn = cp.cosmopower_NN(restore=True, 
                 restore_filename= path \
@@ -72,6 +73,7 @@ def gen(parameters, lobs, bins):
 #################### Generate pretend data ###############################
 ##########################################################################
 
+print('Generating/loading data...')
 generator = jointClGenCP(config['cosmopower_path'])
 wmap_data = np.loadtxt('cosmology-data/wmap_binned.txt')
 bins = np.array([wmap_data[:, 1], wmap_data[:, 2]]).T
@@ -104,7 +106,7 @@ if lcut:
 ############################################################################
 ######################## Define likelihoods ################################
 ############################################################################
-
+print('Defining likelihoods...')
 if config['prior']['name'] == 'cosmopower_prior':
     parameters, prior_mins, prior_maxs = cosmopower_prior()
 elif config['prior']['name'] == 'narrow_cosmopower_prior':
@@ -135,7 +137,7 @@ def joint_likelihood(theta):
 ##########################################################################
 ############################## WMAP fit ##################################
 ##########################################################################
-
+print('Running WMAP Fit...')
 file = 'WMAP'
 
 settings = PolyChordSettings(ndims, nderived) #settings is an object
@@ -150,7 +152,7 @@ output.make_paramnames_files(paramnames)
 ##########################################################################
 ############################## Planck fit ##################################
 ##########################################################################
-
+print('Running Planck Fit...')
 file = 'Planck'
 
 settings = PolyChordSettings(ndims, 0) #settings is an object
@@ -166,7 +168,7 @@ output.make_paramnames_files(paramnames)
 ##########################################################################
 ############################## joint fit ##################################
 ##########################################################################
-
+print('Running Joint Fit...')
 file = 'Joint'
 
 settings = PolyChordSettings(ndims, 0) #settings is an object
@@ -181,7 +183,7 @@ output.make_paramnames_files(paramnames)
 #########################################################################
 ############################# Calculate R ###############################
 #########################################################################
-
+print('Calculating R...')
 wmap_chains = read_chains(BASE_DIR + 'WMAP/test')
 planck_chains = read_chains(BASE_DIR + 'Planck/test')
 joint_chains = read_chains(BASE_DIR + 'Joint/test')
@@ -200,7 +202,7 @@ print('R = ', R, '+/-', errorR)
 #########################################################################
 ############################### NRE  ####################################
 #########################################################################
-
+print('Running NRE...')
 nSamples = config['nre']['nsamples']
 
 load_data = config['nre']['load_data']
