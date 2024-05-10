@@ -9,7 +9,7 @@ from tensionnet.utils import rebin, cosmopower_prior
 import matplotlib.pyplot as plt
 import cosmopower as cp
 
-path = '/Users/harrybevins/Documents/Software/cosmopower'
+path = '/Users/harry/Documents/Software/cosmopower'
 cp_nn = cp.cosmopower_NN(restore=True, 
                             restore_filename= path \
                             +'/cosmopower/trained_models/CP_paper/CMB/cmb_TT_NN')
@@ -42,7 +42,7 @@ nDerived = 0
 RESUME = False
 BASE_DIR = 'clean-wmap-planck-02052024/'
 
-file = 'wmap_planck_joint_fit_cp/'
+file = 'wmap_planck_joint_fit_cp_cp_prior_fixed_flag/'
 wmap_data = np.loadtxt('cosmology-data/wmap_binned.txt')
 lwmap_raw, wmap_unbinned, _, _, _ = np.loadtxt(
     'cosmology-data/wmap_unbinned.txt', unpack=True)
@@ -68,15 +68,19 @@ def prior(cube):
     theta = np.zeros_like(cube)
     for i in range(nDims-1):
         theta[i] = UniformPrior(prior_mins[i], prior_maxs[i])(cube[i])
-    theta[-1] = UniformPrior(-5, 5)(cube[-1])
+    theta[-1] = UniformPrior(-30, -3)(cube[-1])
     return theta
 
 def likelihood(theta):
-    cltheory = gen(theta[:-1], lwmap, bins)
+    cltheory = gen(theta[:-1],
+                    #theta,
+                    lwmap, bins)
     return loglikelihood(planck_binned_like_wmap + pnoise, 
                         wmap_binned_like_wmap + wnoise, 
                         cltheory, pnoise, wnoise, 
-                        lwmap, flag=theta[-1]), []
+                        lwmap, 
+                        flag=theta[-1]), []
+                        #flag=-1.3), \
 
 """for i in range(100):
     print(likelihood(prior(np.random.uniform(0, 1, nDims))))
