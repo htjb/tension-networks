@@ -1,36 +1,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from cmblike.data import get_data
-from cmblike.noise import planck_noise, wmap_noise
 from tqdm import tqdm
-import matplotlib as mpl
-from matplotlib import rc
 import tensorflow as tf
 from tensionnet import wmapplanck
 from scipy.stats import ecdf
 import os
+from tensionnet.utils import cosmopower_prior, plotting_preamble
 
-mpl.rcParams['axes.prop_cycle'] = mpl.cycler('color',
-    ['ff7f00', '984ea3', '999999', '377eb8', '4daf4a',
-    'f781bf', 'a65628', 'e41a1c', 'dede00'])
-mpl.rcParams['text.usetex'] = True
-rc('font', family='serif')
-rc('font', serif='cm')
-rc('savefig', pad_inches=0.05)
+plotting_preamble()
 
-plt.rc('text.latex', preamble=r'\usepackage{amsmath} \usepackage{amssymb}')
-
-wmapraw, lwmap = get_data(base_dir='cosmology-data/').get_wmap()
-praw = np.loadtxt('cosmology-data/planck_binned_like_wmap.txt')
+_, lwmap = get_data(base_dir='cosmology-data/').get_wmap()
 
 nSamples = 50000
 joint = wmapplanck.jointClGenCP(path='/Users/harrybevins/Documents/Software/cosmopower')
 
-parameters = ['omegabh2', 'omegach2', 'ns', 'As', 'h']
-#prior_mins = [0.005, 0.08, 0.8, 2.6, 0.5]
-#prior_maxs = [0.04, 0.21, 1.2, 3.8, 0.9]
-prior_mins = [0.005, 0.001, 0.8, 1.61, 0.5]
-prior_maxs = [0.1, 0.99, 1.2, 3.91, 0.9]
+parameters, prior_mins, prior_maxs = cosmopower_prior()
 
 BASE_DIR = 'clean-wmap-planck-02052024/'
 if not os.path.exists(BASE_DIR):
@@ -50,7 +35,7 @@ else:
     pe, we= [], []
     for i in tqdm(range(nSamples//100)):
         samples = prior(100)
-        pobs, wobs, crossobs, cltheory = joint(samples, lwmap, bins)
+        pobs, wobs, cltheory = joint(samples, lwmap, bins)
         # pobs  = (5, 45)
         pe.append(pobs)
         we.append(wobs)
@@ -60,16 +45,22 @@ else:
     np.save(BASE_DIR + 'planck-wmap-planck-examples-50000.npy', planckExamples)
     np.save(BASE_DIR + 'planck-wmap-wmap-examples-50000.npy', wmapExamples)
 
+mask = lwmap > 124
+lwmap = lwmap[mask]
+planckExamples = planckExamples[:, mask]
+wmapExamples = wmapExamples[:, mask]
+
 from tensionnet.tensionnet import nre
 
-"""from anesthetic import read_chains
-chains = read_chains('wmap_planck_fit/test')
-planck = read_chains('Planck_fit/test')
-wmap = read_chains('wmap_fit/test')
+from anesthetic import read_chains
+chains = read_chains(BASE_DIR + 'wmap_planck_joint_fit_cp_cp_prior_l_above_124/test')
+planck = read_chains(BASE_DIR + 'fit_wmap_binned_planck_cp_cp_prior_l_above_124/test')
+wmap = read_chains(BASE_DIR + 'wmap_fit_cp_cp_prior_l_above_124/test')
 
-Rsamples = chains.logZ(1000) - planck.logZ(1000) - wmap.logZ(1000)"""
-Rs = None #np.mean(Rsamples)
-errorRs = None # np.std(Rsamples)
+Rsamples = chains.logZ(1000) - planck.logZ(1000) - wmap.logZ(1000)
+Rs = Rsamples.mean()
+errorRs = Rsamples.std()
+print('R = {:.2f} +/- {:.2f}'.format(Rs, errorRs))
 
 RETRAIN = True
 if RETRAIN:
@@ -167,7 +158,7 @@ except FileNotFoundError:
     nrei.simulation_func_A = None
     nrei.simulation_func_B = None
 
-    model, data_test, labels_test = nrei.training(epochs=1000, batch_size=2000)
+    model, data_test, labels_test = nrei.training(epochs=1000, batch_size=1000)
     nrei.save(BASE_DIR + 'wmap_planck_nre.pkl')
 
 plt.plot(nrei.loss_history, label='Training Loss')
@@ -177,87 +168,39 @@ plt.show()
 
 nrei.__call__(iters=data_validation)
 r = nrei.r_values
+print(len(data_validation))
+print(len(r))
 mask = np.isfinite(r)
+print(len(r[mask]))
 
-plt.hist(r)
-plt.show()
-exit()
-
-fig, axes = plt.subplots(2, 2, figsize=(6.3, 6.3))
-axes[0, 0].hist(r[mask], bins=25,density=True)
-#axes[0, 0].axvline(Rs, ls='--', c='r')
-axes[0, 0].set_title('No. Sig. ' + r'$=$ ' + str(len(r[mask])))
-#axes[0, 0].axvspan(Rs - errorRs, Rs + errorRs, alpha=0.1, color='r')
-axes[0, 0].set_xlabel(r'$\log R$')
-axes[0, 0].set_ylabel('Density')
+fig, axes = plt.subplots(1, 2, figsize=(6.3, 4))
+axes[0].hist(r[mask], bins=25, density=True)
+axes[0].set_xlabel(r'$\log R$')
+axes[0].set_ylabel('Density')
 
 rsort  = np.sort(r[mask])
 c = ecdf(rsort)
 
-axes[0, 1].plot(rsort, c.cdf.evaluate(rsort)) 
-"""axes[0, 1].axhline(c.cdf.evaluate(Rs), ls='--',
+axes[1].plot(rsort, c.cdf.evaluate(rsort)) 
+axes[1].axhline(c.cdf.evaluate(Rs), ls='--',
         color='r')
-axes[0, 1].axhspan(c.cdf.evaluate(Rs - errorRs), 
+axes[1].axhspan(c.cdf.evaluate(Rs - errorRs), 
         c.cdf.evaluate(Rs + errorRs), 
         alpha=0.1, 
-        color='r')"""
-axes[0, 1].set_xlabel(r'$\log R$')
-axes[0, 1].set_ylabel(r'$P(\log R < \log R_{obs})$')
-"""axes[0, 1].set_title(r'$P=$' + str(np.round(c.cdf.evaluate(Rs), 3)) +
-                r'$+$' + str(np.round(c.cdf.evaluate(Rs + errorRs) - c.cdf.evaluate(Rs), 3)) +
-                r'$(-$' + str(np.round(c.cdf.evaluate(Rs) - c.cdf.evaluate(Rs - errorRs),3)) + r'$)$')
-"""
+        color='r')
+axes[1].set_xlabel(r'$\log R$')
+axes[1].set_ylabel(r'$P(\log R < \log R^\prime)$')
 
-idx = [int(np.random.uniform(0, len(nrei.labels_test), 1)) for i in range(1000)]
-labels_test = nrei.labels_test[idx]
-nrei.__call__(iters=nrei.data_test[idx])
-p = tf.keras.layers.Activation('sigmoid')(nrei.r_values)
+axes[0].axvline(Rs, ls='--', c='r')
+axes[0].axvspan(Rs - errorRs, Rs + errorRs, alpha=0.1, color='r')
 
-correct1, correct0, wrong1, wrong0, confused1, confused0 = 0, 0, 0, 0, 0, 0
-for i in range(len(p)):
-    if p[i] > 0.75 and labels_test[i] == 1:
-        correct1 += 1
-    elif p[i] < 0.25 and labels_test[i] == 0:
-        correct0 += 1
-    elif p[i] > 0.75 and labels_test[i] == 0:
-        wrong0 += 1
-    elif p[i] < 0.25 and labels_test[i] == 1:
-        wrong1 += 1
-    elif p[i] > 0.25 and p[i] < 0.75 and labels_test[i] == 1:
-        confused1 += 1
-    elif p[i] > 0.25 and p[i] < 0.75 and labels_test[i] == 0:
-        confused0 += 1
-
-total_0 = len(labels_test[labels_test == 0])
-total_1 = len(labels_test[labels_test == 1])
-
-cm = [[correct0/total_0*100, wrong0/total_0*100, confused0/total_0*100],
-        [correct1/total_1*100, wrong1/total_1*100, confused1/total_1*100]]
-
-axes[1,0].imshow(cm, cmap='Blues')
-for i in range(2):
-    for j in range(3):
-        axes[1, 0].text(j, i, '{:.2f} \%'.format(cm[i][j]), ha='center', va='center', color='k',
-                bbox=dict(facecolor='white', lw=0), fontsize=10)
-axes[1, 0].set_xticks([0, 1, 2], ['Correct', 'Wrong', 'Confused'])
-axes[1, 0].set_yticks([0, 1], ['In tension', 'Not In Tension'])
-
-axes[1, 1].axis('off')
-
-"""nrei.__call__(iters=np.array([np.concatenate([praw, wmapraw])]))
-r = nrei.r_values"""
-
-axes[0, 0].axvline(Rs, ls='--', c='r')
-axes[0, 0].axvspan(Rs - errorRs, Rs + errorRs, alpha=0.1, color='r')
-
-axes[0, 1].axhline(c.cdf.evaluate(Rs), ls='--',
+axes[1].axhline(c.cdf.evaluate(Rs), ls='--',
             color='r')
-axes[0, 1].axhspan(c.cdf.evaluate(Rs - errorRs),
+axes[1].axhspan(c.cdf.evaluate(Rs - errorRs),
             c.cdf.evaluate(Rs + errorRs),
             alpha=0.1,
             color='r')
 
 plt.tight_layout()
-plt.savefig('wmap_planck.pdf', bbox_inches='tight')
+plt.savefig(BASE_DIR + 'wmap_planck.pdf', bbox_inches='tight')
 plt.show()
-

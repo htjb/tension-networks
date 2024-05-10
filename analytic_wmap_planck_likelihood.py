@@ -56,10 +56,10 @@ def loglikelihood(hatCF, hatCG, C, NF, NG, l, axes):
     logp = l1 + l2 + l3A + l3B + l4
     B, B1, B2, B3 = loghyp0f1(l, np.sqrt(hatCF*hatCG)*C/2/D)
 
-    flag = True
+    flag = False
     if flag:
-        delta = C.max()
-        logpenalty = -2.5
+        delta = hatCF.max()
+        logpenalty = -1.3
         print(np.log(delta), logpenalty - np.log(delta))
         emax = logp+B + np.log(1-np.exp(logpenalty)) > logpenalty - np.log(delta)
         logp = np.where(emax, logp+B + np.log(1-np.exp(logpenalty)), logpenalty - np.log(delta))
@@ -99,7 +99,7 @@ lplanck, signal_planck, _, _ = np.loadtxt('cosmology-data/planck_unbinned.txt', 
 bins = np.array([wmap_data[:, 1], wmap_data[:, 2]]).T
 lwmap = wmap_data[:, 0]
 
-mask = lwmap > 0
+mask = lwmap > 124
 lwmap = lwmap[mask]
 bins = bins[mask]
 
@@ -108,6 +108,7 @@ wnoise = wmap_noise(lwmap).calculate_noise()
 
 planck_binned_like_wmap = binning(signal_planck, bins)
 wmap_binned_like_wmap = binning(wmap_unbinned, bins)
+
 
 #np.savetxt('cosmology-data/planck_binned_like_wmap.txt', planck_binned_like_wmap)
 

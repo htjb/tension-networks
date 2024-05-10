@@ -54,7 +54,7 @@ def gen(parameters, lobs, bins):
     
     params = {'omega_b': parameters[:, 0],
         'omega_cdm': parameters[:, 1],
-        'h': parameters[:, -1],
+        'h': parameters[:, 4],
         'n_s': parameters[:, 2],
         'tau_reio': [0.055]*len(parameters[:, 0]),
         'ln10^{10}A_s': parameters[:, 3],

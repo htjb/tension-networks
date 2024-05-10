@@ -9,10 +9,10 @@ from tensionnet.utils import rebin, cosmopower_prior
 nDims = 5
 nDerived = 0
 
-RESUME = False
+RESUME = True
 BASE_DIR = 'clean-wmap-planck-02052024/'
 
-file = 'wmap_fit_cp_cp_prior/'
+file = 'wmap_fit_cp_cp_prior_l_above_124/'
 wmap_data = np.loadtxt('cosmology-data/wmap_binned.txt')
 lwmap_raw, wmap_unbinned, _, _, _ = np.loadtxt(
     'cosmology-data/wmap_unbinned.txt', unpack=True)
@@ -20,7 +20,7 @@ lwmap_raw, wmap_unbinned, _, _, _ = np.loadtxt(
 bins = np.array([wmap_data[:, 1], wmap_data[:, 2]]).T
 lwmap = wmap_data[:, 0]
 
-mask = lwmap > 0
+mask = lwmap > 124
 lwmap = lwmap[mask]
 bins = bins[mask]
 
@@ -53,7 +53,7 @@ from anesthetic import read_chains
 def signal():
     def signal_func(_, parameters):
         cl, sample = cmbs.get_samples(lwmap, parameters, 
-                noise=wmap_noise, cp=True, bins=bins)
+                noise=wnoise, cp=True, bins=bins)
         return sample*(lwmap*(lwmap+1))/(2*np.pi)
     return signal_func
 
@@ -64,12 +64,13 @@ samples = samples.compress()
 
 names = ['p' + str(i) for i in range(5)]
 samples = samples[names].values
-plot_lines(signal, lwmap, samples, axes, color='r')
+sf = signal()
+plot_lines(sf, lwmap, samples, axes, color='r')
 plt.plot(lwmap, wmap_binned_like_wmap*(lwmap*(lwmap+1))/(2*np.pi), 
          c='k', label='wmap')
 plt.xlabel(r'$l$')
 plt.ylabel(r'$C_l$')
 plt.legend()
 plt.tight_layout()
-plt.savefig(BASE_DIR + 'wmap_fit_cp.png', dpi=300)
+plt.savefig(BASE_DIR + file + 'wmap_fit_cp.png', dpi=300)
 plt.show()

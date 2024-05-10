@@ -14,7 +14,7 @@ RESUME = True
 BASE_DIR = 'clean-wmap-planck-02052024/'
 data_label = ''
 
-file = 'fit_wmap_binned_planck_cp_cp_prior/'
+file = 'fit_wmap_binned_planck_cp_cp_prior_l_above_124/'
 wmap_data = np.loadtxt('cosmology-data/wmap_binned.txt')
 lplanck, signal_planck, _, _ = np.loadtxt(
     'cosmology-data/planck_unbinned.txt', unpack=True)
@@ -22,7 +22,7 @@ lplanck, signal_planck, _, _ = np.loadtxt(
 bins = np.array([wmap_data[:, 1], wmap_data[:, 2]]).T
 lwmap = wmap_data[:, 0]
 
-mask = lwmap > 0
+mask = lwmap > 124
 lwmap = lwmap[mask]
 bins = bins[mask]
 
