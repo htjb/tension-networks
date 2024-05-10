@@ -2,6 +2,9 @@ import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt 
 from pypolychord.priors import UniformPrior, LogUniformPrior
+import matplotlib as mpl
+from matplotlib import rc
+
 
 def calcualte_stats(Rs, sigma_Rs, c):
     """
@@ -95,3 +98,14 @@ def cosmopower_prior():
     prior_mins = [0.005, 0.001, 0.7, 1.61, 0.2]
     prior_maxs = [0.04, 0.99, 1.3, 5, 1.0]
     return parameters, prior_mins, prior_maxs
+
+def plotting_preamble():
+
+    mpl.rcParams['axes.prop_cycle'] = mpl.cycler('color',
+        ['ff7f00', '984ea3', '999999', '377eb8', '4daf4a','f781bf', 'a65628', 'e41a1c', 'dede00'])
+    mpl.rcParams['text.usetex'] = True
+    rc('font', family='serif')
+    rc('font', serif='cm')
+    rc('savefig', pad_inches=0.05)
+
+    plt.rc('text.latex', preamble=r'\usepackage{amsmath} \usepackage{amssymb}')
