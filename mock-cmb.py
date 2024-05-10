@@ -17,6 +17,7 @@ from scipy.stats import ecdf
 import os
 from tensionnet.utils import plotting_preamble
 from tensionnet.tensionnet import nre
+import yaml
 
 plotting_preamble()
 
@@ -24,11 +25,13 @@ plotting_preamble()
 ############################ Constants ###################################
 ##########################################################################
 
-ndims = 5
-nderived = 0
-RESUME = False
-RETRAIN = True
-BASE_DIR = 'CMB-Mock-Data/'
+config = yaml.load(open('mock-cmb.yaml', 'r'), Loader=yaml.FullLoader)
+
+ndims = config['polychord']['ndims']
+nderived = config['polychord']['nderived']
+RESUME = config['polychord']['resume']
+RETRAIN = config['nre']['retrain']
+BASE_DIR = config['base_dir']
 
 if not os.path.exists(BASE_DIR):
     os.makedirs(BASE_DIR)
@@ -39,7 +42,7 @@ if not os.path.exists(BASE_DIR):
 ################### for theoretical CMB power spectra ####################
 ##########################################################################
 
-path = '/Users/harrybevins/Documents/Software/cosmopower'
+path = config['cosmopower_path']
 cp_nn = cp.cosmopower_NN(restore=True, 
                 restore_filename= path \
                 +'/cosmopower/trained_models/CP_paper/CMB/cmb_TT_NN')
@@ -69,26 +72,40 @@ def gen(parameters, lobs, bins):
 #################### Generate pretend data ###############################
 ##########################################################################
 
-generator = jointClGenCP('/Users/harrybevins/Documents/Software/cosmopower')
+generator = jointClGenCP(config['cosmopower_path'])
 wmap_data = np.loadtxt('cosmology-data/wmap_binned.txt')
 bins = np.array([wmap_data[:, 1], wmap_data[:, 2]]).T
 lwmap = wmap_data[:, 0]
-
 pnoise = planck_noise(lwmap).calculate_noise()
 wnoise = wmap_noise(lwmap).calculate_noise()
 
-samples = [0.022, 0.12, 0.96, 3.0448, 0.674]
-pobs, wobs, cltheory = generator(samples, lwmap, bins)
+if config['mock_data']['params']:
+    samples = config['mock_data']['params']
+    pobs, wobs, cltheory = generator(samples, lwmap, bins)
+else:
+    print('Real data not implemented yet.')
+    exit()
+
+lcut = config['lcut']
+if lcut:
+    mask = lwmap > lcut
+    lwmap = lwmap[mask]
+    bins = bins[mask]
+    pobs = pobs[mask]
+    wobs = wobs[mask]
+    pnoise = pnoise[mask]
+    wnoise = wnoise[mask]
 
 ############################################################################
 ######################## Define likelihoods ################################
 ############################################################################
 
-parameters, prior_mins, prior_maxs = cosmopower_prior()
+if config['prior']['name'] == 'cosmopower_prior':
+    parameters, prior_mins, prior_maxs = cosmopower_prior()
 
 cmbs = CMB(parameters=parameters, prior_mins=prior_mins,
 		           prior_maxs=prior_maxs,
-                   path_to_cp='/Users/harrybevins/Documents/Software/cosmopower')
+                   path_to_cp=config['cosmopower_path'])
 
 wmaplikelihood = cmbs.get_likelihood(wobs, lwmap,
                                 noise=wnoise, cp=True, bins=bins)
@@ -96,6 +113,10 @@ prior = cmbs.prior
 
 plancklikelihood = cmbs.get_likelihood(pobs, lwmap,
                                 noise=pnoise, cp=True, bins=bins)
+
+if config['joint_likelihood']['flag']:
+    print('Flagged likelihood not implemented yet.')
+    exit()
 
 def joint_likelihood(theta):
     cltheory = gen(theta, lwmap, bins)
@@ -110,7 +131,7 @@ def joint_likelihood(theta):
 
 file = 'WMAP'
 
-settings = PolyChordSettings(ndims, 0) #settings is an object
+settings = PolyChordSettings(ndims, nderived) #settings is an object
 settings.read_resume = RESUME
 settings.base_dir = BASE_DIR + file + '/'
 
@@ -173,33 +194,33 @@ print('R = ', R, '+/-', errorR)
 ############################### NRE  ####################################
 #########################################################################
 
-plotting_preamble()
+nSamples = config['nre']['nsamples']
 
-nSamples = 50000
-joint = jointClGenCP(path='/Users/harrybevins/Documents/Software/cosmopower')
-
-load_data = True
+load_data = config['nre']['load_data']
 
 def nre_prior(N):
     return np.array([np.random.uniform(prior_mins[i], prior_maxs[i], N) 
                      for i in range(len(parameters))]).T
 
 if load_data:
-    planckExamples = np.load(BASE_DIR + 'planck-examples-50000.npy')
-    wmapExamples = np.load(BASE_DIR + 'wmap-examples-50000.npy')
+    planckExamples = np.load(BASE_DIR + 'planck-examples-'
+                              + str(int(nSamples)) + '.npy')
+    wmapExamples = np.load(BASE_DIR + 'wmap-examples-'
+                              + str(int(nSamples)) + '.npy')
 else:
     pe, we= [], []
     for i in tqdm(range(nSamples//100)):
         samples = nre_prior(100)
-        pobs, wobs, cltheory = joint(samples, lwmap, bins)
+        pobs, wobs, cltheory = generator(samples, lwmap, bins)
         pe.append(pobs)
         we.append(wobs)
     planckExamples = np.vstack(pe)
     wmapExamples = np.vstack(we)
     print(planckExamples.shape, wmapExamples.shape)
-    np.save(BASE_DIR + 'planck-wmap-planck-examples-50000.npy', planckExamples)
-    np.save(BASE_DIR + 'planck-wmap-wmap-examples-50000.npy', wmapExamples)
-
+    np.save(BASE_DIR + 'planck-wmap-planck-examples-'
+                              + str(int(nSamples)) + '.npy', planckExamples)
+    np.save(BASE_DIR + 'planck-wmap-wmap-examples-'
+                              + str(int(nSamples)) + '.npy', wmapExamples)
 
 if RETRAIN:
     import os
@@ -211,9 +232,10 @@ try:
                      simulation_func_A=None, simulation_func_B=None)
 except FileNotFoundError:
 
-    nrei = nre(lr=1e-4)
+    nrei = nre(lr=config['nre']['lr'])
     nrei.build_model(len(lwmap) + len(lwmap), 
-                    [25]*5, 'sigmoid')
+                    config['nre']['nhidden'],
+                    config['nre']['activation'],)
 
     splitIdx = np.arange(len(wmapExamples))
     np.random.shuffle(splitIdx)
