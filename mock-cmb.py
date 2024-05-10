@@ -6,7 +6,7 @@ from pypolychord.priors import UniformPrior
 from pypolychord.settings import PolyChordSettings
 from tensionnet.wmapplanck import jointClGenCP
 from cmblike.noise import planck_noise, wmap_noise
-from tensionnet.utils import rebin, cosmopower_prior
+from tensionnet.utils import rebin, cosmopower_prior, narrow_cosmopower_prior
 from cmblike.cmb import CMB
 from tensionnet.wmapplanck import loglikelihood as jointlikelihood
 import os
@@ -102,6 +102,8 @@ if lcut:
 
 if config['prior']['name'] == 'cosmopower_prior':
     parameters, prior_mins, prior_maxs = cosmopower_prior()
+elif config['prior']['name'] == 'narrow_cosmopower_prior':
+    parameters, prior_mins, prior_maxs = narrow_cosmopower_prior()
 
 cmbs = CMB(parameters=parameters, prior_mins=prior_mins,
 		           prior_maxs=prior_maxs,
