@@ -103,7 +103,7 @@ def loglikelihood(hatCF, hatCG, C, NF, NG, l, flag=None):
             (2*l-1)/2*np.log(hatCF*hatCG)
     B = loghyp0f1(l, np.sqrt(hatCF*hatCG)*C/2/D)
     if flag:
-        delta = C.max()
+        delta = hatCF.max()
         logpenalty = flag
         oneminuspenalty = np.log(1 -np.exp(logpenalty))
         if not np.isfinite(oneminuspenalty):
