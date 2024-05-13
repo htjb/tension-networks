@@ -8,9 +8,6 @@ class BAO():
         
         self.pars = camb.CAMBparams()
         self.data_location = kwargs.pop('data_location', 'bao_data/')
-        self.d12, self.d16, self.d12cov, self.d16cov = \
-              self.get_data(data_location=self.data_location)
-        self.z = np.hstack((self.d12[:, 0], self.d16[:, 0]))[::2]
         self.prior_mins = kwargs.pop('prior_mins', [0.01, 0.08, 0.8, 2.6, 0.5])
         self.prior_maxs = kwargs.pop('prior_maxs', [0.085, 0.21, 1.2, 3.8, 0.9])
 
@@ -44,11 +41,25 @@ class BAO():
         theta[4] = UniformPrior(self.prior_mins[4], 
                                 self.prior_maxs[4])(cube[4]) # H0
         return theta
-    
+
+class SDSS_BAO(BAO):
+    def __init__(self, **kwargs):
+        self.data_location = kwargs.pop('data_location', 'bao_data/')
+        super().__init__(data_location=self.data_location)
+        self.d12, self.d16, self.d12cov, self.d16cov = \
+              self.get_data()
+        self.z = np.hstack((self.d12[:, 0], self.d16[:, 0]))[::2]
+
+    def get_data(self):
+        d12 = np.loadtxt(self.data_location + 'sdss_DR12_LRG_BAO_DMDH.dat',usecols=[0, 1])
+        d16 = np.loadtxt(self.data_location + 'sdss_DR16_LRG_BAO_DMDH.dat',usecols=[0, 1])
+        d12cov = np.loadtxt(self.data_location + 'sdss_DR12_LRG_BAO_DMDH_covtot.txt')
+        d16cov = np.loadtxt(self.data_location + 'sdss_DR16_LRG_BAO_DMDH_covtot.txt')
+        return d12, d16, d12cov, d16cov
+
     def get_camb_model(self, theta):
         self.pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
-                            tau=0.055,
-                            theta_H0_range=[5, 1000], H0=100*theta[4])
+                            tau=0.055, H0=100*theta[4])
         self.pars.InitPower.set_params(As=np.exp(theta[3])/10**10, ns=theta[2])
         self.pars.set_for_lmax(2500, lens_potential_accuracy=0)
         results = camb.get_background(self.pars) # computes evolution of background cosmology
@@ -61,13 +72,6 @@ class BAO():
         datad16 = [da[2]/rs, dh[2]/rs]
 
         return datad12, datad16
-    
-    def get_data(self, data_location='bao_data/'):
-        d12 = np.loadtxt(data_location + 'sdss_DR12_LRG_BAO_DMDH.dat',usecols=[0, 1])
-        d16 = np.loadtxt(data_location + 'sdss_DR16_LRG_BAO_DMDH.dat',usecols=[0, 1])
-        d12cov = np.loadtxt(data_location + 'sdss_DR12_LRG_BAO_DMDH_covtot.txt')
-        d16cov = np.loadtxt(data_location + 'sdss_DR16_LRG_BAO_DMDH_covtot.txt')
-        return d12, d16, d12cov, d16cov
     
     def loglikelihood(self):
         def likelihood(theta):
@@ -87,3 +91,60 @@ class BAO():
         noisey12 = multivariate_normal(mean=datad12, cov=self.d12cov).rvs()
         noisey16 = multivariate_normal(mean=datad16, cov=self.d16cov).rvs()
         return noisey12, noisey16, datad12, datad16
+
+class DESI_BAO(BAO):
+    def __init__(self, **kwargs):
+        self.data_location = kwargs.pop('data_location', 'bao_data/')
+        super().__init__(data_location=self.data_location)
+        self.L1, self.L2, self.L1cov, self.L2cov = self.get_data()
+        self.z = np.array([self.L1[0, 0], self.L2[0, 0]])
+    
+    def get_data(self):
+        L1 = np.loadtxt(self.data_location + 
+                        'desi_2024_gaussian_bao_LRG_GCcomb_z0.4-0.6_mean.txt', 
+                        usecols=[0, 1])
+        L2 = np.loadtxt(self.data_location + 
+                        'desi_2024_gaussian_bao_LRG_GCcomb_z0.6-0.8_mean.txt',
+                        usecols=[0, 1])
+        L1cov = np.loadtxt(self.data_location + 
+                           'desi_2024_gaussian_bao_LRG_GCcomb_z0.4-0.6_cov.txt')
+        L2cov = np.loadtxt(self.data_location + 
+                           'desi_2024_gaussian_bao_LRG_GCcomb_z0.6-0.8_cov.txt')
+        return L1, L2, L1cov, L2cov
+    
+    def get_camb_model(self, theta):
+        self.pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
+                            tau=0.055, H0=100*theta[4])
+        self.pars.InitPower.set_params(As=np.exp(theta[3])/10**10, ns=theta[2])
+        self.pars.set_for_lmax(2500, lens_potential_accuracy=0)
+        results = camb.get_background(self.pars)
+
+        da = (1+self.z) * results.angular_diameter_distance(self.z)
+        dh = 3e5/results.hubble_parameter(self.z)
+        rs = results.get_derived_params()['rdrag']
+
+        datal1 = [da[0]/rs, dh[0]/rs]
+        datal2 = [da[1]/rs, dh[1]/rs]
+
+        return datal1, datal2
+    
+    def loglikelihood(self):
+
+        def likelihood(theta):
+
+            datal1, datal2 = self.get_camb_model(theta)
+
+            Like1 = multivariate_normal(mean=self.L1[:, 1], cov=self.L1cov).logpdf(datal1)
+            Like2 = multivariate_normal(mean=self.L2[:, 1], cov=self.L2cov).logpdf(datal2)
+
+            logl = Like1 + Like2
+            return logl, []
+        return likelihood
+    
+    def get_sample(self, theta):
+        datal1, datal2 = self.get_camb_model(theta)
+
+        noiseyL1 = multivariate_normal(mean=datal1, cov=self.L1cov).rvs()
+        noiseyL2 = multivariate_normal(mean=datal2, cov=self.L2cov).rvs()
+        return noiseyL1, noiseyL2, datal1, datal2
+
