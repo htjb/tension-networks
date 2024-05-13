@@ -27,8 +27,10 @@ plotting_preamble()
 ############################ Constants ###################################
 ##########################################################################
 print('Setting Constants...')
-#config = yaml.load(open('mock-cmb.yaml', 'r'), Loader=yaml.FullLoader)
-config = yaml.load(open('cmb.yaml', 'r'), Loader=yaml.FullLoader)
+
+config_file_name = 'cmb.yaml'
+
+config = yaml.load(open(config_file_name, 'r'), Loader=yaml.FullLoader)
 
 np.random.seed(config['seed'])
 tf.random.set_seed(config['seed'])
@@ -41,6 +43,8 @@ BASE_DIR = config['base_dir']
 
 if not os.path.exists(BASE_DIR):
     os.makedirs(BASE_DIR)
+
+os.system('cp ' + config_file_name + ' ' + BASE_DIR + config_file_name)
 
 
 ##########################################################################
