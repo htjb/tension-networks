@@ -17,7 +17,7 @@ from tqdm import tqdm
 import tensorflow as tf
 from scipy.stats import ecdf
 import os
-from tensionnet.utils import plotting_preamble
+from tensionnet.utils import plotting_preamble, calcualte_stats
 from tensionnet.tensionnet import nre
 import yaml
 
@@ -364,38 +364,37 @@ nrei.__call__(iters=data_validation)
 r = nrei.r_values
 mask = np.isfinite(r)
 
-fig, axes = plt.subplots(2, 2, figsize=(6.3, 6.3))
-axes[0, 0].hist(r[mask], bins=25,density=True)
-#axes[0, 0].axvline(Rs, ls='--', c='r')
-axes[0, 0].set_title('No. Sig. ' + r'$=$ ' + str(len(r[mask])))
-axes[0, 0].set_xlabel(r'$\log R$')
-axes[0, 0].set_ylabel('Density')
+fig, axes = plt.subplots(1, 2, figsize=(6.3, 4))
+axes[0].hist(r[mask], bins=25,density=True)
+axes[0].set_xlabel(r'$\log R$')
+axes[0].set_ylabel('Density')
+axes[0].axvline(R, ls='--', c='r')
+axes[0].axvspan(R - errorR, R + errorR, alpha=0.1, color='r')
 
 rsort  = np.sort(r[mask])
 c = ecdf(rsort)
 
-axes[0, 1].plot(rsort, c.cdf.evaluate(rsort)) 
-axes[0, 1].axhline(c.cdf.evaluate(R), ls='--',
+axes[1].plot(rsort, c.cdf.evaluate(rsort)) 
+axes[1].axhline(c.cdf.evaluate(R), ls='--',
         color='r')
-axes[0, 1].axhspan(c.cdf.evaluate(R - errorR), 
+axes[1].axhspan(c.cdf.evaluate(R - errorR), 
         c.cdf.evaluate(R + errorR), 
         alpha=0.1, 
         color='r')
-axes[0, 1].set_xlabel(r'$\log R$')
-axes[0, 1].set_ylabel(r'$P(\log R < \log R^\prime)$')
+axes[1].set_xlabel(r'$\log R$')
+axes[1].set_ylabel(r'$P(\log R < \log R^\prime)$')
 
-axes[0, 0].axvline(R, ls='--', c='r')
-axes[0, 0].axvspan(R - errorR, R + errorR, alpha=0.1, color='r')
-
-axes[0, 1].axhline(c.cdf.evaluate(R), ls='--',
+axes[1].axhline(c.cdf.evaluate(R), ls='--',
             color='r')
-axes[0, 1].axhspan(c.cdf.evaluate(R - errorR),
+axes[1].axhspan(c.cdf.evaluate(R - errorR),
             c.cdf.evaluate(R + errorR),
             alpha=0.1,
             color='r')
 
+stats = calcualte_stats(R, errorR, c)
+print(stats)
+
 plt.tight_layout()
 plt.savefig(BASE_DIR + 'wmap_planck.pdf', bbox_inches='tight')
-#plt.show()
 plt.close()
 

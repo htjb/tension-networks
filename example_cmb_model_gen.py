@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pypolychord.priors import UniformPrior
-import camb
+import cosmopower as cp
 import healpy as hp
 from cmblike.data import get_data
 from cmblike.noise import planck_noise, wmap_noise
@@ -17,43 +17,52 @@ rc('savefig', pad_inches=0.05)
 
 plt.rc('text.latex', preamble=r'\usepackage{amsmath} \usepackage{amssymb}')
 
-p, l = get_data(base_dir='cosmology-data/').get_planck()
+path = '/Users/harrybevins/Documents/Software/cosmopower'
 
-def wide_prior(cube):
-    # wide prior apart from tau which I left tight
-    theta = np.zeros(len(cube))
-    theta[0] = UniformPrior(0.01, 0.085)(cube[0]) # omegabh2
-    theta[1] = UniformPrior(0.08, 0.21)(cube[1]) # omegach2
-    theta[2] = UniformPrior(0.97, 1.5)(cube[2]) # 100*thetaMC
-    theta[3] = UniformPrior(0.01, 0.16)(cube[3]) # tau
-    theta[4] = UniformPrior(0.8, 1.2)(cube[4]) # ns
-    theta[5] = UniformPrior(2.6, 3.8)(cube[5]) # log(10^10*As)
-    return theta
-
-pars = camb.CAMBparams()
+cp_nn = cp.cosmopower_NN(restore=True, 
+        restore_filename= path \
+        +'/cosmopower/trained_models/CP_paper/CMB/cmb_TT_NN')
 
 import matplotlib.gridspec as gridspec
 
 fig = plt.figure(figsize=(6.3, 6.3))
 spec = gridspec.GridSpec(ncols=2, nrows=3, figure=fig)
 
-theta = wide_prior(np.random.rand(6))
+parameters = [0.022, 0.12, 0.96, 3.0448, 0.674]
 
-pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
-                            tau=theta[3], cosmomc_theta=theta[2]/100,
-                            theta_H0_range=[5, 1000])
-pars.InitPower.set_params(As=np.exp(theta[5])/10**10, ns=theta[4])
-pars.set_for_lmax(2500, lens_potential_accuracy=0)
-results = camb.get_background(pars) # computes evolution of background cosmology
+if type(parameters) == list:
+    parameters = np.array(parameters)
 
-cl = results.get_cmb_power_spectra(pars, CMB_unit='muK')['total'][:,0]
-#cl = np.interp(l, np.arange(len(cl)), cl)
-cl *= 2*np.pi/(np.arange(len(cl))*(np.arange(len(cl))+1))
-cl = cl[1:]
-lgen = np.arange(len(cl))
+if parameters.ndim < 2:
+    parameters = np.array([parameters])
 
+params = {'omega_b': parameters[:, 0],
+    'omega_cdm': parameters[:, 1],
+    'h': parameters[:, -1],
+    'n_s': parameters[:, 2],
+    'tau_reio': [0.055]*len(parameters[:, 0]),
+    'ln10^{10}A_s': parameters[:, 3],
+    }
+
+cl = cp_nn.ten_to_predictions_np(params)[0]*1e12*2.7255**2
+lgen = cp_nn.modes
 
 pnoise = planck_noise(lgen).calculate_noise()
+wnoise = wmap_noise(lgen).calculate_noise()
+
+pnalm = hp.synalm(pnoise)
+wnalm = hp.synalm(wnoise)
+
+def rebin(signal, bins):
+            indices = bins - 2
+            binned_signal = []
+            for i in range(len(indices)):
+                if indices[i, 0] == indices[i, 1]:
+                    binned_signal.append(signal[int(indices[i, 0])])
+                else:
+                    binned_signal.append(
+                        np.mean(signal[int(indices[i, 0]):int(indices[i, 1])+1]))
+            return np.array(binned_signal)
 
 alm = hp.synalm(cl)
 axalm = fig.add_subplot(spec[0, :])
@@ -69,15 +78,18 @@ m = hp.alm2map(nalm, nside=2064,)
 hp.mollview(m, hold=True, cmap='jet', title='Planck Noise', unit=r'\small$\mu K$')
 obscl = hp.alm2cl(alm+nalm)
 
-obscl = np.interp(l, np.arange(len(obscl)), obscl)
+wmap_data = np.loadtxt('cosmology-data/wmap_binned.txt')
+bins = np.array([wmap_data[:, 1], wmap_data[:, 2]]).T
+lwmap = wmap_data[:, 0]
 
-#cl = np.interp(l, np.arange(len(cl)), cl)
+obscl = rebin(obscl, bins)
+
 axclp = fig.add_subplot(spec[2, 0])
 axclp.plot(lgen, cl*(lgen*(lgen+1))/(2*np.pi), label='Theory')
 
-pnoise = np.interp(l, np.arange(len(pnoise)), pnoise)
-A = (l*(l+1))/(2*np.pi)
-axclp.plot(l, (obscl - pnoise)*A, label='Obs. Planck')
+pnoise = rebin(pnoise, bins)
+A = (lwmap*(lwmap+1))/(2*np.pi)
+axclp.plot(lwmap, obscl*A, label='Obs. Planck')
 
 noise = wmap_noise(lgen).calculate_noise()
 
@@ -88,14 +100,12 @@ m = hp.alm2map(nalm, nside=2064,)
 hp.mollview(m, hold=True, cmap='jet', title='WMAP Noise', unit=r'\small $\mu K$')
 obscl = hp.alm2cl(alm+nalm)
 
-wmap, lwmap = get_data(base_dir='cosmology-data/').get_wmap()
-obscl = np.interp(lwmap, np.arange(len(obscl)), obscl)
-noise = np.interp(lwmap, np.arange(len(noise)), noise)
+obscl = rebin(obscl, bins)
 A = (lwmap*(lwmap+1))/(2*np.pi)
 
 axclw = fig.add_subplot(spec[2, 1])
 axclw.plot(lgen, cl*(lgen*(lgen+1))/(2*np.pi))
-axclw.plot(lwmap, (obscl - noise)*A, label='Obs. WMAP')
+axclw.plot(lwmap, obscl*A, label='Obs. WMAP')
 
 axclw.legend()
 axclp.legend()
