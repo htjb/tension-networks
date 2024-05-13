@@ -1,4 +1,4 @@
-base_dir: 'CMB_lcut_124/'
+base_dir: 'CMB_lcut_124_conservative_prior/'
 cosmopower_path: '/Users/harry/Documents/Software/cosmopower'
 lcut: 124 # integer minimum l to consider
 seed: 42
@@ -7,7 +7,7 @@ mock_data:
   params: null
 
 prior:
-  name: 'narrow_cosmopower_prior'
+  name: 'conservative_prior'
 
 joint_likelihood:
   flag: False
@@ -15,12 +15,12 @@ joint_likelihood:
 polychord:
   ndims: 5
   nderived: 0
-  resume: False
+  resume: True
 
 nre:
   retrain: True
   nsamples: 50000
-  load_data: True # whether or not to use precalcualted data
+  load_data: False # whether or not to use precalcualted data
   lr: 1e-4
-  nhidden: [25]*5
+  nhidden: [25, 25, 25, 25, 25]
   activation: 'sigmoid'

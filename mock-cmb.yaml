@@ -1,6 +1,6 @@
 base_dir: 'CMB-Mock-Data/'
 cosmopower_path: '/Users/harry/Documents/Software/cosmopower'
-lcut: 0 # integer minimum l to consider
+lcut: null # integer minimum l to consider
 seed: 42
 
 mock_data:

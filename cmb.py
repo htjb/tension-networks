@@ -6,7 +6,9 @@ from pypolychord.priors import UniformPrior
 from pypolychord.settings import PolyChordSettings
 from tensionnet.wmapplanck import jointClGenCP
 from cmblike.noise import planck_noise, wmap_noise
-from tensionnet.utils import rebin, cosmopower_prior, narrow_cosmopower_prior
+from tensionnet.utils import (rebin, 
+                cosmopower_prior, narrow_cosmopower_prior,
+                convservative_prior)
 from cmblike.cmb import CMB
 from tensionnet.wmapplanck import loglikelihood as jointlikelihood
 import os
@@ -25,7 +27,8 @@ plotting_preamble()
 ############################ Constants ###################################
 ##########################################################################
 print('Setting Constants...')
-config = yaml.load(open('mock-cmb.yaml', 'r'), Loader=yaml.FullLoader)
+#config = yaml.load(open('mock-cmb.yaml', 'r'), Loader=yaml.FullLoader)
+config = yaml.load(open('cmb.yaml', 'r'), Loader=yaml.FullLoader)
 
 np.random.seed(config['seed'])
 tf.random.set_seed(config['seed'])
@@ -90,7 +93,9 @@ if config['polychord']['resume']:
 else:
     if config['mock_data']['params']:
         samples = config['mock_data']['params']
-        pobs, wobs, cltheory = generator(samples, lwmap, bins)
+        pobs, wobs, _ = generator(samples, lwmap, bins)
+        pobs = pobs[0] - pnoise # generated with noise but likelihoods take without
+        wobs = wobs[0] - wnoise # generated with noise but likelihoods take without
     else:
         lwmap_raw, wmap_unbinned, _, _, _ = np.loadtxt(
             'cosmology-data/wmap_unbinned.txt', unpack=True)
@@ -102,7 +107,6 @@ else:
 
     np.save(BASE_DIR + 'pobs.npy', pobs)
     np.save(BASE_DIR + 'wobs.npy', wobs)
-
 
 lcut = config['lcut']
 if lcut:
@@ -122,6 +126,8 @@ if config['prior']['name'] == 'cosmopower_prior':
     parameters, prior_mins, prior_maxs = cosmopower_prior()
 elif config['prior']['name'] == 'narrow_cosmopower_prior':
     parameters, prior_mins, prior_maxs = narrow_cosmopower_prior()
+elif config['prior']['name'] == 'conservative_prior':
+    parameters, prior_mins, prior_maxs = convservative_prior()
 
 cmbs = CMB(parameters=parameters, prior_mins=prior_mins,
 		           prior_maxs=prior_maxs,
@@ -199,9 +205,9 @@ wmap_chains = read_chains(BASE_DIR + 'WMAP/test')
 planck_chains = read_chains(BASE_DIR + 'Planck/test')
 joint_chains = read_chains(BASE_DIR + 'Joint/test')
 
-wmap_Z = wmap_chains.legZ(1000)
-planck_Z = planck_chains.legZ(1000)
-joint_Z = joint_chains.legZ(1000)
+wmap_Z = wmap_chains.logZ(1000)
+planck_Z = planck_chains.logZ(1000)
+joint_Z = joint_chains.logZ(1000)
 
 Rs = joint_Z - wmap_Z - planck_Z
 
@@ -237,9 +243,9 @@ else:
     planckExamples = np.vstack(pe)
     wmapExamples = np.vstack(we)
     print(planckExamples.shape, wmapExamples.shape)
-    np.save(BASE_DIR + 'planck-wmap-planck-examples-'
+    np.save(BASE_DIR + 'planck-examples-'
                               + str(int(nSamples)) + '.npy', planckExamples)
-    np.save(BASE_DIR + 'planck-wmap-wmap-examples-'
+    np.save(BASE_DIR + 'wmap-examples-'
                               + str(int(nSamples)) + '.npy', wmapExamples)
 
 if RETRAIN:
@@ -252,7 +258,7 @@ try:
                      simulation_func_A=None, simulation_func_B=None)
 except FileNotFoundError:
 
-    nrei = nre(lr=config['nre']['lr'])
+    nrei = nre(lr=float(config['nre']['lr']))
     nrei.build_model(len(lwmap) + len(lwmap), 
                     config['nre']['nhidden'],
                     config['nre']['activation'],)
