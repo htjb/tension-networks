@@ -99,6 +99,18 @@ def cosmopower_prior():
     prior_maxs = [0.04, 0.99, 1.3, 5, 1.0]
     return parameters, prior_mins, prior_maxs
 
+def narrow_cosmopower_prior():
+    parameters = ['omegabh2', 'omegach2', 'ns', 'As', 'h']
+    prior_mins = [0.005, 0.001, 0.8, 1.61, 0.5]
+    prior_maxs = [0.04, 0.5, 1.2, 3.91, 0.9]
+    return parameters, prior_mins, prior_maxs
+
+def convservative_prior():
+    parameters = ['omegabh2', 'omegach2', 'ns', 'As', 'h']
+    prior_mins = [0.01, 0.08, 0.8, 2.6, 0.5]
+    prior_maxs = [0.04, 0.21, 1.2, 3.8, 0.8]
+    return parameters, prior_mins, prior_maxs
+
 def plotting_preamble():
 
     mpl.rcParams['axes.prop_cycle'] = mpl.cycler('color',
