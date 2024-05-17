@@ -74,6 +74,7 @@ errorR = R.std()
 print('Running NRE...')
 nSamples = 5000
 load_data = True
+norm = 'standard'
 
 def nre_prior(N):
     return np.array([np.random.uniform(prior_mins[i], prior_maxs[i], N) 
@@ -133,16 +134,32 @@ def simulation(theta):
     data_validationA = data_validation[:, :len(da[0])]
     data_validationB = data_validation[:, len(da[0]):]
 
-    data_testA = (data_testA - data_trainA.mean(axis=0)) / \
-        data_trainA.std(axis=0)
-    data_testB = (data_testB - data_trainB.mean(axis=0)) / \
-        data_trainB.std(axis=0)
-    data_validationA = (data_validationA - data_trainA.mean(axis=0)) / \
-        data_trainA.std(axis=0)
-    data_trainA = (data_trainA - data_trainA.mean(axis=0)) / \
-        data_trainA.std(axis=0)
-    data_trainB = (data_trainB - data_trainB.mean(axis=0)) / \
-        data_trainB.std(axis=0)
+    if norm == 'standard':
+        data_testA = (data_testA - data_trainA.mean(axis=0)) / \
+            data_trainA.std(axis=0)
+        data_testB = (data_testB - data_trainB.mean(axis=0)) / \
+            data_trainB.std(axis=0)
+        data_validationA = (data_validationA - data_trainA.mean(axis=0)) / \
+            data_trainA.std(axis=0)
+        data_validationB = (data_validationB - data_trainB.mean(axis=0)) / \
+            data_trainB.std(axis=0)
+        data_trainA = (data_trainA - data_trainA.mean(axis=0)) / \
+            data_trainA.std(axis=0)
+        data_trainB = (data_trainB - data_trainB.mean(axis=0)) / \
+            data_trainB.std(axis=0)
+    elif norm == 'minmax':
+        data_testA = (data_testA - data_trainA.min(axis=0)) / \
+            (data_trainA.max(axis=0) - data_trainA.min(axis=0))
+        data_testB = (data_testB - data_trainB.min(axis=0)) / \
+            (data_trainB.max(axis=0) - data_trainB.min(axis=0))
+        data_validationA = (data_validationA - data_trainA.min(axis=0)) / \
+            (data_trainA.max(axis=0) - data_trainA.min(axis=0))
+        data_validationB = (data_validationB - data_trainB.min(axis=0)) / \
+            (data_trainB.max(axis=0) - data_trainB.min(axis=0))
+        data_trainA = (data_trainA - data_trainA.min(axis=0)) / \
+            (data_trainA.max(axis=0) - data_trainA.min(axis=0))
+        data_trainB = (data_trainB - data_trainB.min(axis=0)) / \
+            (data_trainB.max(axis=0) - data_trainB.min(axis=0))
 
     data_train = np.hstack([data_trainA, data_trainB])
     data_test = np.hstack([data_testA, data_testB])
@@ -158,9 +175,9 @@ from tensorflow.keras.optimizers.schedules import ExponentialDecay
 lr = ExponentialDecay(1e-3, 1000, 0.9)
 #lr = tf.keras.optimizers.schedules.CosineDecay(1e-3, 1000, warmup_target=1e-1, warmup_steps=1000)
 nrei = nre(lr=lr)
-nrei.build_model(6+4, [4]*2, 'sigmoid')
-#nrei.build_compress_model(5, 5, [5, 2], [4],
-#        activation='sigmoid', compress='both', use_bias=True,)
+#nrei.build_model(6+4, [4]*2, 'sigmoid')
+nrei.build_compress_model(5, 5, [5, 2], [4],
+        activation='sigmoid', compress='both', use_bias=True,)
 
 if load_data:
     data_train = np.load('All_the_BAOs/data_train.npy')
