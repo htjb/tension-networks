@@ -50,7 +50,7 @@ class SDSS_BAO(BAO):
         #      self.get_data()
         self.d12, self.d12cov = self.get_data()
         #self.z = np.hstack((self.d12[:, 0], self.d16[:, 0]))[::2]
-        self.z = self.d12[:, 0]
+        self.z = self.d12[:, 0][::2]
 
     def get_data(self):
         d12 = np.loadtxt(self.data_location + 'sdss_DR12_LRG_BAO_DMDH.dat',usecols=[0, 1])
@@ -104,7 +104,7 @@ class DESI_BAO(BAO):
         #self.L1, self.L2, self.L1cov, self.L2cov = self.get_data()
         #self.z = np.array([self.L1[0, 0], self.L2[0, 0]])
         self.L2, self.L2cov = self.get_data()
-        self.z = self.L2[:, 0]
+        self.z = self.L2[:, 0][::2]
     
     def get_data(self):
         #L1 = np.loadtxt(self.data_location + 
