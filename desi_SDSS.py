@@ -79,7 +79,7 @@ errorR = R.std()
 
 print('Running NRE...')
 nSamples = 100000
-load_data = True
+load_data = False
 
 def nre_prior(N):
     return np.array([np.random.uniform(prior_mins[i], prior_maxs[i], N) 
