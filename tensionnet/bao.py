@@ -46,16 +46,18 @@ class SDSS_BAO(BAO):
     def __init__(self, **kwargs):
         self.data_location = kwargs.pop('data_location', 'bao_data/')
         super().__init__(data_location=self.data_location)
-        self.d12, self.d16, self.d12cov, self.d16cov = \
-              self.get_data()
-        self.z = np.hstack((self.d12[:, 0], self.d16[:, 0]))[::2]
+        #self.d12, self.d12cov, self.d16, self.d16cov = \
+        #      self.get_data()
+        self.d12, self.d12cov = self.get_data()
+        #self.z = np.hstack((self.d12[:, 0], self.d16[:, 0]))[::2]
+        self.z = self.d12[:, 0]
 
     def get_data(self):
         d12 = np.loadtxt(self.data_location + 'sdss_DR12_LRG_BAO_DMDH.dat',usecols=[0, 1])
-        d16 = np.loadtxt(self.data_location + 'sdss_DR16_LRG_BAO_DMDH.dat',usecols=[0, 1])
+        #d16 = np.loadtxt(self.data_location + 'sdss_DR16_LRG_BAO_DMDH.dat',usecols=[0, 1])
         d12cov = np.loadtxt(self.data_location + 'sdss_DR12_LRG_BAO_DMDH_covtot.txt')
-        d16cov = np.loadtxt(self.data_location + 'sdss_DR16_LRG_BAO_DMDH_covtot.txt')
-        return d12, d16, d12cov, d16cov
+        #d16cov = np.loadtxt(self.data_location + 'sdss_DR16_LRG_BAO_DMDH_covtot.txt')
+        return d12, d12cov,# d16, d16cov
 
     def get_camb_model(self, theta):
         self.pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
@@ -69,48 +71,54 @@ class SDSS_BAO(BAO):
         rs = results.get_derived_params()['rdrag'] # Mpc
 
         datad12 = [da[0]/rs, dh[0]/rs, da[1]/rs, dh[1]/rs]
-        datad16 = [da[2]/rs, dh[2]/rs]
+        #datad16 = [da[2]/rs, dh[2]/rs]
 
-        return datad12, datad16
+        return datad12#, datad16
     
     def loglikelihood(self):
         def likelihood(theta):
 
-            datad12, datad16 = self.get_camb_model(theta)
+            #datad12, datad16 = self.get_camb_model(theta)
+            datad12 = self.get_camb_model(theta)
 
             L1 = multivariate_normal(mean=self.d12[:, 1], cov=self.d12cov).logpdf(datad12)
-            L2 = multivariate_normal(mean=self.d16[:, 1], cov=self.d16cov).logpdf(datad16)
+            #L2 = multivariate_normal(mean=self.d16[:, 1], cov=self.d16cov).logpdf(datad16)
 
-            logl = L1 + L2
+            logl = L1# + L2
             return logl, []
         return likelihood
     
     def get_sample(self, theta):
-        datad12, datad16 = self.get_camb_model(theta)
+        #datad12, datad16 = self.get_camb_model(theta)
+        datad12 = self.get_camb_model(theta)
 
         noisey12 = multivariate_normal(mean=datad12, cov=self.d12cov).rvs()
-        noisey16 = multivariate_normal(mean=datad16, cov=self.d16cov).rvs()
-        return noisey12, noisey16, datad12, datad16
+        #noisey16 = multivariate_normal(mean=datad16, cov=self.d16cov).rvs()
+        #return noisey12, noisey16, datad12, datad16
+        return noisey12, datad12
 
 class DESI_BAO(BAO):
     def __init__(self, **kwargs):
         self.data_location = kwargs.pop('data_location', 'bao_data/')
         super().__init__(data_location=self.data_location)
-        self.L1, self.L2, self.L1cov, self.L2cov = self.get_data()
-        self.z = np.array([self.L1[0, 0], self.L2[0, 0]])
+        #self.L1, self.L2, self.L1cov, self.L2cov = self.get_data()
+        #self.z = np.array([self.L1[0, 0], self.L2[0, 0]])
+        self.L2, self.L2cov = self.get_data()
+        self.z = self.L2[:, 0]
     
     def get_data(self):
-        L1 = np.loadtxt(self.data_location + 
-                        'desi_2024_gaussian_bao_LRG_GCcomb_z0.4-0.6_mean.txt', 
-                        usecols=[0, 1])
+        #L1 = np.loadtxt(self.data_location + 
+        #                'desi_2024_gaussian_bao_LRG_GCcomb_z0.4-0.6_mean.txt', 
+        #                usecols=[0, 1])
         L2 = np.loadtxt(self.data_location + 
                         'desi_2024_gaussian_bao_LRG_GCcomb_z0.6-0.8_mean.txt',
                         usecols=[0, 1])
-        L1cov = np.loadtxt(self.data_location + 
-                           'desi_2024_gaussian_bao_LRG_GCcomb_z0.4-0.6_cov.txt')
+        #L1cov = np.loadtxt(self.data_location + 
+        #                   'desi_2024_gaussian_bao_LRG_GCcomb_z0.4-0.6_cov.txt')
         L2cov = np.loadtxt(self.data_location + 
                            'desi_2024_gaussian_bao_LRG_GCcomb_z0.6-0.8_cov.txt')
-        return L1, L2, L1cov, L2cov
+        #return L1, L2, L1cov, L2cov
+        return L2, L2cov
     
     def get_camb_model(self, theta):
         self.pars.set_cosmology(ombh2=theta[0], omch2=theta[1],
@@ -123,28 +131,33 @@ class DESI_BAO(BAO):
         dh = 3e5/results.hubble_parameter(self.z)
         rs = results.get_derived_params()['rdrag']
 
-        datal1 = [da[0]/rs, dh[0]/rs]
-        datal2 = [da[1]/rs, dh[1]/rs]
+        datal2 = [da[0]/rs, dh[0]/rs]
+        #datal2 = [da[1]/rs, dh[1]/rs]
 
-        return datal1, datal2
+        #return datal1, datal2
+        return datal2
     
     def loglikelihood(self):
 
         def likelihood(theta):
 
-            datal1, datal2 = self.get_camb_model(theta)
+            #datal1, datal2 = self.get_camb_model(theta)
+            datal2 = self.get_camb_model(theta)
 
-            Like1 = multivariate_normal(mean=self.L1[:, 1], cov=self.L1cov).logpdf(datal1)
+            #Like1 = multivariate_normal(mean=self.L1[:, 1], cov=self.L1cov).logpdf(datal1)
             Like2 = multivariate_normal(mean=self.L2[:, 1], cov=self.L2cov).logpdf(datal2)
 
-            logl = Like1 + Like2
+            #logl = Like1 + Like2
+            logl = Like2
             return logl, []
         return likelihood
     
     def get_sample(self, theta):
-        datal1, datal2 = self.get_camb_model(theta)
+        #datal1, datal2 = self.get_camb_model(theta)
+        datal2 = self.get_camb_model(theta)
 
-        noiseyL1 = multivariate_normal(mean=datal1, cov=self.L1cov).rvs()
+        #noiseyL1 = multivariate_normal(mean=datal1, cov=self.L1cov).rvs()
         noiseyL2 = multivariate_normal(mean=datal2, cov=self.L2cov).rvs()
-        return noiseyL1, noiseyL2, datal1, datal2
+        #return noiseyL1, noiseyL2, datal1, datal2
+        return noiseyL2, datal2
 

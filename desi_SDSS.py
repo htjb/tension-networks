@@ -8,6 +8,12 @@ import camb
 import tensorflow as tf
 import random
 from tqdm import tqdm
+import os
+
+
+BASE_DIR = 'desi_sdss_independent_observations/'
+if not os.path.exists(BASE_DIR):
+    os.makedirs(BASE_DIR)
 
 prior_mins = [0.005, 0.001, 0.8, 1.61, 0.5]
 prior_maxs = [0.1, 0.99, 1.2, 3.91, 0.9]
@@ -16,7 +22,7 @@ desi_baos = DESI_BAO(data_location='cosmology-data/bao_data/',
 prior = desi_baos.prior
 desi_likelihood = desi_baos.loglikelihood()
 
-file = 'All_the_BAOs/DESI/'
+file = BASE_DIR + 'DESI/'
 RESUME = True
 if RESUME is False:
     import os, shutil
@@ -29,7 +35,7 @@ sdss_baos = SDSS_BAO(data_location='cosmology-data/bao_data/',
             prior_mins=prior_mins, prior_maxs=prior_maxs)
 sdss_likelihood = sdss_baos.loglikelihood()
 
-file = 'All_the_BAOs/SDSS/'
+file = BASE_DIR + 'SDSS/'
 RESUME = True
 if RESUME is False:
     import os, shutil
@@ -43,7 +49,7 @@ def joint_loglikelihood(theta):
     return desi_likelihood(theta)[0] + sdss_likelihood(theta)[0], []
 
 
-file = 'All_the_BAOs/DESI_SDSS/'
+file = BASE_DIR + 'DESI_SDSS/'
 RESUME = True
 if RESUME is False:
     import os, shutil
@@ -58,9 +64,9 @@ run_poly(prior, joint_loglikelihood, file, RESUME=RESUME, nDims=5, nlive=25*5)
 
 from anesthetic import read_chains
 
-joint = read_chains('All_the_BAOs/DESI_SDSS/test')
-desi = read_chains('All_the_BAOs/DESI/test')
-sdss = read_chains('All_the_BAOs/SDSS/test')
+joint = read_chains(BASE_DIR + 'DESI_SDSS/test')
+desi = read_chains(BASE_DIR + 'DESI/test')
+sdss = read_chains(BASE_DIR + 'SDSS/test')
 
 R = (joint.logZ(1000) - desi.logZ(1000) - sdss.logZ(1000))
 R = R.mean()
@@ -72,9 +78,8 @@ errorR = R.std()
 ##############################################################################
 
 print('Running NRE...')
-nSamples = 5000
+nSamples = 100000
 load_data = True
-norm = 'standard'
 
 def nre_prior(N):
     return np.array([np.random.uniform(prior_mins[i], prior_maxs[i], N) 
@@ -84,22 +89,21 @@ def simulation(theta):
     da, dh = [], []
     for i in tqdm(range(len(theta))):
         t = theta[i]
-        sdss_sim = sdss_baos.get_sample(t)[:2]
-        desi_sim = desi_baos.get_sample(t)[:2]
-        da.append([sdss_sim[0][0], sdss_sim[0][2], desi_sim[0][0], 
-                   sdss_sim[1][0], desi_sim[1][0]])
-        dh.append([sdss_sim[0][1], sdss_sim[0][3], desi_sim[0][1], 
-                   sdss_sim[1][1], desi_sim[1][1]])
+        try:
+            sdss_sim = sdss_baos.get_sample(t)[0]
+            desi_sim = desi_baos.get_sample(t)[0]
+            da.append([sdss_sim[0][0], sdss_sim[0][2], desi_sim[0][0]])
+            dh.append([sdss_sim[0][1], sdss_sim[0][3], desi_sim[0][1]])
+        except:
+            pass
     da = np.array(da)
     dh = np.array(dh)
 
     idx = np.arange(len(theta))
     np.random.shuffle(idx)
     
-    shuffled_da = np.hstack([da[:, :2], np.array([da[idx, 2]]).T, 
-                             np.array([da[:, 3]]).T, np.array([da[idx, 4]]).T])
-    shuffled_dh = np.hstack([dh[:, :2], np.array([dh[idx, 2]]).T, 
-                             np.array([dh[:, 3]]).T, np.array([dh[idx, 4]]).T])
+    shuffled_da = np.hstack([da[:, :2], np.array([da[idx, 2]]).T])
+    shuffled_dh = np.hstack([dh[:, :2], np.array([dh[idx, 2]]).T])
     
     data = np.hstack([da, dh, np.array([[1]*len(da)]).T])
     idx = random.sample(range(len(data)), int(0.1*len(data)))
@@ -122,7 +126,7 @@ def simulation(theta):
 
     data_train, data_test, labels_train, labels_test = \
                 train_test_split(data, labels, 
-                                 test_size=0.3)
+                                 test_size=0.33)
         
     labels_test = labels_test
     labels_train = labels_train
@@ -134,32 +138,18 @@ def simulation(theta):
     data_validationA = data_validation[:, :len(da[0])]
     data_validationB = data_validation[:, len(da[0]):]
 
-    if norm == 'standard':
-        data_testA = (data_testA - data_trainA.mean(axis=0)) / \
-            data_trainA.std(axis=0)
-        data_testB = (data_testB - data_trainB.mean(axis=0)) / \
-            data_trainB.std(axis=0)
-        data_validationA = (data_validationA - data_trainA.mean(axis=0)) / \
-            data_trainA.std(axis=0)
-        data_validationB = (data_validationB - data_trainB.mean(axis=0)) / \
-            data_trainB.std(axis=0)
-        data_trainA = (data_trainA - data_trainA.mean(axis=0)) / \
-            data_trainA.std(axis=0)
-        data_trainB = (data_trainB - data_trainB.mean(axis=0)) / \
-            data_trainB.std(axis=0)
-    elif norm == 'minmax':
-        data_testA = (data_testA - data_trainA.min(axis=0)) / \
-            (data_trainA.max(axis=0) - data_trainA.min(axis=0))
-        data_testB = (data_testB - data_trainB.min(axis=0)) / \
-            (data_trainB.max(axis=0) - data_trainB.min(axis=0))
-        data_validationA = (data_validationA - data_trainA.min(axis=0)) / \
-            (data_trainA.max(axis=0) - data_trainA.min(axis=0))
-        data_validationB = (data_validationB - data_trainB.min(axis=0)) / \
-            (data_trainB.max(axis=0) - data_trainB.min(axis=0))
-        data_trainA = (data_trainA - data_trainA.min(axis=0)) / \
-            (data_trainA.max(axis=0) - data_trainA.min(axis=0))
-        data_trainB = (data_trainB - data_trainB.min(axis=0)) / \
-            (data_trainB.max(axis=0) - data_trainB.min(axis=0))
+    data_testA = (data_testA - data_trainA.mean(axis=0)) / \
+        data_trainA.std(axis=0)
+    data_testB = (data_testB - data_trainB.mean(axis=0)) / \
+        data_trainB.std(axis=0)
+    data_validationA = (data_validationA - data_trainA.mean(axis=0)) / \
+        data_trainA.std(axis=0)
+    data_validationB = (data_validationB - data_trainB.mean(axis=0)) / \
+        data_trainB.std(axis=0)
+    data_trainA = (data_trainA - data_trainA.mean(axis=0)) / \
+        data_trainA.std(axis=0)
+    data_trainB = (data_trainB - data_trainB.mean(axis=0)) / \
+        data_trainB.std(axis=0)
 
     data_train = np.hstack([data_trainA, data_trainB])
     data_test = np.hstack([data_testA, data_testB])
@@ -176,22 +166,22 @@ lr = ExponentialDecay(1e-3, 1000, 0.9)
 #lr = tf.keras.optimizers.schedules.CosineDecay(1e-3, 1000, warmup_target=1e-1, warmup_steps=1000)
 nrei = nre(lr=lr)
 #nrei.build_model(6+4, [4]*2, 'sigmoid')
-nrei.build_compress_model(5, 5, [5, 2], [4],
+nrei.build_compress_model(5, 5, [5, 2], [4]*2,
         activation='sigmoid', compress='both', use_bias=True,)
 
 if load_data:
-    data_train = np.load('All_the_BAOs/data_train.npy')
-    data_test = np.load('All_the_BAOs/data_test.npy')
-    data_validation = np.load('All_the_BAOs/data_validation.npy')
-    labels_train = np.load('All_the_BAOs/labels_train.npy')
-    labels_test = np.load('All_the_BAOs/labels_test.npy')
+    data_train = np.load(BASE_DIR + 'data_train.npy')
+    data_test = np.load(BASE_DIR + 'data_test.npy')
+    data_validation = np.load(BASE_DIR + 'data_validation.npy')
+    labels_train = np.load(BASE_DIR + 'labels_train.npy')
+    labels_test = np.load(BASE_DIR + 'labels_test.npy')
 else:
     data_train, data_test, data_validation, labels_train, labels_test = simulation(nre_prior(nSamples))
-    np.save('All_the_BAOs/data_train.npy', data_train)
-    np.save('All_the_BAOs/data_test.npy', data_test)
-    np.save('All_the_BAOs/data_validation.npy', data_validation)
-    np.save('All_the_BAOs/labels_train.npy', labels_train)
-    np.save('All_the_BAOs/labels_test.npy', labels_test)
+    np.save(BASE_DIR + 'data_train.npy', data_train)
+    np.save(BASE_DIR + 'data_test.npy', data_test)
+    np.save(BASE_DIR + 'data_validation.npy', data_validation)
+    np.save(BASE_DIR + 'labels_train.npy', labels_train)
+    np.save(BASE_DIR + 'labels_test.npy', labels_test)
     
 nrei.data_train = data_train
 nrei.data_test = data_test
@@ -203,18 +193,18 @@ nrei.shared_prior = nre_prior
 nrei.prior_function_A = None
 nrei.prior_function_B = None
 
-nrei.training(epochs=5000, batch_size=1000)
+nrei.training(epochs=5000, batch_size=10000)
 
 plt.plot(nrei.loss_history, label='Training Loss')
 plt.plot(nrei.test_loss_history, label='Test Loss')
 plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
-plt.savefig('All_the_BAOs/loss.pdf', bbox_inches='tight')
+plt.savefig(BASE_DIR + 'loss.pdf', bbox_inches='tight')
 plt.show()
 
 
-nrei.__call__(iters=data_validation)
+nrei.__call__(iters=data_validation[:1000])
 r = nrei.r_values
 mask = np.isfinite(r)
 
@@ -249,6 +239,6 @@ stats = calcualte_stats(R, errorR, c)
 print(stats)
 
 plt.tight_layout()
-plt.savefig('All_the_BAOs/desi_sdss.pdf', bbox_inches='tight')
+plt.savefig(BASE_DIR + 'desi_sdss.pdf', bbox_inches='tight')
 plt.close()
 
