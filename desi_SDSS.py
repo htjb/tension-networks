@@ -166,44 +166,48 @@ from scipy.stats import ecdf
 from tensionnet.utils import calcualte_stats
 from tensorflow.keras.optimizers.schedules import ExponentialDecay  
 
+load_trained_nre = True
+
+if load_data:
+    data_train = np.load(BASE_DIR + 'data_train.npy')
+    data_test = np.load(BASE_DIR + 'data_test.npy')
+    data_validation = np.load(BASE_DIR + 'data_validation.npy')
+    labels_train = np.load(BASE_DIR + 'labels_train.npy')
+    labels_test = np.load(BASE_DIR + 'labels_test.npy')
+else:
+    data_train, data_test, data_validation, labels_train, labels_test = simulation(nre_prior(nSamples))
+    np.save(BASE_DIR + 'data_train.npy', data_train)
+    np.save(BASE_DIR + 'data_test.npy', data_test)
+    np.save(BASE_DIR + 'data_validation.npy', data_validation)
+    np.save(BASE_DIR + 'labels_train.npy', labels_train)
+    np.save(BASE_DIR + 'labels_test.npy', labels_test)
+
 sigmaD, sigmaA = [], []
 for i in range(5):
-    lr = ExponentialDecay(1e-3, 1000, 0.9)
-    #lr = tf.keras.optimizers.schedules.CosineDecay(1e-3, 1000, warmup_target=1e-1, warmup_steps=1000)
-    nrei = nre(lr=lr)
-    #nrei.build_model(6+4, [4]*2, 'sigmoid')
-    nrei.build_compress_model(5, 5, [5, 2], [4]*2,
-            activation='sigmoid', compress='both', use_bias=True,)
-
-    if load_data:
-        data_train = np.load(BASE_DIR + 'data_train.npy')
-        data_test = np.load(BASE_DIR + 'data_test.npy')
-        data_validation = np.load(BASE_DIR + 'data_validation.npy')
-        labels_train = np.load(BASE_DIR + 'labels_train.npy')
-        labels_test = np.load(BASE_DIR + 'labels_test.npy')
-    else:
-        data_train, data_test, data_validation, labels_train, labels_test = simulation(nre_prior(nSamples))
-        np.save(BASE_DIR + 'data_train.npy', data_train)
-        np.save(BASE_DIR + 'data_test.npy', data_test)
-        np.save(BASE_DIR + 'data_validation.npy', data_validation)
-        np.save(BASE_DIR + 'labels_train.npy', labels_train)
-        np.save(BASE_DIR + 'labels_test.npy', labels_test)
-        
-    nrei.data_train = data_train
-    nrei.data_test = data_test
-    nrei.labels_train = labels_train
-    nrei.labels_test = labels_test
-    nrei.simulation_func_A = None
-    nrei.simulation_func_B = None
-    nrei.shared_prior = nre_prior
-    nrei.prior_function_A = None
-    nrei.prior_function_B = None
-
-    nrei.training(epochs=10, batch_size=1000)
-    nrei.save(BASE_DIR + 'nre_run' + str(i) + '.pkl')
-    # testing the save functionality...
-    nrei.load(BASE_DIR + 'nre_run' + str(i) + '.pkl',
+    
+    if load_trained_nre:
+        nrei = nre.load(BASE_DIR + 'nre_run' + str(i) + '.pkl',
               None, None, nre_prior)
+    else:
+        lr = ExponentialDecay(1e-3, 1000, 0.9)
+        #lr = tf.keras.optimizers.schedules.CosineDecay(1e-3, 1000, warmup_target=1e-1, warmup_steps=1000)
+        nrei = nre(lr=lr)
+        #nrei.build_model(6+4, [4]*2, 'sigmoid')
+        nrei.build_compress_model(5, 5, [5, 5, 2], [4]*2,
+                activation='sigmoid', compress='both', use_bias=True,)
+            
+        nrei.data_train = data_train
+        nrei.data_test = data_test
+        nrei.labels_train = labels_train
+        nrei.labels_test = labels_test
+        nrei.simulation_func_A = None
+        nrei.simulation_func_B = None
+        nrei.shared_prior = nre_prior
+        nrei.prior_function_A = None
+        nrei.prior_function_B = None
+
+        nrei.training(epochs=1000, batch_size=1000, patience=50)
+        nrei.save(BASE_DIR + 'nre_run' + str(i) + '.pkl')
 
     plt.plot(nrei.loss_history, label='Training Loss')
     plt.plot(nrei.test_loss_history, label='Test Loss')
@@ -257,6 +261,36 @@ for i in range(5):
 
 sigmaA = np.array(sigmaA)
 sigmaD = np.array(sigmaD)
-print(sigmaA)
-print(sigmaD)
 
+mean_sigmaA = sigmaA[:, 0].mean()
+mean_sigmaD = sigmaD[:, 0].mean()
+
+sigmaAs = sigmaA[:, 0]
+sigmaA_lower = sigmaA[:, 0] - sigmaA[:, 2]
+sigmaA_upper = sigmaA[:, 1] - sigmaA[:, 0]
+sigmaDs = sigmaD[:, 0]
+sigmaD_lower = sigmaD[:, 0] - sigmaD[:, 1]
+sigmaD_upper = sigmaD[:, 2] - sigmaD[:, 0]
+
+norm_sigmaA = sigmaAs / mean_sigmaA
+norm_sigmaD = sigmaDs / mean_sigmaD
+
+fig, axes = plt.subplots(1, 1, figsize=(3.5, 3))
+"""axes[0].errorbar(np.arange(5), norm_sigmaA, yerr=[sigmaA_lower/mean_sigmaA[0], sigmaA_upper/mean_sigmaA[0]], fmt='o')
+axes[0].set_xticks(np.arange(5))
+axes[0].set_ylabel(r'$\sigma_A / \bar{\sigma}_A$')
+axes[0].set_xlabel('Run')"""
+axes.errorbar(np.arange(5), norm_sigmaD, yerr=[sigmaD_lower/mean_sigmaD, sigmaD_upper/mean_sigmaD], fmt='o')
+axes.set_xticks(np.arange(5))
+axes.set_ylabel(r'$\sigma_D / \bar{\sigma}_D$')
+axes.set_xlabel('Run')
+
+#for i in range(2):
+axes.axhline(1, ls='--', c='r')
+plt.tight_layout()
+plt.savefig(BASE_DIR + 'desi_sdss_sigma.pdf', bbox_inches='tight')
+plt.close()
+
+lower_mean_sigmaD_error = 1/np.sqrt(5) * np.sqrt(np.sum((sigmaD_lower)**2))
+upper_mean_sigmaD_error = 1/np.sqrt(5) * np.sqrt(np.sum((sigmaD_upper)**2))
+print(mean_sigmaD, lower_mean_sigmaD_error, upper_mean_sigmaD_error)
