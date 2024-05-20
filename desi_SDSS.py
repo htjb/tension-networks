@@ -5,6 +5,7 @@ from tensionnet.bao import DESI_BAO, SDSS_BAO
 from pypolychord.priors import UniformPrior, LogUniformPrior
 from tensionnet.utils import plotting_preamble
 from sklearn.model_selection import train_test_split
+from anesthetic.plot import kde_contour_plot_2d
 import camb
 import tensorflow as tf
 import random
@@ -223,7 +224,7 @@ for i in range(5):
     r = nrei.r_values
     mask = np.isfinite(r)
 
-    fig, axes = plt.subplots(1, 2, figsize=(6.3, 4))
+    fig, axes = plt.subplots(1, 3, figsize=(6.3, 4))
     axes[0].hist(r[mask], bins=25, density=True)
     axes[0].set_xlabel(r'$\log R$')
     axes[0].set_ylabel('Density')
@@ -249,6 +250,9 @@ for i in range(5):
                 c.cdf.evaluate(R + errorR),
                 alpha=0.1,
                 color='r')
+    
+    #kde_contour_plot_2d(ax=axes[2], data_x=)
+
 
     stats = calcualte_stats(R, errorR, c)
     print(stats)
