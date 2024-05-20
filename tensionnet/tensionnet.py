@@ -32,6 +32,11 @@ class nre():
         self.input_dim = input_dim
         self.layer_sizes = layer_sizes
         self.activation = activation
+        self.drop = dropout
+        self.use_bias = use_bias
+        self.kernel_regularizer = kernel_regularizer
+        self.skip_layers = skip_layers
+        self.compress = None
         
         # build the model
         a0 = self.Inputs(shape=(self.input_dim,))
@@ -39,11 +44,11 @@ class nre():
         for i, layer_size in enumerate(self.layer_sizes):
             outputs = self.Dense(layer_size, 
                                  activation=self.activation,
-                                 kernel_regularizer=kernel_regularizer,
-                                 use_bias=use_bias,
+                                 kernel_regularizer=self.kernel_regularizer,
+                                 use_bias=self.use_bias,
                                  )(a0)
-            outputs = self.Dropout(dropout)(outputs)
-            if skip_layers:
+            outputs = self.Dropout(self.drop)(outputs)
+            if self.skip_layers:
                 if i % 2 == 0 and i != 0:
                     outputs = self.batch_norm()(outputs)
                     outputs = tf.keras.layers.add([outputs, a0])
@@ -51,8 +56,8 @@ class nre():
             outputs = self.batch_norm()(outputs)
             a0 = outputs
         outputs = self.Dense(1, activation='linear',
-                            use_bias=use_bias,
-                            kernel_regularizer=kernel_regularizer)(a0)
+                            use_bias=self.use_bias,
+                            kernel_regularizer=self.kernel_regularizer)(a0)
         self.model = self.Model(inputs, outputs)
 
     def build_compress_model(
@@ -62,49 +67,60 @@ class nre():
             compress_layer_sizesB=None):
         
         if compress_layer_sizesB is None:
-            compress_layer_sizesB = compress_layer_sizesA
+            self.compress_layer_sizesB = compress_layer_sizesA
+        else:
+            self.compress_layer_sizesB = compress_layer_sizesB
+        self.input_dimA = input_dimA
+        self.input_dimB = input_dimB
         self.input_dim = input_dimA + input_dimB
         self.layer_sizes = layer_sizes
         self.activation = activation
+        self.drop = dropout
+        self.use_bias = use_bias
+        self.kernel_regularizer = kernel_regularizer
+        self.skip_layers = skip_layers
+        self.compress = compress
+        self.compress_layer_sizesA = compress_layer_sizesA
+
         
         # build the model
         all_inputs = self.Inputs(shape=(self.input_dim,))
         inputs = all_inputs
-        if compress == 'A' or compress == 'both':
-            a0 = all_inputs[:, :input_dimA]
-            for i, layer_size in enumerate(compress_layer_sizesA):
+        if self.compress == 'A' or self.compress == 'both':
+            a0 = all_inputs[:, :self.input_dimA]
+            for i, layer_size in enumerate(self.compress_layer_sizesA):
                 outputs = self.Dense(layer_size, 
                                     activation=self.activation,
-                                    kernel_regularizer=kernel_regularizer,
-                                    use_bias=use_bias,
+                                    kernel_regularizer=self.kernel_regularizer,
+                                    use_bias=self.use_bias,
                                     )(a0)
-                outputs = self.Dropout(dropout)(outputs)
+                outputs = self.Dropout(self.drop)(outputs)
                 outputs = self.batch_norm()(outputs)
                 a0 = outputs
         else:
-            a0 = all_inputs[:, :input_dimA]
-        if compress == 'B' or compress == 'both':
-            a1 = all_inputs[:, input_dimA:]
-            for i, layer_size in enumerate(compress_layer_sizesB):
+            a0 = all_inputs[:, :self.input_dimA]
+        if self.compress == 'B' or self.compress == 'both':
+            a1 = all_inputs[:, self.input_dimA:]
+            for i, layer_size in enumerate(self.compress_layer_sizesB):
                 outputs = self.Dense(layer_size, 
                                     activation=self.activation,
-                                    kernel_regularizer=kernel_regularizer,
-                                    use_bias=use_bias,
+                                    kernel_regularizer=self.kernel_regularizer,
+                                    use_bias=self.use_bias,
                                     )(a1)
-                outputs = self.Dropout(dropout)(outputs)
+                outputs = self.Dropout(self.drop)(outputs)
                 outputs = self.batch_norm()(outputs)
                 a1 = outputs
         else:
-            a1 = all_inputs[:, input_dimA:]
+            a1 = all_inputs[:, self.input_dimA:]
         a0 = tf.keras.layers.concatenate([a0, a1])
         for i, layer_size in enumerate(self.layer_sizes):
             outputs = self.Dense(layer_size, 
                                  activation=self.activation,
-                                 kernel_regularizer=kernel_regularizer,
-                                 use_bias=use_bias,
+                                 kernel_regularizer=self.kernel_regularizer,
+                                 use_bias=self.use_bias,
                                  )(a0)
-            outputs = self.Dropout(dropout)(outputs)
-            if skip_layers:
+            outputs = self.Dropout(self.drop)(outputs)
+            if self.skip_layers:
                 if i % 2 == 0 and i != 0:
                     outputs = self.batch_norm()(outputs)
                     outputs = tf.keras.layers.add([outputs, a0])
@@ -112,8 +128,8 @@ class nre():
             outputs = self.batch_norm()(outputs)
             a0 = outputs
         outputs = self.Dense(1, activation='linear',
-                            use_bias=use_bias,
-                            kernel_regularizer=kernel_regularizer)(a0)
+                            use_bias=self.use_bias,
+                            kernel_regularizer=self.kernel_regularizer)(a0)
         self.model = self.Model(inputs, outputs)
     
     def build_simulations(self, simulation_func_A, simulation_func_B,
@@ -363,19 +379,45 @@ class nre():
 
         w = self.model.get_weights()
 
-        with open(filename, 'wb') as f:
-            pickle.dump([w,
-                         self.input_dim,
-                         self.layer_sizes,
-                         self.activation,
-                         self.loss_history,
-                         self.test_loss_history,
-                         self.data_test,
-                         self.labels_test,
-                         self.data_train,
-                        self.labels_train,
-                         ], f)
-    
+        if not self.compress:
+            with open(filename, 'wb') as f:
+                pickle.dump([w,
+                            self.input_dim,
+                            self.layer_sizes,
+                            self.activation,
+                            self.loss_history,
+                            self.test_loss_history,
+                            self.data_test,
+                            self.labels_test,
+                            self.data_train,
+                            self.labels_train,
+                            self.use_bias,
+                            self.drop,
+                            self.kernel_regularizer,
+                            self.skip_layers,
+                            ], f)
+        else:
+            with open(filename, 'wb') as f:
+                pickle.dump([w,
+                            self.input_dimA,
+                            self.input_dimB,
+                            self.compress_layer_sizesA,
+                            self.compress_layer_sizesB,
+                            self.layer_sizes,
+                            self.activation,
+                            self.loss_history,
+                            self.test_loss_history,
+                            self.data_test,
+                            self.labels_test,
+                            self.data_train,
+                            self.labels_train,
+                            self.use_bias,
+                            self.drop,
+                            self.kernel_regularizer,
+                            self.skip_layers,
+                            self.compress,
+                            ], f)
+
     @classmethod
     def load(cls, filename,
              simulation_func_A, simulation_func_B, shared_prior,
@@ -389,15 +431,41 @@ class nre():
         with open(filename, 'rb') as f:
             data = pickle.load(f)
 
-            weights, input_dim, layer_sizes, \
-                activation, \
-                loss_history, test_loss_history, \
-                     data_test, labels_test, \
-                         data_train, labels_train = data
+            try:
+                weights, input_dim, layer_sizes, \
+                    activation, \
+                    loss_history, test_loss_history, \
+                        data_test, labels_test, \
+                            data_train, labels_train, use_bias, \
+                                dropout, kernel_regularizer, \
+                                    skip_layers = data
+                compress = None
+            except:
+                weights, input_dimA, input_dimB, \
+                    compress_layer_sizesA, compress_layer_sizesB, \
+                    layer_sizes, activation, \
+                    loss_history, test_loss_history, \
+                        data_test, labels_test, \
+                            data_train, labels_train, use_bias, \
+                                dropout, kernel_regularizer, \
+                                    skip_layers, compress = data
             
             inst = cls()
-            inst.build_model(input_dim, 
-                                 layer_sizes, activation)
+            if compress is None:
+                inst.build_model(input_dim, 
+                                 layer_sizes, activation,
+                                 skip_layers=skip_layers, 
+                                 kernel_regularizer=kernel_regularizer,
+                                 use_bias=use_bias, dropout=dropout)
+            else:
+                inst.build_compress_model(input_dimA, input_dimB, 
+                                    compress_layer_sizesA, 
+                                    layer_sizes, activation,
+                                    compress=compress, 
+                                    skip_layers=skip_layers, 
+                                    kernel_regularizer=kernel_regularizer,
+                                    use_bias=use_bias, dropout=dropout,
+                                    compress_layer_sizesB=compress_layer_sizesB)
             
             # initiallise all the important variables
             inst.model.set_weights(weights)
