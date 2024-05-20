@@ -101,11 +101,10 @@ class DESI_BAO(BAO):
     def __init__(self, **kwargs):
         self.data_location = kwargs.pop('data_location', 'bao_data/')
         super().__init__(data_location=self.data_location)
-        #self.L1, self.L2, self.L1cov, self.L2cov = self.get_data()
-        #self.z = np.array([self.L1[0, 0], self.L2[0, 0]])
         self.LRG2, self.LRG2cov, self.LRGELG, self.LRGELGcov, \
             self.ELG, self.ELGcov = self.get_data()
-        self.z = self.L2[:, 0][::2]
+        self.z = np.array([self.LRG2[0, 0], 
+                           self.LRGELG[0, 0], self.ELG[0, 0]])
     
     def get_data(self):
         #LRG1 = np.loadtxt(self.data_location + 

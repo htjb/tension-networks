@@ -11,7 +11,7 @@ from tqdm import tqdm
 import os
 
 
-BASE_DIR = 'desi_sdss_independent_observations/'
+BASE_DIR = 'full_desi_sdss_independent_observations/'
 if not os.path.exists(BASE_DIR):
     os.makedirs(BASE_DIR)
 
@@ -68,10 +68,10 @@ joint = read_chains(BASE_DIR + 'DESI_SDSS/test')
 desi = read_chains(BASE_DIR + 'DESI/test')
 sdss = read_chains(BASE_DIR + 'SDSS/test')
 
-R = (joint.logZ(1000) - desi.logZ(1000) - sdss.logZ(1000))
-R = R.mean()
-errorR = R.std()
-
+Rs = (joint.logZ(1000) - desi.logZ(1000) - sdss.logZ(1000))
+R = Rs.mean()
+errorR = Rs.std()
+print('R:', R, '+/-', errorR)
 
 ##############################################################################
 ################################ Do NRE ######################################
@@ -91,19 +91,21 @@ def simulation(theta):
         t = theta[i]
         try:
             sdss_sim = sdss_baos.get_sample(t)[0]
-            desi_sim = desi_baos.get_sample(t)[0]
-            da.append([sdss_sim[0][0], sdss_sim[0][2], desi_sim[0][0]])
-            dh.append([sdss_sim[0][1], sdss_sim[0][3], desi_sim[0][1]])
+            desi_sim = desi_baos.get_sample(t)[:3]
+            da.append([sdss_sim[0], sdss_sim[2], 
+                       desi_sim[0][0], desi_sim[1][0], desi_sim[2][0]])
+            dh.append([sdss_sim[1], sdss_sim[3], 
+                       desi_sim[0][1], desi_sim[1][1], desi_sim[2][1]])
         except:
             pass
     da = np.array(da)
     dh = np.array(dh)
 
-    idx = np.arange(len(theta))
+    idx = np.arange(len(da))
     np.random.shuffle(idx)
     
-    shuffled_da = np.hstack([da[:, :2], np.array([da[idx, 2]]).T])
-    shuffled_dh = np.hstack([dh[:, :2], np.array([dh[idx, 2]]).T])
+    shuffled_da = np.hstack([da[:, :2], da[idx, 2:]])
+    shuffled_dh = np.hstack([dh[:, :2], dh[idx, 2:]])
     
     data = np.hstack([da, dh, np.array([[1]*len(da)]).T])
     idx = random.sample(range(len(data)), int(0.1*len(data)))
@@ -201,7 +203,8 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.savefig(BASE_DIR + 'loss.pdf', bbox_inches='tight')
-plt.show()
+#plt.show()
+plt.close()
 
 
 nrei.__call__(iters=data_validation[:1000])
