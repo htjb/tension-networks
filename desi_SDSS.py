@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from tensionnet.robs import run_poly
 from tensionnet.bao import DESI_BAO, SDSS_BAO
 from pypolychord.priors import UniformPrior, LogUniformPrior
+from tensionnet.utils import plotting_preamble
 from sklearn.model_selection import train_test_split
 import camb
 import tensorflow as tf
@@ -10,6 +11,7 @@ import random
 from tqdm import tqdm
 import os
 
+plotting_preamble()
 
 BASE_DIR = 'full_desi_sdss_independent_observations/'
 if not os.path.exists(BASE_DIR):
@@ -79,7 +81,7 @@ print('R:', R, '+/-', errorR)
 
 print('Running NRE...')
 nSamples = 100000
-load_data = False
+load_data = True
 
 def nre_prior(N):
     return np.array([np.random.uniform(prior_mins[i], prior_maxs[i], N) 
@@ -164,84 +166,97 @@ from scipy.stats import ecdf
 from tensionnet.utils import calcualte_stats
 from tensorflow.keras.optimizers.schedules import ExponentialDecay  
 
-lr = ExponentialDecay(1e-3, 1000, 0.9)
-#lr = tf.keras.optimizers.schedules.CosineDecay(1e-3, 1000, warmup_target=1e-1, warmup_steps=1000)
-nrei = nre(lr=lr)
-#nrei.build_model(6+4, [4]*2, 'sigmoid')
-nrei.build_compress_model(5, 5, [5, 2], [4]*2,
-        activation='sigmoid', compress='both', use_bias=True,)
+sigmaD, sigmaA = [], []
+for i in range(5):
+    lr = ExponentialDecay(1e-3, 1000, 0.9)
+    #lr = tf.keras.optimizers.schedules.CosineDecay(1e-3, 1000, warmup_target=1e-1, warmup_steps=1000)
+    nrei = nre(lr=lr)
+    #nrei.build_model(6+4, [4]*2, 'sigmoid')
+    nrei.build_compress_model(5, 5, [5, 2], [4]*2,
+            activation='sigmoid', compress='both', use_bias=True,)
 
-if load_data:
-    data_train = np.load(BASE_DIR + 'data_train.npy')
-    data_test = np.load(BASE_DIR + 'data_test.npy')
-    data_validation = np.load(BASE_DIR + 'data_validation.npy')
-    labels_train = np.load(BASE_DIR + 'labels_train.npy')
-    labels_test = np.load(BASE_DIR + 'labels_test.npy')
-else:
-    data_train, data_test, data_validation, labels_train, labels_test = simulation(nre_prior(nSamples))
-    np.save(BASE_DIR + 'data_train.npy', data_train)
-    np.save(BASE_DIR + 'data_test.npy', data_test)
-    np.save(BASE_DIR + 'data_validation.npy', data_validation)
-    np.save(BASE_DIR + 'labels_train.npy', labels_train)
-    np.save(BASE_DIR + 'labels_test.npy', labels_test)
-    
-nrei.data_train = data_train
-nrei.data_test = data_test
-nrei.labels_train = labels_train
-nrei.labels_test = labels_test
-nrei.simulation_func_A = None
-nrei.simulation_func_B = None
-nrei.shared_prior = nre_prior
-nrei.prior_function_A = None
-nrei.prior_function_B = None
+    if load_data:
+        data_train = np.load(BASE_DIR + 'data_train.npy')
+        data_test = np.load(BASE_DIR + 'data_test.npy')
+        data_validation = np.load(BASE_DIR + 'data_validation.npy')
+        labels_train = np.load(BASE_DIR + 'labels_train.npy')
+        labels_test = np.load(BASE_DIR + 'labels_test.npy')
+    else:
+        data_train, data_test, data_validation, labels_train, labels_test = simulation(nre_prior(nSamples))
+        np.save(BASE_DIR + 'data_train.npy', data_train)
+        np.save(BASE_DIR + 'data_test.npy', data_test)
+        np.save(BASE_DIR + 'data_validation.npy', data_validation)
+        np.save(BASE_DIR + 'labels_train.npy', labels_train)
+        np.save(BASE_DIR + 'labels_test.npy', labels_test)
+        
+    nrei.data_train = data_train
+    nrei.data_test = data_test
+    nrei.labels_train = labels_train
+    nrei.labels_test = labels_test
+    nrei.simulation_func_A = None
+    nrei.simulation_func_B = None
+    nrei.shared_prior = nre_prior
+    nrei.prior_function_A = None
+    nrei.prior_function_B = None
 
-nrei.training(epochs=5000, batch_size=10000)
+    nrei.training(epochs=10, batch_size=1000)
+    nrei.save(BASE_DIR + 'nre_run' + str(i) + '.pkl')
+    # testing the save functionality...
+    nrei.load(BASE_DIR + 'nre_run' + str(i) + '.pkl',
+              None, None, nre_prior)
 
-plt.plot(nrei.loss_history, label='Training Loss')
-plt.plot(nrei.test_loss_history, label='Test Loss')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.legend()
-plt.savefig(BASE_DIR + 'loss.pdf', bbox_inches='tight')
-#plt.show()
-plt.close()
+    plt.plot(nrei.loss_history, label='Training Loss')
+    plt.plot(nrei.test_loss_history, label='Test Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(BASE_DIR + 'loss_run' + str(i) + '.pdf', bbox_inches='tight')
+    #plt.show()
+    plt.close()
 
 
-nrei.__call__(iters=data_validation[:1000])
-r = nrei.r_values
-mask = np.isfinite(r)
+    nrei.__call__(iters=data_validation[:1000])
+    r = nrei.r_values
+    mask = np.isfinite(r)
 
-fig, axes = plt.subplots(1, 2, figsize=(6.3, 4))
-axes[0].hist(r[mask], bins=25, density=True)
-axes[0].set_xlabel(r'$\log R$')
-axes[0].set_ylabel('Density')
-axes[0].axvline(R, ls='--', c='r')
-axes[0].axvspan(R - errorR, R + errorR, alpha=0.1, color='r')
+    fig, axes = plt.subplots(1, 2, figsize=(6.3, 4))
+    axes[0].hist(r[mask], bins=25, density=True)
+    axes[0].set_xlabel(r'$\log R$')
+    axes[0].set_ylabel('Density')
+    axes[0].axvline(R, ls='--', c='r')
+    axes[0].axvspan(R - errorR, R + errorR, alpha=0.1, color='r')
 
-rsort  = np.sort(r[mask])
-c = ecdf(rsort)
+    rsort  = np.sort(r[mask])
+    c = ecdf(rsort)
 
-axes[1].plot(rsort, c.cdf.evaluate(rsort)) 
-axes[1].axhline(c.cdf.evaluate(R), ls='--',
-        color='r')
-axes[1].axhspan(c.cdf.evaluate(R - errorR), 
-        c.cdf.evaluate(R + errorR), 
-        alpha=0.1, 
-        color='r')
-axes[1].set_xlabel(r'$\log R$')
-axes[1].set_ylabel(r'$P(\log R < \log R^\prime)$')
-
-axes[1].axhline(c.cdf.evaluate(R), ls='--',
+    axes[1].plot(rsort, c.cdf.evaluate(rsort)) 
+    axes[1].axhline(c.cdf.evaluate(R), ls='--',
             color='r')
-axes[1].axhspan(c.cdf.evaluate(R - errorR),
-            c.cdf.evaluate(R + errorR),
-            alpha=0.1,
+    axes[1].axhspan(c.cdf.evaluate(R - errorR), 
+            c.cdf.evaluate(R + errorR), 
+            alpha=0.1, 
             color='r')
+    axes[1].set_xlabel(r'$\log R$')
+    axes[1].set_ylabel(r'$P(\log R < \log R^\prime)$')
 
-stats = calcualte_stats(R, errorR, c)
-print(stats)
+    axes[1].axhline(c.cdf.evaluate(R), ls='--',
+                color='r')
+    axes[1].axhspan(c.cdf.evaluate(R - errorR),
+                c.cdf.evaluate(R + errorR),
+                alpha=0.1,
+                color='r')
 
-plt.tight_layout()
-plt.savefig(BASE_DIR + 'desi_sdss.pdf', bbox_inches='tight')
-plt.close()
+    stats = calcualte_stats(R, errorR, c)
+    print(stats)
+    sigmaD.append(stats[:3])
+    sigmaA.append(stats[3:6])
+
+    plt.tight_layout()
+    plt.savefig(BASE_DIR + 'desi_sdss_run' + str(i) + '.pdf', bbox_inches='tight')
+    plt.close()
+
+sigmaA = np.array(sigmaA)
+sigmaD = np.array(sigmaD)
+print(sigmaA)
+print(sigmaD)
 
