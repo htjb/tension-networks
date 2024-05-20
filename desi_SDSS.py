@@ -11,6 +11,38 @@ import tensorflow as tf
 import random
 from tqdm import tqdm
 import os
+from anesthetic import MCMCSamples
+
+pars = camb.CAMBparams()
+
+def derived(parameters):
+    H0, rs, omm = [], [], []
+    for i in tqdm(range(len(parameters))):
+        pars.set_cosmology(H0=parameters[i][4]*100, ombh2=parameters[i][0], 
+                                    omch2=parameters[i][1],
+                                    tau=0.055)
+        pars.InitPower.set_params(As=np.exp(parameters[i][3])/10**10, 
+                            ns=parameters[i][2])
+        pars.set_for_lmax(2500, lens_potential_accuracy=0)
+        results = camb.get_background(pars) # computes evolution of background cosmology
+
+        H0.append(results.hubble_parameter(0))
+        rs.append(results.get_derived_params()['rdrag']) # Mpc
+        
+        h = H0[-1]/100
+        omb = parameters[i][0]/h**2
+        omc = parameters[i][1]/h**2
+        omm.append((omb+omc))
+
+    H0 = np.array(H0)
+    rs = np.array(rs)
+    data = np.array(H0*rs)/100 # units of 100 Mpc
+    #data /= 3e5
+    data = np.vstack((data, omm, H0)).T
+
+    samples = MCMCSamples(data=data, 
+            labels=[r'$\frac{H_0 r_s}{c}$', r'$\Omega_m$', r'$H_0$'])
+    return samples
 
 plotting_preamble()
 
@@ -25,41 +57,43 @@ desi_baos = DESI_BAO(data_location='cosmology-data/bao_data/',
 prior = desi_baos.prior
 desi_likelihood = desi_baos.loglikelihood()
 
-file = BASE_DIR + 'DESI/'
-RESUME = True
-if RESUME is False:
-    import os, shutil
-    if os.path.exists(file):
-        shutil.rmtree(file)
+skip_polychord = True
+if skip_polychord is False:
+    file = BASE_DIR + 'DESI/'
+    RESUME = True
+    if RESUME is False:
+        import os, shutil
+        if os.path.exists(file):
+            shutil.rmtree(file)
 
-run_poly(prior, desi_likelihood, file, RESUME=RESUME, nDims=5, nlive=25*5)
+    run_poly(prior, desi_likelihood, file, RESUME=RESUME, nDims=5, nlive=25*5)
 
-sdss_baos = SDSS_BAO(data_location='cosmology-data/bao_data/', 
-            prior_mins=prior_mins, prior_maxs=prior_maxs)
-sdss_likelihood = sdss_baos.loglikelihood()
+    sdss_baos = SDSS_BAO(data_location='cosmology-data/bao_data/', 
+                prior_mins=prior_mins, prior_maxs=prior_maxs)
+    sdss_likelihood = sdss_baos.loglikelihood()
 
-file = BASE_DIR + 'SDSS/'
-RESUME = True
-if RESUME is False:
-    import os, shutil
-    if os.path.exists(file):
-        shutil.rmtree(file)
+    file = BASE_DIR + 'SDSS/'
+    RESUME = True
+    if RESUME is False:
+        import os, shutil
+        if os.path.exists(file):
+            shutil.rmtree(file)
 
-run_poly(prior, sdss_likelihood, file, RESUME=RESUME, nDims=5, nlive=25*5)
-
-
-def joint_loglikelihood(theta):
-    return desi_likelihood(theta)[0] + sdss_likelihood(theta)[0], []
+    run_poly(prior, sdss_likelihood, file, RESUME=RESUME, nDims=5, nlive=25*5)
 
 
-file = BASE_DIR + 'DESI_SDSS/'
-RESUME = True
-if RESUME is False:
-    import os, shutil
-    if os.path.exists(file):
-        shutil.rmtree(file)
+    def joint_loglikelihood(theta):
+        return desi_likelihood(theta)[0] + sdss_likelihood(theta)[0], []
 
-run_poly(prior, joint_loglikelihood, file, RESUME=RESUME, nDims=5, nlive=25*5)
+
+    file = BASE_DIR + 'DESI_SDSS/'
+    RESUME = True
+    if RESUME is False:
+        import os, shutil
+        if os.path.exists(file):
+            shutil.rmtree(file)
+
+    run_poly(prior, joint_loglikelihood, file, RESUME=RESUME, nDims=5, nlive=25*5)
 
 ##############################################################################
 ############################### Calculate R ##################################
@@ -75,6 +109,10 @@ Rs = (joint.logZ(1000) - desi.logZ(1000) - sdss.logZ(1000))
 R = Rs.mean()
 errorR = Rs.std()
 print('R:', R, '+/-', errorR)
+
+joint = joint.compress()
+desi = desi.compress()
+sdss = sdss.compress()
 
 ##############################################################################
 ################################ Do NRE ######################################
@@ -224,7 +262,7 @@ for i in range(5):
     r = nrei.r_values
     mask = np.isfinite(r)
 
-    fig, axes = plt.subplots(1, 3, figsize=(6.3, 4))
+    fig, axes = plt.subplots(1, 3, figsize=(6.3, 3))
     axes[0].hist(r[mask], bins=25, density=True)
     axes[0].set_xlabel(r'$\log R$')
     axes[0].set_ylabel('Density')
@@ -251,7 +289,24 @@ for i in range(5):
                 alpha=0.1,
                 color='r')
     
-    #kde_contour_plot_2d(ax=axes[2], data_x=)
+    parameters = sdss.values[:, :5]
+    bao_samples = derived(parameters).values
+    kde_contour_plot_2d(ax=axes[2], data_x=bao_samples[:, 0], 
+                        data_y=bao_samples[:, 1], alpha=0.5, label='SDSS')
+    
+    parameters = desi.values[:, :5]
+    bao_samples = derived(parameters).values
+    kde_contour_plot_2d(ax=axes[2], data_x=bao_samples[:, 0], 
+                        data_y=bao_samples[:, 1], alpha=0.5, label='DESI')
+    
+    parameters = joint.values[:, :5]
+    bao_samples = derived(parameters).values
+    kde_contour_plot_2d(ax=axes[2], data_x=bao_samples[:, 0], 
+                        data_y=bao_samples[:, 1], alpha=0.5, label='Joint')
+    
+    axes[2].set_xlabel(r'$\frac{H_0 r_s}$ [100 Mpc]')
+    axes[2].set_ylabel(r'$\Omega_m$')
+    axes[2].legend()
 
 
     stats = calcualte_stats(R, errorR, c)
