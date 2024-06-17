@@ -42,22 +42,20 @@ exp1 = signal_func_gen(exp1_freq)
 base = 'chains/21cm_temp_sweep/'
 
 try:
-    nrei = nre.load('figure4-nre.pkl',
+        nrei = nre.load('figure4-nre.pkl',
                 exp2, exp1, signal_prior)
 except:
-    nrei = nre(lr=1e-4)
-    nrei.build_model(len(exp2_freq) + len(exp1_freq),
+        nrei = nre(lr=1e-4)
+        nrei.build_model(len(exp2_freq) + len(exp1_freq),
                         [25]*5, 'sigmoid')
-    nrei.build_simulations(exp2, exp1, signal_prior, n=200000)
-    model, data_test, labels_test = nrei.training(epochs=1000, 
-                                                  batch_size=1000)
-    nrei.save('figure4-nre.pkl')
+        nrei.build_simulations(exp2, exp1, signal_prior, n=200000)
+        model, data_test, labels_test = nrei.training(epochs=1000, 
+                                                        batch_size=1000)
+        nrei.save('figure4-nre.pkl')
 
 nrei.__call__(iters=5000)
 r = nrei.r_values
 mask = np.isfinite(r)
-"""sig = tf.keras.activations.sigmoid(r[mask])
-mask = sig > 0.75"""
 r = r[mask]
 
 temperatures = np.array([0.15, 0.2, 0.25])/0.2
@@ -69,14 +67,21 @@ y_pos = [200]*len(temperatures)
 
 fig, axes = plt.subplots(1, 3, figsize=(10, 4))
 
+exp1_data = np.loadtxt(base + 'exp1_data_truth.txt')
+data = -0.2 * np.exp(-(exp1_freq-78)**2 / (2*10**2))
+axes[0].plot(exp1_freq, data, label=r'Exp. A: $A_A = 0.2$ K', c='k')
+axes[0].plot(exp1_freq, exp1_data, c='gray', alpha=0.5)
+
+ls = [':', '--', '-.']
 for i, t in enumerate(temperatures):
         exp2_data_no_tension = np.loadtxt(base + 
              f'exp2_data_{t*0.2}.txt')
-        axes[0].plot(exp2_freq, exp2_data_no_tension, 
-                        label=f'Exp. B: {t*0.2} K', c='r', alpha=1/(i+1))
+        data = -(t*0.2) * np.exp(-(exp2_freq-78)**2 / (2*10**2))
+        axes[0].plot(exp2_freq, data, 
+                        label=r'Exp. B: $A_B =$' + f'{t*0.2} K', c='r', ls=ls[i])
+        axes[0].plot(exp2_freq, exp2_data_no_tension,
+                     c='gray', alpha=0.2)
 
-exp1_data = np.loadtxt(base + 'exp1_data_truth.txt')
-axes[0].plot(exp1_freq, exp1_data, label='Exp. A: 0.2 K', c='k')
 axes[0].legend(fontsize=8)
 axes[0].set_xlabel('Frequency [MHz]')
 axes[0].set_ylabel(r'$\delta T_b$ [K]')
@@ -130,10 +135,16 @@ for i,t in enumerate(temperatures):
                     (Rs[1]/2, c.cdf.evaluate(Rs[i])), ha='center', va='center',
                     bbox=dict(color='w', ec='k'), fontsize=8)
     
+axes[2].axhline(c.cdf.evaluate(Rs[-1]), ls='--',
+        color='r')
+axes[2].axhspan(c.cdf.evaluate(Rs[-1] - sigma_Rs[-1]), 
+        c.cdf.evaluate(Rs[-1] + sigma_Rs[-1]), 
+        alpha=0.1, 
+        color='r')
 axes[2].axhline(c.cdf.evaluate(Rs[0]), ls='--',
         color='r')
-axes[2].axhspan(c.cdf.evaluate(Rs[0] - sigma_Rs[i]), 
-        c.cdf.evaluate(Rs[i] + sigma_Rs[i]), 
+axes[2].axhspan(c.cdf.evaluate(Rs[0] - sigma_Rs[0]), 
+        c.cdf.evaluate(Rs[0] + sigma_Rs[0]), 
         alpha=0.1, 
         color='r')
 axes[2].annotate(r'In Tension. $A_B \neq A_A$', 
