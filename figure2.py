@@ -21,7 +21,7 @@ p = n.cdf(x)
 
 example_r = 5.87
 
-fig, axes = plt.subplots(3, 2, figsize=(6.3, 5))
+fig, axes = plt.subplots(3, 2, figsize=(5, 4))
 
 # plotting the histrograms and the cdfs
 for i in range(2):
@@ -58,7 +58,7 @@ axes[2, 0].axvspan(np.interp(3, y[::-1], p[::-1]), 1, color='C1', alpha=0.3)
 #axes[2, 0].set_xscale('log')
 axes[2, 0].set_xlabel(r'$P(\log R < \log R^\prime)$')
 axes[2, 0].set_ylabel(r'$T$')
-axes[2, 0].legend()
+axes[2, 0].legend(fontsize=8)
 
 # plottign the agreement statistic
 y = norm.isf((1-p)/2)
@@ -74,7 +74,7 @@ axes[2, 1].axvspan(np.interp(3, y, p), 0, color='C1', alpha=0.3)
 #axes[2, 0].set_xscale('log')
 axes[2, 1].set_xlabel(r'$P(\log R < \log R^\prime)$')
 axes[2, 1].set_ylabel(r'$C$')
-axes[2, 1].legend()
+axes[2, 1].legend(fontsize=8)
 
 axes[0, 0].set_title('How in tension are\nthe data sets?')
 axes[0, 1].set_title('How consistent are\nthe data sets?')
