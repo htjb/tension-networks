@@ -1,6 +1,8 @@
 Tensionnet
 ----------
 
+REPO IS UNDER CONSTRUCTION
+
 Idea is to use NREs to predict the plausible distribution of the tension statistic $R = \frac{P(D_A, D_B)}{P(D_A)P(D_B)}$ over some prior and given a model choice for two data sets with common parameters.
 
 We need a set of simulations for data set A and data set B with the same and mismatched common parameters. We then train the NRE to predict the ratio $R$ for pairs of realisations of each data set. 
@@ -15,64 +17,27 @@ Generated a mock example that is just two noisy gaussian absorption signals. See
 
 Network just uses a binary cross entropy + sigmoid on last layer. We can drop the last layer to get $\log(R)$ but we need it for training to turn $\log(R)$ into a probability.
 
-Toy Example
------------
 
-Two experiments observing a gaussian absorption feature in different bands with
-the same level of noise.
+Citation
+--------
 
-Training on 200,000 pairs of data sets here (half in tension).
+If you use the tensionnet work in any of your papers please cite the paper
+[Calibrating Bayesian Tension Statistics using Neural Ratio Estimation](https://arxiv.org/abs/2407.15478).
 
-This was initially not working. I edited the structure of the last few layers a bit and changed the normalisation on the simulated data sets which seems to have helped.
-
-When I train the classifier I get the following confusion matrix for
-1000 test samples which looks good. Here confused is any value of $R$ between 0.25 and 0.75. Otherwise prediction
-is correct or wrong.
-
-![confusion matrix](https://github.com/htjb/tension-networks/blob/main/test_confusion_matrix.png)
-
-And if I try and predict R for a set of 2000 matched realisations (no tension, 
-same parameters) of the two experiments I get the following distribution
-
-![R distribution](https://github.com/htjb/tension-networks/blob/main/test_r_hist.png)
-
-where the dashed line is $R_{obs}$ for two experiments that observed the same
-signal and the dotten line is for two experiments in tension. Of the 2000 models histogrammed 0.15% were mis-classified as being in tension. As a kde this looks like
-
-![R distribution](https://github.com/htjb/tension-networks/blob/main/test_r_kde.png)
-
-The data corresponding to the two $R_{obs}$ values is shown below.
-
-![R distribution](https://github.com/htjb/tension-networks/blob/main/test_case_data.png)
-
-BAO + Planck Example
---------------------
-
-Need some toy likelihoods to be able to do this. Built a BAO likelihood using the SDSS DR12 and DR16 measurements/covariances of angular diameter/hubble distance divided by the sound horizon and CAMB.
-
-Had some issues with the prior/nlive. Found that with a wide prior the run was terminating early with the warning `Warning, unable to proceed after    151: failed spawn events`. Might be able to solve it with increased nlive but currently using the narrow prior from Wills qunatifying tensions paper. Get the foloowing results
-
-![bao fit](https://github.com/htjb/tension-networks/blob/main/bao_fit_narrow_prior.png)
-
-
-Currently setting up Planck likelihood. To approximate the planck covariance I used healpy to predict the $a_{lm}$ given the measured $C_{l}$ and then for each prediction recalcualted $C_{l}$. I did this 2000 times I think and calcualted the covariance matrix from this data set. It looks like this.
-
-![planck covariance](https://github.com/htjb/tension-networks/blob/main/planck_mock_cov.png)
-
-and the example simualtions were
-
-![planck -> alms -> cl](https://github.com/htjb/tension-networks/blob/main/planck_mock_for_cov.png)
-
-The fitting results look like
-
-![planck fit](https://github.com/htjb/tension-networks/blob/main/planck_fit.png)
-
-Reporting evidences below
-
-| | Evidence |
-|----|------|
-|BAO | $-4.238 \pm 0.092$ |
-| Planck | $- 53.95 \pm 0.19$|
-| Planck + BAO | $-57.25 \pm 0.20$|
-
-Giving an $R_{obs} = -0.05 \pm 0.28$.
+```bibtex
+@ARTICLE{2024arXiv240715478B,
+       author = {{Bevins}, Harry T.~J. and {Handley}, William J. and {Gessey-Jones}, Thomas},
+        title = "{Calibrating Bayesian Tension Statistics using Neural Ratio Estimation}",
+      journal = {arXiv e-prints},
+     keywords = {Astrophysics - Cosmology and Nongalactic Astrophysics, Astrophysics - Instrumentation and Methods for Astrophysics},
+         year = 2024,
+        month = jul,
+          eid = {arXiv:2407.15478},
+        pages = {arXiv:2407.15478},
+archivePrefix = {arXiv},
+       eprint = {2407.15478},
+ primaryClass = {astro-ph.CO},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2024arXiv240715478B},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+```
