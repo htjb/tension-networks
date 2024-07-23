@@ -304,7 +304,7 @@ for i in range(5):
     kde_contour_plot_2d(ax=axes[2], data_x=bao_samples[:, 0], 
                         data_y=bao_samples[:, 1], alpha=0.5, label='Joint')
     
-    axes[2].set_xlabel(r'$\frac{H_0 r_s}$ [100 Mpc]')
+    axes[2].set_xlabel(r'$H_0 r_s$ [100 Mpc]')
     axes[2].set_ylabel(r'$\Omega_m$')
     axes[2].legend()
 
@@ -339,17 +339,20 @@ fig, axes = plt.subplots(1, 1, figsize=(3.5, 3))
 axes[0].set_xticks(np.arange(5))
 axes[0].set_ylabel(r'$\sigma_A / \bar{\sigma}_A$')
 axes[0].set_xlabel('Run')"""
-axes.errorbar(np.arange(5), norm_sigmaD, yerr=[sigmaD_lower/mean_sigmaD, sigmaD_upper/mean_sigmaD], fmt='o')
+axes.errorbar(np.arange(5), sigmaDs, yerr=[sigmaD_lower, sigmaD_upper], fmt='o')
 axes.set_xticks(np.arange(5))
-axes.set_ylabel(r'$\sigma_D / \bar{\sigma}_D$')
+axes.set_ylabel(r'$T$')
 axes.set_xlabel('Run')
-
-#for i in range(2):
-axes.axhline(1, ls='--', c='r')
-plt.tight_layout()
-plt.savefig(BASE_DIR + 'desi_sdss_sigma.pdf', bbox_inches='tight')
-plt.close()
 
 lower_mean_sigmaD_error = 1/np.sqrt(5) * np.sqrt(np.sum((sigmaD_lower)**2))
 upper_mean_sigmaD_error = 1/np.sqrt(5) * np.sqrt(np.sum((sigmaD_upper)**2))
 print(mean_sigmaD, lower_mean_sigmaD_error, upper_mean_sigmaD_error)
+
+
+
+#for i in range(2):
+axes.axhline(mean_sigmaD, ls='--', c='r')
+axes.axhspan(mean_sigmaD - lower_mean_sigmaD_error, mean_sigmaD + upper_mean_sigmaD_error, alpha=0.1, color='r')
+plt.tight_layout()
+plt.savefig(BASE_DIR + 'desi_sdss_sigma.pdf', bbox_inches='tight')
+plt.close()
