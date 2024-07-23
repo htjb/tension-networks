@@ -3,13 +3,13 @@ from lsbi.stats import multivariate_normal
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from tensionnet.tensionnet import nre
-from tensionnet.utils import coverage_test
-import tensorflow as tf
 from tensorflow.keras.optimizers.schedules import ExponentialDecay
+from tensionnet.utils import plotting_preamble
 import numpy as np
 from random import shuffle
-from tqdm import tqdm
 import os
+
+plotting_preamble()
 
 def simulation_process(simsA, simsB):
     # generate lots of simulations 
@@ -65,14 +65,14 @@ def simulation_process(simsA, simsB):
 # theta = mu +/- sqrt(Sigma)
 
 base_dir = 'validation/'
-label = '_100dpts_sigmoid'
+label = ''
 if not os.path.exists(base_dir):
     os.mkdir(base_dir)
 
 # Parameters & priors
 n = 3
 mu = np.random.rand(n)
-Sigmas = [0.01, 1, 100]
+Sigmas = [0.1, 1, 100]
 #fig, axes = plt.subplots(2, 2, figsize=(6.3, 6.3))
 fig = plt.figure(figsize=(6.3, 5))
 gs = fig.add_gridspec(2, 3)
@@ -123,14 +123,16 @@ for i, Sigma in enumerate(Sigmas):
     A_sim = AB_sim[:, :model_A.d]
     B_sim = AB_sim[:, model_A.d:]
 
-    nrei = nre(lr=1e-4)
+    lr = ExponentialDecay(1e-3, 1000, 0.9)
+    nrei = nre(lr=lr)
     nrei.build_model(len(A_obs) + len(B_obs),
-                        [25]*5, 'sigmoid')
-    #nrei.build_compress_model(len(A_obs), len(B_obs),
-    #                    [(len(A_obs) + len(B_obs))//2,
-    #                     20, 20, 10], [25]*5, 'relu')
-    norm_data_train, norm_data_test, data_train, data_test, labels_train, labels_test = \
-        simulation_process(A_sim, B_sim)
+                        [25]*5, 'relu', 
+                        skip_layers=False,
+                        kernel_regularizer=None
+                        )
+    norm_data_train, norm_data_test, data_train, \
+        data_test, labels_train, labels_test = \
+            simulation_process(A_sim, B_sim)
     nrei.data_test = norm_data_test
     nrei.labels_test = labels_test
     nrei.data_train = norm_data_train
@@ -142,7 +144,7 @@ for i, Sigma in enumerate(Sigmas):
     model, data_test, labels_test = nrei.training(epochs=1000,# patience=20,
                                                   batch_size=1000)
 
-    N_test_sim = 1000
+    N_test_sim = 5000
     AB_sim = model_AB.evidence().rvs(N_test_sim)
     A_sim = AB_sim[:, :model_A.d]
     B_sim = AB_sim[:, model_A.d:]
@@ -160,23 +162,23 @@ for i, Sigma in enumerate(Sigmas):
 
     #alpha, cov = coverage_test(r, A_sim[:100, :], B_sim[:100, :], nrei)
 
-    ax[i+1].scatter(logr, r, color='C' + str(i), marker='.', s=2)
+    ax[i+1].scatter(logr, r, color='C' + str(i), marker='.', s=2, alpha=0.5)
     ax[i+1].plot(np.sort(logr), np.sort(logr), ls='--', color='gray')
 
     ax[i+1].set_xlabel(r'True $\log(R)$')
     if i == 0:
         ax[i+1].set_ylabel(r'Predicted $\log(R)$')
-    ax[i+1].set_title(r'$\sigma = $' + str(Sigma))
+    ax[i+1].set_title(r'$\Sigma = $ ' + str(Sigma)+ r'$\mathcal{I}$')
 
     hist, bins = np.histogram(logr, bins=50)
     ax[0].hist(logr, bins=50, histtype='step', ls='-', 
-              label=r'True, $\sigma = $' + str(Sigma), color='C' + str(i))
+              label=r'True, $\Sigma = $ ' + str(Sigma) + r'$\mathcal{I}$', color='C' + str(i))
 
     print('Surviving Simulations: ', len(r))
     ax[0].hist(r, bins=50, histtype='step', ls='--', 
-             label=r'Predicted, $\sigma = $' + str(Sigma), color='C' + str(i))
+             label=r'Predicted, $\Sigma = $ ' + str(Sigma)+ r'$\mathcal{I}$', color='C' + str(i))
 
-    average_idx = np.argsort(np.abs(r - np.median(r)))[0]
+    """average_idx = np.argsort(np.abs(r - np.median(r)))[0]
     quantile5_idx = np.argsort(np.abs(r - np.quantile(r, 0.05)))[0]
     quantile95_idx = np.argsort(np.abs(r - np.quantile(r, 0.95)))[0]
     ax[i+1].scatter(logr[average_idx], r[average_idx], color='k', 
@@ -184,7 +186,7 @@ for i, Sigma in enumerate(Sigmas):
     ax[i+1].scatter(logr[quantile5_idx], r[quantile5_idx],
                     color='k', marker='x')
     ax[i+1].scatter(logr[quantile95_idx], r[quantile95_idx],
-                    color='k', marker='x')
+                    color='k', marker='x')"""
 
 from scipy.special import expit
 
@@ -192,7 +194,7 @@ x = np.linspace(-20, 20, 1000)
 ax[0].plot(x, expit(x)*hist.max(), label='Sigmoid', c='k')
 #axes.axvline(0.75, ls='--', c='k', label='Threshold for\ncorrectly classified')
 
-ax[0].legend(fontsize=8)#loc='upper left', bbox_to_anchor=(1.2, 0.95))
+ax[0].legend(fontsize=8, loc='upper left')#, bbox_to_anchor=(1.2, 0.95))
 ax[0].set_xlabel(r'$\log(R)$')
 ax[0].set_yticks([])
 #ax[1].set_xscale('log')
