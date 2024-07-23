@@ -1,7 +1,6 @@
 numpy
 scipy
 git+https://github.com/PolyChord/PolyChordLite@master
-camb
 anesthetic
 matplotlib
 tensorflow==2.14.0
