@@ -46,7 +46,7 @@ def derived(parameters):
 
 plotting_preamble()
 
-BASE_DIR = 'full_desi_sdss_independent_observations/'
+BASE_DIR = 'chains/full_desi_sdss_independent_observations/'
 if not os.path.exists(BASE_DIR):
     os.makedirs(BASE_DIR)
 
