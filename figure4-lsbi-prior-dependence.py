@@ -280,5 +280,5 @@ axes[2, 0].set_xlabel(r'$\log R$')
 axes[2, 1].set_xlabel(r'$\log R$')
 
 plt.tight_layout()
-plt.savefig('figures/figure5-lsbi-averages.pdf', bbox_inches='tight')
+plt.savefig('figures/figure4-lsbi-averages.pdf', bbox_inches='tight')
 plt.close()
