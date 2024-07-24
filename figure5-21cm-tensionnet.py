@@ -154,6 +154,6 @@ axes[2].set_xlabel(r'$\log R$')
 axes[2].set_ylabel(r'$P(\log R < \log R^\prime)$')
 
 plt.tight_layout()
-plt.savefig('figures/figure4.pdf', bbox_inches='tight', dpi=300)
+plt.savefig('figures/figure5.pdf', bbox_inches='tight', dpi=300)
 plt.show()
 
