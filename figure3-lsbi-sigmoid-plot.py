@@ -64,10 +64,7 @@ def simulation_process(simsA, simsB):
 # D = m + M theta +/- sqrt(C)
 # theta = mu +/- sqrt(Sigma)
 
-base_dir = 'validation/'
 label = ''
-if not os.path.exists(base_dir):
-    os.mkdir(base_dir)
 
 # Parameters & priors
 n = 3
@@ -202,6 +199,6 @@ ax[0].set_yticks([])
 #ax[1].set_ylabel(r'$\log(R_\mathrm{median})$')
 plt.tight_layout()
 #plt.subplots_adjust(wspace=0.3)
-plt.savefig(base_dir + 'validation' + label + '.png', dpi=300, bbox_inches='tight')
-plt.savefig(base_dir + 'validation' + label + '.pdf')
+plt.savefig('figures/figure3.png', dpi=300, bbox_inches='tight')
+plt.savefig('figures/figure3.pdf')
 plt.show()
