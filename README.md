@@ -1,21 +1,30 @@
 Tensionnet
 ----------
 
-REPO IS UNDER CONSTRUCTION
+Code for Bevins, Handley, Gessey-Jones, [Calibrating Bayesian Tension Statistics using Neural Ratio Estimation](https://arxiv.org/abs/2407.15478), 2024.
 
-Idea is to use NREs to predict the plausible distribution of the tension statistic $R = \frac{P(D_A, D_B)}{P(D_A)P(D_B)}$ over some prior and given a model choice for two data sets with common parameters.
+When the inference from two expeiments disgrees this is known as tension.
+Understanding and properly quantifying tension helps us to better understand
+any systematics in our analysis and identify whether new physics is needed
+to explain the observed phemonena. A number of tensions have kept researchers
+busy in recent years including the Hubble tension and the $\sigma_8$ tension.
 
-We need a set of simulations for data set A and data set B with the same and mismatched common parameters. We then train the NRE to predict the ratio $R$ for pairs of realisations of each data set. 
+A Bayesian way to quantify tension is with the ratio 
 
-Once trained we input a series of matched realisations of data set A and data set B. This gives us the plausible values of $R$ for the two data sets given the model over a prior. We can then use nested sampling to get $Z_A = P(D_A| M)$, $Z_B = P(B_A| M)$ and $Z_{A,B} = P(D_A, D_B |M)$ to get
+$R = \frac{P(D_A, D_B)}{P(D_A)P(D_B)} = \frac{\mathcal{Z}_{AB}}{\mathcal{Z}_{A}\mathcal{Z}_{B}}$
 
-$R_{obs} = \frac{Z_{A, B}}{Z_A Z_B} = \frac{P(D_A, D_B |M)}{P(D_A| M)P(D_B| M)}$.
+where $D_A$ is the data from experiment $A$, $D_B$ is the data from experiment $B$,
+$\mathcal{Z}_{AB}$ is the Bayesian evidence for the joint data set and $\mathcal{Z}_{A}$
+and $\mathcal{Z}_{B}$ are the Bayesian evidences for the individual data sets. $R$ is
+often very costly to calcualte since it involves evaluating three different evidences
+and it is also hard to interpret because it has a non-trivial prior dependence.
 
-If $R_{obs}$ falls well within the distribution then we can conclude that the datasets are likely not in tension (and probably caluclate to what degree?) else if $R_{obs}$ falls outside the distribution then the data sets are in tension.
-
-Generated a mock example that is just two noisy gaussian absorption signals. See below.
-
-Network just uses a binary cross entropy + sigmoid on last layer. We can drop the last layer to get $\log(R)$ but we need it for training to turn $\log(R)$ into a probability.
+We demonstrate that Neural Ratio Estimation can be used to calcualte the bayesian
+tension statistics $R = \frac{P(D_A, D_B)}{P(D_A)P(D_B)}$ if properly
+trained on simulations of two experiments observables. We then show that NREs can be used to predict the plausible distribution of $R$ given some prior and model choice for two data sets with common parameters. This inconcordance $\log R$ distribution can then
+be used for calibrating the observed $R$ value for the real data into a prior independent
+$N \sigma$ estimate of tension where here $\sigma$ refers to the standard deviation of the
+standard normal distribution.
 
 
 Citation
