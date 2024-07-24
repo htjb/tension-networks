@@ -11,11 +11,11 @@ busy in recent years including the Hubble tension and the $\sigma_8$ tension.
 
 A Bayesian way to quantify tension is with the ratio 
 
-$R = \frac{P(D_A, D_B)}{P(D_A)P(D_B)} = \frac{\mathcal{Z}_{AB}}{\mathcal{Z}_{A}\mathcal{Z}_{B}}$
+$R = \frac{P(D_A, D_B)}{P(D_A)P(D_B)} = \frac{Z_{AB}}{Z_{A}Z_{B}}$
 
 where $D_A$ is the data from experiment $A$, $D_B$ is the data from experiment $B$,
-$\mathcal{Z}_{AB}$ is the Bayesian evidence for the joint data set and $\mathcal{Z}_{A}$
-and $\mathcal{Z}_{B}$ are the Bayesian evidences for the individual data sets. $R$ is
+$Z_{AB}$ is the Bayesian evidence for the joint data set and $Z_{A}$
+and $Z_{B}$ are the Bayesian evidences for the individual data sets. $R$ is
 often very costly to calcualte since it involves evaluating three different evidences
 and it is also hard to interpret because it has a non-trivial prior dependence.
 
