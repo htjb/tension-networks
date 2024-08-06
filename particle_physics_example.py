@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from pypolychord.priors import UniformPrior
+from pypolychord.priors import UniformPrior, LogUniformPrior
 from pypolychord.settings import PolyChordSettings
 from sklearn.model_selection import train_test_split
 from tensionnet.utils import plotting_preamble
@@ -12,24 +12,24 @@ import os
 
 plotting_preamble()
 
-base_dir = 'particle_physics_example/'
+base_dir = 'particle_physics_example_120_120_diff_data/'
 if not os.path.exists(base_dir):
     os.mkdir(base_dir)
 
-np.random.seed(1420)
+np.random.seed(42)
 
 def prior_individual(hypercube):
-    theta = np.zeros(9)
-    theta[0] = UniformPrior(0, 10)(hypercube[0])
-    theta[1] = UniformPrior(0, 5)(hypercube[1])
-    theta[2] = UniformPrior(0, 10)(hypercube[2])
-    theta[3] = UniformPrior(0, 5)(hypercube[3])
-    theta[4] = UniformPrior(0, 10)(hypercube[4])
-    theta[5] = UniformPrior(0, 5)(hypercube[5])
+    theta = np.zeros_like(hypercube)
+    theta[0] = UniformPrior(5, 10)(hypercube[0])
+    theta[1] = UniformPrior(1, 5)(hypercube[1])
+    theta[2] = UniformPrior(5, 10)(hypercube[2])
+    theta[3] = UniformPrior(1, 5)(hypercube[3])
+    theta[4] = UniformPrior(5, 10)(hypercube[4])
+    theta[5] = UniformPrior(1, 5)(hypercube[5])
 
-    theta[6] = UniformPrior(0, 1000)(hypercube[6])
-    theta[7] = UniformPrior(100, 180)(hypercube[7])
-    theta[8] = UniformPrior(0, 10)(hypercube[8])
+    theta[6] = UniformPrior(0, 800)(hypercube[6])
+    theta[7] = UniformPrior(110, 150)(hypercube[7])
+    theta[8] = UniformPrior(0.1, 10)(hypercube[8])
     return theta
 
 def background_model(x, theta):
@@ -53,29 +53,32 @@ x = np.linspace(100, 180, length)
 normx = (x - np.max(x))/(np.max(x) - np.min(x))
 
 fig, axes = plt.subplots(4, 1, figsize=(8, 6), sharex=True)
-truebgparams = prior_individual(np.random.uniform(0, 1, 9))[:6]
-theorybg = background_model(normx, truebgparams)
-theorysig1 = signal_model(x, [0.12*theorybg.max(), 123, 5])
-theory1 = theorybg + theorysig1
+truebgparams1 = prior_individual(np.random.uniform(0, 1, 9))[:6]
+theorybg1 = background_model(normx, truebgparams1)
+theorysig1 = signal_model(x, [0.12*theorybg1.max(), 124.9, 5])
+theory1 = theorybg1 + theorysig1
 data1 = poisson.rvs(theory1, size=length)
 
 axes[0].scatter(x, data1)
 axes[0].plot(x, theory1)
-axes[0].axvline(123, color='red', linestyle='--')
-axes[0].set_title('Weaker excess at 123 GeV')
-axes[1].scatter(x, data1 - theorybg)
+axes[0].axvline(124.5, color='red', linestyle='--')
+axes[0].set_title('Weaker excess at 124.5 GeV')
+axes[1].scatter(x, data1 - theorybg1)
 axes[1].axhline(0, color='black', linestyle='--')
 axes[1].plot(x, theorysig1)    
 axes[1].set_title('Residuals')
 
-theorysig2 = signal_model(x, [0.15*theorybg.max(), 125, 3])
-theory2 = theorybg + theorysig2
+truebgparams2 = prior_individual(np.random.uniform(0, 1, 9))[:6]
+theorybg2 = background_model(normx, truebgparams2)
+
+theorysig2 = signal_model(x, [0.15*theorybg2.max(), 125.1, 3.5])
+theory2 = theorybg2 + theorysig2
 data2 = poisson.rvs(theory2, size=length)
 axes[2].scatter(x, data2, color='red')
 axes[2].plot(x, theory2, color='red')
 axes[2].axvline(125, color='red', linestyle='--')
 axes[2].set_title('Stronger excess at 125 GeV')
-axes[3].scatter(x, data2 - theorybg, color='red')
+axes[3].scatter(x, data2 - theorybg2, color='red')
 axes[3].plot(x, theorysig2, color='red')
 axes[3].set_title('Residuals')
 axes[3].axhline(0, color='black', linestyle='--')
@@ -85,11 +88,12 @@ axes[3].set_xlabel('Mass [GeV]')
 for i in range(4):
     axes[i].set_ylabel('Events')
 plt.tight_layout()
-plt.savefig(base_dir + 'data.png')
-plt.close()
+plt.savefig(base_dir + 'data.png', dpi=300, bbox_inches='tight')
 #plt.show()
+plt.close()
+#exit()
 
-jointnames = [('b%i' % i, r'b_%i' % i) for i in range(6)] + \
+jointnames = [('b%i' % i, r'b_%i' % i) for i in range(12)] + \
     [('\mu', r'\mu'), ('A1', r'A_1'), ('sigma1', r'\sigma_1')] + \
     [('A2', r'A_2'), ('sigma2', r'\sigma_2')]
 
@@ -99,7 +103,7 @@ exp1names = [('b%i' % i, r'b_%i' % i)  for i in range(6)] + \
 exp2names = [('b%i' % i, r'b_%i' % i)  for i in range(6)] + \
     [('A2', r'A_2'), ('\mu', r'\mu'), ('sigma2', r'\sigma_2')]
 
-skip_poly = True
+skip_poly = False
 
 if not skip_poly:
     ###############################################################################
@@ -146,33 +150,41 @@ if not skip_poly:
     ###############################################################################
 
     def prior_joint(hypercube):
-        theta = np.zeros(11)
-        theta[0] = UniformPrior(0, 10)(hypercube[0])
-        theta[1] = UniformPrior(0, 5)(hypercube[1])
-        theta[2] = UniformPrior(0, 10)(hypercube[2])
-        theta[3] = UniformPrior(0, 5)(hypercube[3])
-        theta[4] = UniformPrior(0, 10)(hypercube[4])
-        theta[5] = UniformPrior(0, 5)(hypercube[5])
+        theta = np.zeros_like(hypercube)
+        theta[0] = UniformPrior(5, 10)(hypercube[0])
+        theta[1] = UniformPrior(1, 5)(hypercube[1])
+        theta[2] = UniformPrior(5, 10)(hypercube[2])
+        theta[3] = UniformPrior(1, 5)(hypercube[3])
+        theta[4] = UniformPrior(5, 10)(hypercube[4])
+        theta[5] = UniformPrior(1, 5)(hypercube[5])
 
-        theta[6] = UniformPrior(100, 180)(hypercube[6])
+        theta[6] = UniformPrior(5, 10)(hypercube[6])
+        theta[7] = UniformPrior(1, 5)(hypercube[7])
+        theta[8] = UniformPrior(5, 10)(hypercube[8])
+        theta[9] = UniformPrior(1, 5)(hypercube[9])
+        theta[10] = UniformPrior(5, 10)(hypercube[10])
+        theta[11] = UniformPrior(1, 5)(hypercube[11])
 
-        theta[7] = UniformPrior(0, 1000)(hypercube[7])
-        theta[8] = UniformPrior(0, 10)(hypercube[8])
+        theta[12] = UniformPrior(110, 150)(hypercube[12])
 
-        theta[9] = UniformPrior(0, 1000)(hypercube[9])
-        theta[10] = UniformPrior(0, 10)(hypercube[10])
+        theta[13] = UniformPrior(0, 800)(hypercube[13])
+        theta[14] = UniformPrior(0.1, 10)(hypercube[14])
+
+        theta[15] = UniformPrior(0, 800)(hypercube[15])
+        theta[16] = UniformPrior(0.1, 10)(hypercube[16])
 
         return theta
 
     def likelihoodjoint(params):
-        bgparams = params[:6]
-        sig1params = [params[7], params[6], params[8]]
-        sig2params = [params[9], params[6], params[10]]
-        like1, [] = likelihood1(np.concatenate([bgparams, sig1params]))
-        like2, [] = likelihood2(np.concatenate([bgparams, sig2params]))
+        bgparams1 = params[:6]
+        bgparams2 = params[6:12]
+        sig1params = [params[13], params[12], params[14]]
+        sig2params = [params[15], params[12], params[16]]
+        like1, [] = likelihood1(np.concatenate([bgparams1, sig1params]))
+        like2, [] = likelihood2(np.concatenate([bgparams2, sig2params]))
         return like1+like2, []
 
-    nDims = 11
+    nDims = 17
 
     settings = PolyChordSettings(nDims, 0) #settings is an object
     settings.read_resume = False
@@ -189,13 +201,15 @@ if not skip_poly:
 
 
 chainsj = read_chains(base_dir + 'joint/test', columns=[jn[0] for jn in jointnames])
-axes = chainsj.plot_2d(['\mu'])
+axes = chainsj.plot_2d(['\mu'], figsize=(5, 4.5))
 
 chains1 = read_chains(base_dir + 'exp1/test', columns=[e1n[0] for e1n in exp1names])
 chains1.plot_2d(axes)
 
 chains2 = read_chains(base_dir + 'exp2/test', columns=[e2n[0] for e2n in exp2names])
 chains2.plot_2d(axes)
+axes.iloc[0, 0].set_ylabel('')
+axes.iloc[0, 0].set_xlabel(r'$M$ [GeV]')
 
 #plt.show()
 plt.savefig(base_dir + 'chains.pdf', bbox_inches='tight')
@@ -221,23 +235,24 @@ import random
 nSamples = 100000
 load_data = False
 
-prior_mins = [0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0]
-prior_maxs = [10, 5, 10, 5, 10, 5, 180, 1000, 10, 1000, 10]
+prior_mins = [5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 110, 0, 0.1, 0, 0.1]
+prior_maxs = [10, 5, 10, 5, 10, 5, 10, 5, 10, 5, 10, 5, 150, 800, 10, 800, 10]
 
 def nre_prior(N):
     return np.array([np.random.uniform(prior_mins[i], prior_maxs[i], N) 
-                     for i in range(11)]).T
+                     for i in range(17)]).T
 
 def simulation(theta):
 
     exp1s, exp2s = [], []
     for i in tqdm(range(len(theta))):
-        bgparams = theta[i, :6]
-        sig1params = [theta[i, 7], theta[i, 6], theta[i, 8]]
-        sig2params = [theta[i, 9], theta[i, 6], theta[i, 10]]
-        exp1s.append(poisson.rvs(background_model(normx, bgparams) +
+        bgparams1 = theta[i, :6]
+        bgparams2 = theta[i, 6:12]
+        sig1params = [theta[i, 13], theta[i, 12], theta[i, 14]]
+        sig2params = [theta[i, 15], theta[i, 12], theta[i, 16]]
+        exp1s.append(poisson.rvs(background_model(normx, bgparams1) +
                                     signal_model(x, sig1params), size=len(x)))
-        exp2s.append(poisson.rvs(background_model(normx, bgparams) +
+        exp2s.append(poisson.rvs(background_model(normx, bgparams2) +
                                     signal_model(x, sig2params), size=len(x)))
     exp1s = np.array(exp1s)
     exp2s = np.array(exp2s)
@@ -310,7 +325,7 @@ for i in range(5):
         lr = ExponentialDecay(1e-3, 1000, 0.9)
         #lr = tf.keras.optimizers.schedules.CosineDecay(1e-3, 1000, warmup_target=1e-1, warmup_steps=1000)
         nrei = nre(lr=lr)
-        nrei.build_model(200, [200]*2, 'sigmoid')
+        nrei.build_model(200, [120, 120], 'sigmoid')
             
         nrei.data_train = data_train
         nrei.data_test = data_test
@@ -322,7 +337,7 @@ for i in range(5):
         nrei.prior_function_A = None
         nrei.prior_function_B = None
 
-        nrei.training(epochs=10, batch_size=1000, patience=5)
+        nrei.training(epochs=1000, batch_size=1000, patience=50)
         nrei.save(base_dir + 'nre_run' + str(i) + '.pkl')
 
     plt.plot(nrei.loss_history, label='Training Loss')
@@ -391,20 +406,36 @@ sigmaD_upper = sigmaD[:, 2] - sigmaD[:, 0]
 norm_sigmaA = sigmaAs / mean_sigmaA
 norm_sigmaD = sigmaDs / mean_sigmaD
 
-fig, axes = plt.subplots(1, 1, figsize=(3.5, 3))
-axes.errorbar(np.arange(5), sigmaAs, yerr=[sigmaA_lower, sigmaA_upper], fmt='o')
-axes.set_xticks(np.arange(5))
-axes.set_ylabel(r'$C$')
-axes.set_xlabel('Run')
+sets_values = [[sigmaAs, sigmaA_lower, sigmaA_upper], [sigmaDs, sigmaD_lower, sigmaD_upper]]
+for i in range(len(sets_values)):
+    fig, axes = plt.subplots(1, 1, figsize=(3.5, 3))
+    axes.errorbar(np.arange(5), sets_values[i][0], yerr=[sets_values[i][1], sets_values[i][2]], fmt='o')
+    axes.set_xticks(np.arange(5))
+    if i == 0:
+        axes.set_ylabel(r'$C$')
+    else:
+        axes.set_ylabel(r'$T$')
+    axes.set_xlabel('Run')
 
-lower_mean_sigmaA_error = 1/np.sqrt(5) * np.sqrt(np.sum((sigmaA_lower)**2))
-upper_mean_sigmaA_error = 1/np.sqrt(5) * np.sqrt(np.sum((sigmaA_upper)**2))
-print(mean_sigmaA, lower_mean_sigmaA_error, upper_mean_sigmaA_error)
+    lower = 1/np.sqrt(5) * np.sqrt(np.sum((sets_values[i][1])**2))
+    upper = 1/np.sqrt(5) * np.sqrt(np.sum((sets_values[i][2])**2))
+    if i == 0:
+        mean_values = mean_sigmaA
+        print(mean_values, lower, upper)
+    else:
+        mean_values = mean_sigmaD
+        print(mean_values, lower, upper)
 
 
-#for i in range(2):
-axes.axhline(mean_sigmaA, ls='--', c='r')
-axes.axhspan(mean_sigmaA - lower_mean_sigmaA_error, mean_sigmaA + upper_mean_sigmaA_error, alpha=0.1, color='r')
-plt.tight_layout()
-plt.savefig(base_dir + 'sigma.pdf', bbox_inches='tight')
-plt.close()
+    #for i in range(2):
+    axes.axhline(mean_values, ls='--', c='r')
+    axes.axhspan(mean_values - lower, mean_values + upper, alpha=0.1, color='r')
+    if i ==0:
+        axes.set_title(r'$C=$ ' + str(round(mean_values, 2)) + r'$^{+' + str(round(upper, 2)) + '}_{-' + str(round(lower, 2)) + '}$')
+        plt.tight_layout()
+        plt.savefig(base_dir + 'sigmaC.pdf', bbox_inches='tight')
+    else:
+        axes.set_title(r'$T=$ ' + str(round(mean_values, 2)) + r'$^{+' + str(round(upper, 2)) + '}_{-' + str(round(lower, 2)) + '}$')
+        plt.tight_layout()
+        plt.savefig(base_dir + 'sigmaT.pdf', bbox_inches='tight')
+    plt.close()
