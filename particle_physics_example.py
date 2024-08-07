@@ -16,16 +16,19 @@ base_dir = 'particle_physics_example_120_120_diff_data/'
 if not os.path.exists(base_dir):
     os.mkdir(base_dir)
 
-np.random.seed(42)
+#r = np.random.randint(0, 1000)
+#print(r)
+np.random.seed(774)
+
 
 def prior_individual(hypercube):
     theta = np.zeros_like(hypercube)
     theta[0] = UniformPrior(5, 10)(hypercube[0])
-    theta[1] = UniformPrior(1, 5)(hypercube[1])
+    theta[1] = UniformPrior(1, 8)(hypercube[1])
     theta[2] = UniformPrior(5, 10)(hypercube[2])
-    theta[3] = UniformPrior(1, 5)(hypercube[3])
+    theta[3] = UniformPrior(1, 8)(hypercube[3])
     theta[4] = UniformPrior(5, 10)(hypercube[4])
-    theta[5] = UniformPrior(1, 5)(hypercube[5])
+    theta[5] = UniformPrior(1, 8)(hypercube[5])
 
     theta[6] = UniformPrior(0, 800)(hypercube[6])
     theta[7] = UniformPrior(110, 150)(hypercube[7])
@@ -55,14 +58,15 @@ normx = (x - np.max(x))/(np.max(x) - np.min(x))
 fig, axes = plt.subplots(4, 1, figsize=(8, 6), sharex=True)
 truebgparams1 = prior_individual(np.random.uniform(0, 1, 9))[:6]
 theorybg1 = background_model(normx, truebgparams1)
-theorysig1 = signal_model(x, [0.12*theorybg1.max(), 124.9, 5])
+theorysig1 = signal_model(x, [0.12*theorybg1.max(), 125.1, 1.5])
 theory1 = theorybg1 + theorysig1
 data1 = poisson.rvs(theory1, size=length)
 
 axes[0].scatter(x, data1)
 axes[0].plot(x, theory1)
-axes[0].axvline(124.5, color='red', linestyle='--')
-axes[0].set_title('Weaker excess at 124.5 GeV')
+for i in range(4):
+    axes[i].axvline(125.1, color='red', linestyle='--')
+axes[0].set_title('Weaker excess')
 axes[1].scatter(x, data1 - theorybg1)
 axes[1].axhline(0, color='black', linestyle='--')
 axes[1].plot(x, theorysig1)    
@@ -71,13 +75,13 @@ axes[1].set_title('Residuals')
 truebgparams2 = prior_individual(np.random.uniform(0, 1, 9))[:6]
 theorybg2 = background_model(normx, truebgparams2)
 
-theorysig2 = signal_model(x, [0.15*theorybg2.max(), 125.1, 3.5])
+theorysig2 = signal_model(x, [0.15*theorybg2.max(), 125.1, 2])
 theory2 = theorybg2 + theorysig2
 data2 = poisson.rvs(theory2, size=length)
 axes[2].scatter(x, data2, color='red')
 axes[2].plot(x, theory2, color='red')
-axes[2].axvline(125, color='red', linestyle='--')
-axes[2].set_title('Stronger excess at 125 GeV')
+#axes[2].axvline(125.1, color='red', linestyle='--')
+axes[2].set_title('Stronger excess')
 axes[3].scatter(x, data2 - theorybg2, color='red')
 axes[3].plot(x, theorysig2, color='red')
 axes[3].set_title('Residuals')
@@ -152,18 +156,18 @@ if not skip_poly:
     def prior_joint(hypercube):
         theta = np.zeros_like(hypercube)
         theta[0] = UniformPrior(5, 10)(hypercube[0])
-        theta[1] = UniformPrior(1, 5)(hypercube[1])
+        theta[1] = UniformPrior(1, 8)(hypercube[1])
         theta[2] = UniformPrior(5, 10)(hypercube[2])
-        theta[3] = UniformPrior(1, 5)(hypercube[3])
+        theta[3] = UniformPrior(1, 8)(hypercube[3])
         theta[4] = UniformPrior(5, 10)(hypercube[4])
-        theta[5] = UniformPrior(1, 5)(hypercube[5])
+        theta[5] = UniformPrior(1, 8)(hypercube[5])
 
         theta[6] = UniformPrior(5, 10)(hypercube[6])
-        theta[7] = UniformPrior(1, 5)(hypercube[7])
+        theta[7] = UniformPrior(1, 8)(hypercube[7])
         theta[8] = UniformPrior(5, 10)(hypercube[8])
-        theta[9] = UniformPrior(1, 5)(hypercube[9])
+        theta[9] = UniformPrior(1, 8)(hypercube[9])
         theta[10] = UniformPrior(5, 10)(hypercube[10])
-        theta[11] = UniformPrior(1, 5)(hypercube[11])
+        theta[11] = UniformPrior(1, 8)(hypercube[11])
 
         theta[12] = UniformPrior(110, 150)(hypercube[12])
 
@@ -236,7 +240,7 @@ nSamples = 100000
 load_data = False
 
 prior_mins = [5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 110, 0, 0.1, 0, 0.1]
-prior_maxs = [10, 5, 10, 5, 10, 5, 10, 5, 10, 5, 10, 5, 150, 800, 10, 800, 10]
+prior_maxs = [10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 10, 8, 150, 800, 10, 800, 10]
 
 def nre_prior(N):
     return np.array([np.random.uniform(prior_mins[i], prior_maxs[i], N) 
