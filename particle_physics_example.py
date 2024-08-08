@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pypolychord.priors import UniformPrior, LogUniformPrior
 from pypolychord.settings import PolyChordSettings
+from anesthetic.plot import kde_plot_1d
 from sklearn.model_selection import train_test_split
 from tensionnet.utils import plotting_preamble
 from tqdm import tqdm
@@ -66,7 +67,7 @@ axes[0].scatter(x, data1)
 axes[0].plot(x, theory1)
 for i in range(4):
     axes[i].axvline(125.1, color='red', linestyle='--')
-axes[0].set_title('Weaker excess')
+axes[0].set_title('Stronger excess')
 axes[1].scatter(x, data1 - theorybg1)
 axes[1].axhline(0, color='black', linestyle='--')
 axes[1].plot(x, theorysig1)    
@@ -81,7 +82,7 @@ data2 = poisson.rvs(theory2, size=length)
 axes[2].scatter(x, data2, color='red')
 axes[2].plot(x, theory2, color='red')
 #axes[2].axvline(125.1, color='red', linestyle='--')
-axes[2].set_title('Stronger excess')
+axes[2].set_title('Weaker excess')
 axes[3].scatter(x, data2 - theorybg2, color='red')
 axes[3].plot(x, theorysig2, color='red')
 axes[3].set_title('Residuals')
@@ -319,6 +320,13 @@ else:
     np.save(base_dir + 'labels_train.npy', labels_train)
     np.save(base_dir + 'labels_test.npy', labels_test)
 
+me1 = chains1['\mu'].values
+w1 = chains1.get_weights()
+me2 = chains2['\mu'].values
+w2 = chains2.get_weights()
+mej = chainsj['\mu'].values
+wj = chainsj.get_weights()
+
 sigmaD, sigmaA = [], []
 for i in range(5):
     
@@ -358,7 +366,7 @@ for i in range(5):
     r = nrei.r_values
     mask = np.isfinite(r)
 
-    fig, axes = plt.subplots(1, 2, figsize=(6.3, 3))
+    fig, axes = plt.subplots(1, 3, figsize=(6.3, 3))
     axes[0].hist(r[mask], bins=25, density=True)
     axes[0].set_xlabel(r'$\log R$')
     axes[0].set_ylabel('Density')
@@ -384,6 +392,17 @@ for i in range(5):
                 c.cdf.evaluate(R + errorR),
                 alpha=0.1,
                 color='r')
+    
+    #axes[2].hist(me1, bins=25, density=True, alpha=0.5, label='Exp1')
+    #axes[2].hist(me2, bins=25, density=True, alpha=0.5, label='Exp2')
+    #axes[2].hist(mej, bins=25, density=True, alpha=0.5, label='Joint')
+    kde_plot_1d(axes[2], me1, label='Exp1', weights=w1)
+    kde_plot_1d(axes[2], me2, label='Exp2', weights=w2)
+    kde_plot_1d(axes[2], mej, label='Joint', weights=wj)
+    axes[2].set_xlabel(r'Mass [GeV]')
+    axes[2].set_ylabel('Density')
+    axes[2].legend(loc='upper right')
+    axes[2].set_yticks([])
 
     stats = calcualte_stats(R, errorR, c)
     print(stats)
