@@ -6,6 +6,7 @@ from tensionnet.tensionnet import nre
 from tensionnet.robs import run_poly
 from pypolychord.priors import UniformPrior, LogUniformPrior
 import os
+import time
 
 def signal_func_gen(freqs):
     def signal(parameters):
@@ -64,8 +65,28 @@ except:
         + np.random.normal(0, 0.025, 100)
     np.savetxt(base + 'exp1_data_truth.txt', exp1_data)
 
-"""print(exp1likelihood(signal_poly_prior(np.random.uniform(0, 1, 4))))
-sys.exit(1)"""
+"""exp2_data = np.loadtxt(base + f'exp2_data_{0.2}.txt')
+timesl1, timesl2, timesJ = [], [], []
+for i in range(100):
+    s = time.time()
+    print(exp1likelihood(signal_poly_prior(np.random.uniform(0, 1, 4))))
+    e = time.time()
+    timesl1.append(e-s)
+    
+    s = time.time()
+    print(exp2likelihood(signal_poly_prior(np.random.uniform(0, 1, 4))))
+    e = time.time()
+    timesl2.append(e-s)
+    
+    s = time.time()
+    print(jointlikelihood(joint_prior(np.random.uniform(0, 1, 5))))
+    e = time.time()
+    timesJ.append(e-s)
+
+print(f'Average time for exp1likelihood: {np.mean(timesl1)}')
+print(f'Average time for exp2likelihood: {np.mean(timesl2)}')
+print(f'Average time for jointlikelihood: {np.mean(timesJ)}')
+exit()"""
 
 run_poly(signal_poly_prior, exp1likelihood, base + f'exp1', 
          nlive=100, RESUME=RESUME, nDims=4)

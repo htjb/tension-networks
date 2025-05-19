@@ -6,6 +6,7 @@ from matplotlib import rc
 from tensionnet.tensionnet import nre
 from scipy.stats import ecdf, norm
 from tensionnet.utils import calcualte_stats
+import time
 
 # plotting stuff
 mpl.rcParams['axes.prop_cycle'] = mpl.cycler('color',
@@ -42,18 +43,25 @@ exp1 = signal_func_gen(exp1_freq)
 base = 'chains/21cm_temp_sweep/'
 
 try:
-        nrei = nre.load('figure4-nre.pkl',
+        nrei = nre.load('figure4-nre-timing.pkl',
                 exp2, exp1, signal_prior)
 except:
+        s = time.time()
         nrei = nre(lr=1e-4)
         nrei.build_model(len(exp2_freq) + len(exp1_freq),
                         [25]*5, 'sigmoid')
         nrei.build_simulations(exp2, exp1, signal_prior, n=200000)
         model, data_test, labels_test = nrei.training(epochs=1000, 
                                                         batch_size=1000)
-        nrei.save('figure4-nre.pkl')
+        e = time.time()
+        print(f'Time taken for training: {e-s} seconds')
+        nrei.save('figure4-nre-timing.pkl')
 
+s = time.time()
 nrei.__call__(iters=5000)
+e = time.time()
+print(f'Time taken for 5000 iterations: {e-s} seconds')
+print(f'Average time per iteration: {(e-s)/5000} seconds')
 r = nrei.r_values
 mask = np.isfinite(r)
 r = r[mask]
