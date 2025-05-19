@@ -65,7 +65,7 @@ except:
         + np.random.normal(0, 0.025, 100)
     np.savetxt(base + 'exp1_data_truth.txt', exp1_data)
 
-"""exp2_data = np.loadtxt(base + f'exp2_data_{0.2}.txt')
+exp2_data = np.loadtxt(base + f'exp2_data_{0.2}.txt')
 timesl1, timesl2, timesJ = [], [], []
 for i in range(100):
     s = time.time()
@@ -86,10 +86,13 @@ for i in range(100):
 print(f'Average time for exp1likelihood: {np.mean(timesl1)}')
 print(f'Average time for exp2likelihood: {np.mean(timesl2)}')
 print(f'Average time for jointlikelihood: {np.mean(timesJ)}')
-exit()"""
+exit()
 
+s = time.time()
 run_poly(signal_poly_prior, exp1likelihood, base + f'exp1', 
          nlive=100, RESUME=RESUME, nDims=4)
+e = time.time()
+print(f'Time taken for exp1: {e-s} seconds')
 exp1_samples = read_chains(base + f'exp1/test')
 
 Rs = []
@@ -101,10 +104,16 @@ for t in temperatures:
             + np.random.normal(0, 0.025, 100)
         np.savetxt(base + f'exp2_data_{t}.txt', exp2_data)
 
+    s = time.time()
     run_poly(joint_prior, jointlikelihood, 
              base + f'joint_{t}', nlive=125, RESUME=RESUME, nDims=5)
+    e = time.time()
+    print(f'Time taken for joint: {e-s} seconds')
+    s = time.time()
     run_poly(signal_poly_prior, exp2likelihood, 
              base + f'exp2_{t}', nlive=100, RESUME=RESUME, nDims=4)
+    e = time.time()
+    print(f'Time taken for exp2: {e-s} seconds')
 
     exp2_samples = read_chains(base + f'exp2_{t}/test')
     joint_samples = read_chains(base + f'joint_{t}/test')
